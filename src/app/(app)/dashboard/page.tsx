@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { cn, getRiskColor } from "@/lib/utils";
 import Link from "next/link";
-import type { Shipment } from "@/lib/mock-data";
+import type { Shipment } from "@/lib/types";
 
 // ─── Feed row ─────────────────────────────────────────────────────────────────
 function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: number }) {
@@ -95,7 +95,7 @@ function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: numbe
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { state, activeShipments, completedShipments, atRiskShipments } = useStore();
-  const { shipments } = state;
+  const { shipments, loading } = state;
 
   const totalShipments = shipments.length;
   const avgRisk = shipments.length > 0
@@ -105,6 +105,21 @@ export default function DashboardPage() {
   const topAlert = shipments.find((s) => s.status === "at-risk" && s.predictiveAlert)
     ?? shipments.find((s) => s.predictiveAlert);
   const feedShipments = [...activeShipments, ...completedShipments.slice(0, 3)];
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto w-full">
+        <div className="flex flex-col items-center justify-center py-32 gap-4">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
+            className="w-8 h-8 border-2 border-border border-t-primary rounded-full"
+          />
+          <p className="text-sm text-muted-foreground">Loading shipments...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto w-full space-y-10">

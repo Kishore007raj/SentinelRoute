@@ -1,16 +1,54 @@
-import { cookies } from "next/headers";
+"use client";
+/**
+ * (app)/layout.tsx — Protected app shell.
+ *
+ * Checks Firebase auth state via useUser().
+ * - Loading → full-screen spinner
+ * - Not authenticated → redirect to /auth/signin
+ * - Authenticated → render sidebar + header + content
+ */
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useUser } from "@/lib/auth-context";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { PageTransition } from "@/components/layout/PageTransition";
+import { motion } from "framer-motion";
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-  const sidebarState = cookieStore.get("sidebar_state");
-  const defaultOpen = sidebarState ? sidebarState.value === "true" : true;
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useUser();
+  const router = useRouter();
 
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/auth/signin");
+    }
+  }, [user, loading, router]);
+
+  // ── Loading state ────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
+            className="w-8 h-8 border-2 border-border border-t-primary rounded-full"
+          />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Not authenticated — render nothing while redirect fires ──────────────
+  if (!user) return null;
+
+  // ── Authenticated — render app shell ────────────────────────────────────
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
+    <SidebarProvider defaultOpen={true}>
       <AppSidebar />
       <SidebarInset className="flex flex-col min-h-screen overflow-hidden">
         <AppHeader />

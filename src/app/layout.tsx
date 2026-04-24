@@ -4,6 +4,11 @@ import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { StoreProvider } from "@/lib/store";
+import { UserProvider } from "@/lib/auth-context";
+import { logEnvStatus } from "@/lib/env";
+
+// Runs once on server cold-start — confirms all env vars are present
+logEnvStatus();
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -32,12 +37,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} dark`}
     >
       <body className="min-h-screen bg-background text-foreground antialiased">
-        <StoreProvider>
-          <TooltipProvider delayDuration={300}>
-            {children}
-          </TooltipProvider>
-          <Toaster position="bottom-right" theme="dark" richColors />
-        </StoreProvider>
+        <UserProvider>
+          <StoreProvider>
+            <TooltipProvider delayDuration={300}>
+              {children}
+            </TooltipProvider>
+            <Toaster position="bottom-right" theme="dark" richColors />
+          </StoreProvider>
+        </UserProvider>
       </body>
     </html>
   );

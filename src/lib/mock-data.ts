@@ -1,54 +1,20 @@
-export type RiskLevel = "low" | "medium" | "high" | "critical";
-export type ShipmentStatus = "active" | "at-risk" | "completed" | "pending";
-export type RouteLabel = "fastest" | "balanced" | "safest";
+/**
+ * mock-data.ts — Static seed data for development.
+ *
+ * Types are defined in src/lib/types.ts — imported from there.
+ * This file will be removed in the Final Cleanup layer once
+ * all data comes from real APIs and Firestore.
+ */
 
-export interface Route {
-  id: string;
-  label: RouteLabel;
-  name: string;
-  eta: string;
-  etaMinutes: number;
-  distance: string;
-  distanceKm: number;
-  riskScore: number;
-  riskLevel: RiskLevel;
-  recommended: boolean;
-  summary: string;
-  riskBreakdown: {
-    traffic: number;
-    weather: number;
-    disruption: number;
-    cargoSensitivity: number;
-  };
-  alerts: string[];
-}
-
-export interface Shipment {
-  id: string;
-  shipmentCode: string;
-  origin: string;
-  destination: string;
-  selectedRoute: RouteLabel;
-  routeName: string;
-  riskScore: number;
-  riskLevel: RiskLevel;
-  eta: string;
-  status: ShipmentStatus;
-  lastUpdate: string;
-  cargoType: string;
-  vehicleType: string;
-  distance: string;
-  departureTime: string;
-  confidencePercent: number;
-  predictiveAlert?: string;
-}
-
-export interface KPI {
-  label: string;
-  value: string;
-  delta: string;
-  deltaPositive: boolean;
-}
+// Re-export all types so existing imports don't break during migration
+export type {
+  RiskLevel,
+  ShipmentStatus,
+  RouteLabel,
+  Route,
+  Shipment,
+  KPI,
+} from "./types";
 
 // Routes for Chennai → Bangalore demo
 export const demoRoutes: Route[] = [

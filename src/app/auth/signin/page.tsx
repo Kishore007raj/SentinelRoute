@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 const features = [
   { icon: Shield, label: "Risk-first routing", text: "Every decision is scored and explainable" },
@@ -15,28 +17,61 @@ const features = [
   { icon: BarChart3, label: "Audit trail", text: "Full dispatch history for compliance" },
 ];
 
+// Session cookie helpers — read by middleware for route protection
+function setSessionCookie() {
+  // 7-day session
+  const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `sr_session=1; path=/; expires=${expires}; SameSite=Lax`;
+}
+
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") ?? "/dashboard";
+
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [form, setForm] = useState({ username: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!form.username) e.username = "Username is required";
+    if (!form.email) e.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Enter a valid email";
     if (!form.password) e.password = "Password is required";
     if (form.password && form.password.length < 6) e.password = "Password must be at least 6 characters";
     return e;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setErrors({});
     setLoading(true);
-    setTimeout(() => router.push("/dashboard"), 1200);
+
+    try {
+      await signInWithEmailAndPassword(auth, form.email, form.password);
+      setSessionCookie();
+      router.push(redirectTo);
+    } catch (err: unknown) {
+      setLoading(false);
+      const code = (err as { code?: string }).code ?? "";
+      const message = (err as { message?: string }).message ?? "";
+      console.error("[signin] Firebase error:", code, message);
+
+      if (code === "auth/user-not-found" || code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        setErrors({ form: "Invalid email or password" });
+      } else if (code === "auth/too-many-requests") {
+        setErrors({ form: "Too many attempts. Please try again later." });
+      } else if (code === "auth/operation-not-allowed") {
+        setErrors({ form: "Email/password sign-in is not enabled in Firebase Console." });
+      } else if (code === "auth/invalid-api-key" || code === "auth/app-not-initialized") {
+        setErrors({ form: `Firebase not configured. Check .env.local and restart. (${code})` });
+      } else {
+        setErrors({ form: `Error: ${code || message || "Unknown error. Check browser console."}` });
+      }
+    }
   };
 
   return (
@@ -96,16 +131,25 @@ export default function SignInPage() {
             </Link>
           </p>
 
+          {/* Form-level error */}
+          {errors.form && (
+            <div className="mb-4 px-4 py-3 rounded-lg bg-red-400/10 border border-red-400/20 text-sm text-red-400">
+              {errors.form}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Username</Label>
+              <Label className="text-xs text-muted-foreground">Email</Label>
               <Input
-                placeholder="your.username"
+                type="email"
+                placeholder="you@company.com"
                 className="h-9 bg-muted/20 border-border text-sm"
-                value={form.username}
-                onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))}
+                value={form.email}
+                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                autoComplete="email"
               />
-              {errors.username && <p className="text-[11px] text-red-400">{errors.username}</p>}
+              {errors.email && <p className="text-[11px] text-red-400">{errors.email}</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -120,6 +164,7 @@ export default function SignInPage() {
                   className="h-9 bg-muted/20 border-border text-sm pr-9"
                   value={form.password}
                   onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"

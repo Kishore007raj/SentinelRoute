@@ -1,20 +1,20 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, LayoutGroup } from "framer-motion";
 import { ArrowRight, ChevronLeft, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShipmentPass } from "@/components/shipment/ShipmentPass";
 import { RouteMapView } from "@/components/shipment/RouteMapView";
 import { DispatchedStub } from "@/components/shipment/ShipmentPass";
-import { demoRoutes } from "@/lib/mock-data";
 import { generateShipmentCode, cn, getRiskColor } from "@/lib/utils";
 import { useStore, type ShipmentStubRecord } from "@/lib/store";
-import type { Route } from "@/lib/mock-data";
+import type { Route } from "@/lib/types";
 import Link from "next/link";
 
 const FALLBACK_SHIPMENT = {
   origin: "Chennai", destination: "Bangalore",
   cargoType: "Electronics", vehicleType: "Container Truck",
+  urgency: "Standard",
 };
 
 // ─── Dominant route ───────────────────────────────────────────────────────────
@@ -171,22 +171,93 @@ export default function RoutesPage() {
   const [completed, setCompleted] = useState(false);
   const [phase, setPhase] = useState<"cards" | "pass" | "tearing" | "map">("cards");
 
-  const selectedRoute = demoRoutes.find((r) => r.id === selectedId) ?? null;
+  // ── API state ──────────────────────────────────────────────────────────────
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [loadingRoutes, setLoadingRoutes] = useState(true);
+  const [routeError, setRouteError] = useState<string | null>(null);
+  const [weatherScore, setWeatherScore] = useState(20);
+
+  // ── AI insight state ───────────────────────────────────────────────────────
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  // Fetch routes from API on mount
+  useEffect(() => {
+    const fetchRoutes = async () => {
+      setLoadingRoutes(true);
+      setRouteError(null);
+      try {
+        const res = await fetch("/api/analyze-routes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            origin: shipmentData.origin,
+            destination: shipmentData.destination,
+            cargoType: shipmentData.cargoType,
+            vehicleType: shipmentData.vehicleType,
+            urgency: "urgency" in shipmentData ? shipmentData.urgency : "Standard",
+          }),
+        });
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        const data = await res.json();
+        setRoutes(data.routes ?? []);
+        setWeatherScore(data.weatherScore ?? 20);
+      } catch (err) {
+        setRouteError(err instanceof Error ? err.message : "Failed to load routes");
+      } finally {
+        setLoadingRoutes(false);
+      }
+    };
+    fetchRoutes();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shipmentData.origin, shipmentData.destination]);
+
+  const selectedRoute = routes.find((r) => r.id === selectedId) ?? null;
   const confidence = selectedRoute
     ? selectedRoute.label === "balanced" ? 82 : selectedRoute.label === "safest" ? 94 : 61
     : 82;
-  const recommended = demoRoutes.find((r) => r.recommended) ?? demoRoutes[1];
-  const alternatives = demoRoutes.filter((r) => r.id !== recommended.id);
+  const recommended = routes.find((r) => r.recommended) ?? routes[1] ?? routes[0];
+  const alternatives = routes.filter((r) => r.id !== recommended?.id);
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
     setTimeout(() => setPhase("pass"), 350);
+
+    // Fetch AI insight for the selected route
+    const selected = routes.find((r) => r.id === id);
+    if (!selected) return;
+
+    setAiExplanation(null);
+    setAiLoading(true);
+
+    fetch("/api/ai-insight", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        origin:        shipmentData.origin,
+        destination:   shipmentData.destination,
+        cargoType:     shipmentData.cargoType,
+        vehicleType:   shipmentData.vehicleType,
+        urgency:       "urgency" in shipmentData ? shipmentData.urgency : "Standard",
+        selectedRoute: selected,
+        allRoutes:     routes,
+        weatherScore,
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => setAiExplanation(data.explanation ?? null))
+      .catch(() => setAiExplanation(null))
+      .finally(() => setAiLoading(false));
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!selectedRoute) { setPhase("map"); return; }
     if (pending) {
-      const newShipment = dispatchShipment({ pending, routeId: selectedRoute.id, confidencePercent: confidence });
+      const newShipment = await dispatchShipment({
+        pending,
+        route: selectedRoute,
+        confidencePercent: confidence,
+      });
       setDispatchedId(newShipment.id);
       const stub: ShipmentStubRecord = {
         id: newShipment.id, shipmentCode: newShipment.shipmentCode,
@@ -200,7 +271,6 @@ export default function RoutesPage() {
       };
       addStub(stub);
     }
-    // Transition to map view
     setPhase("map");
   };
 
@@ -208,6 +278,41 @@ export default function RoutesPage() {
     if (dispatchedId) completeShipment(dispatchedId);
     setCompleted(true);
   };
+
+  // ── Loading state ──────────────────────────────────────────────────────────
+  if (loadingRoutes) {
+    return (
+      <div className="max-w-7xl mx-auto w-full">
+        <div className="flex flex-col items-center justify-center py-32 gap-4">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
+            className="w-8 h-8 border-2 border-border border-t-primary rounded-full"
+          />
+          <p className="text-sm text-muted-foreground">Analyzing routes...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Error state ────────────────────────────────────────────────────────────
+  if (routeError || routes.length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto w-full">
+        <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
+          <AlertTriangle className="w-8 h-8 text-amber-400" />
+          <p className="text-base font-semibold text-foreground">Could not load routes</p>
+          <p className="text-sm text-muted-foreground">{routeError ?? "No routes returned"}</p>
+          <Button
+            className="mt-4 h-10 px-6 rounded-lg"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (completed && selectedRoute) {
     return (
@@ -268,10 +373,12 @@ export default function RoutesPage() {
             <div className="flex-1 min-w-0">
               <RouteMapView
                 route={selectedRoute}
-                routes={demoRoutes}
+                routes={routes}
                 status="dispatched"
                 origin={shipmentData.origin}
                 destination={shipmentData.destination}
+                aiExplanation={aiExplanation}
+                aiLoading={aiLoading}
               />
             </div>
             <div className="lg:w-80 shrink-0 space-y-5">

@@ -15,8 +15,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { MobileNav } from "@/components/layout/AppSidebar";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { useUser } from "@/lib/auth-context";
 
 const routeLabels: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -32,9 +35,26 @@ const routeLabels: Record<string, string> = {
 
 export function AppHeader() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user } = useUser();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const segments = pathname.split("/").filter(Boolean);
   const pageTitle = routeLabels[pathname] ?? segments[segments.length - 1] ?? "Dashboard";
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    // Clear session cookie
+    document.cookie = "sr_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    router.push("/auth/signin");
+  };
+
+  // Derive initials from email or display name
+  const displayName = user?.displayName ?? user?.email ?? "User";
+  const initials = displayName
+    .split(/[\s@.]+/)
+    .slice(0, 2)
+    .map((s: string) => s[0]?.toUpperCase() ?? "")
+    .join("") || "U";
 
   return (
     <>
@@ -85,14 +105,14 @@ export function AppHeader() {
             aria-label="User menu"
           >
             <Avatar className="h-7 w-7">
-              <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">OM</AvatarFallback>
+              <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">{initials}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuGroup>
               <DropdownMenuLabel className="font-normal">
-                <p className="text-sm font-semibold">Ops Manager</p>
-                <p className="text-xs text-muted-foreground">FleetCo Logistics</p>
+                <p className="text-sm font-semibold truncate">{displayName}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email ?? ""}</p>
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -100,7 +120,10 @@ export function AppHeader() {
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem render={<Link href="/" />} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive cursor-pointer"
+              onClick={handleSignOut}
+            >
               Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -2,10 +2,11 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { APIProvider, Map, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
-import { MapPin, Shield, Clock, AlertTriangle } from "lucide-react";
+import { MapPin, Shield, Clock, AlertTriangle, Sparkles } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { cn, getRiskColor } from "@/lib/utils";
-import type { Route } from "@/lib/mock-data";
+import type { Route } from "@/lib/types";
+import { AiInsightBox } from "@/components/shipment/AiInsightBox";
 
 // ── City coordinates ──────────────────────────────────────────────────────────
 const CITY_COORDS: Record<string, google.maps.LatLngLiteral> = {
@@ -174,6 +175,8 @@ interface RouteMapViewProps {
   status?: "active" | "dispatched";
   origin?: string;
   destination?: string;
+  aiExplanation?: string | null;
+  aiLoading?: boolean;
 }
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
@@ -184,6 +187,8 @@ export function RouteMapView({
   status = "active",
   origin = "Chennai",
   destination = "Bangalore",
+  aiExplanation,
+  aiLoading = false,
 }: RouteMapViewProps) {
   const riskColor = getRiskColor(route.riskLevel);
   const [mapError, setMapError] = useState(false);
@@ -314,6 +319,13 @@ export function RouteMapView({
           <span>{status === "dispatched" ? "Active" : "Planning"}</span>
         </div>
       </div>
+
+      {/* AI Insight box — shown when explanation is available or loading */}
+      {(aiLoading || aiExplanation) && (
+        <div className="border-t border-border px-5 py-4 bg-card/40">
+          <AiInsightBox explanation={aiExplanation ?? null} loading={aiLoading} />
+        </div>
+      )}
     </div>
   );
 }
