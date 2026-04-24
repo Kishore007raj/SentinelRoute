@@ -184,22 +184,24 @@ export default function RoutesPage() {
   };
 
   const handleConfirm = () => {
-    if (!selectedRoute || !pending) { setPhase("map"); return; }
-    const newShipment = dispatchShipment({ pending, routeId: selectedRoute.id, confidencePercent: confidence });
-    setDispatchedId(newShipment.id);
-    const stub: ShipmentStubRecord = {
-      id: newShipment.id, shipmentCode: newShipment.shipmentCode,
-      origin: newShipment.origin, destination: newShipment.destination,
-      routeName: newShipment.routeName, riskScore: newShipment.riskScore,
-      riskLevel: newShipment.riskLevel, eta: newShipment.eta,
-      cargoType: newShipment.cargoType, vehicleType: newShipment.vehicleType,
-      confidencePercent: newShipment.confidencePercent,
-      dispatchedAt: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-      status: newShipment.status,
-    };
-    addStub(stub);
-    setPhase("tearing");
-    setTimeout(() => setPhase("map"), 900);
+    if (!selectedRoute) { setPhase("map"); return; }
+    if (pending) {
+      const newShipment = dispatchShipment({ pending, routeId: selectedRoute.id, confidencePercent: confidence });
+      setDispatchedId(newShipment.id);
+      const stub: ShipmentStubRecord = {
+        id: newShipment.id, shipmentCode: newShipment.shipmentCode,
+        origin: newShipment.origin, destination: newShipment.destination,
+        routeName: newShipment.routeName, riskScore: newShipment.riskScore,
+        riskLevel: newShipment.riskLevel, eta: newShipment.eta,
+        cargoType: newShipment.cargoType, vehicleType: newShipment.vehicleType,
+        confidencePercent: newShipment.confidencePercent,
+        dispatchedAt: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+        status: newShipment.status,
+      };
+      addStub(stub);
+    }
+    // Transition to map view
+    setPhase("map");
   };
 
   const handleComplete = () => {
@@ -309,8 +311,16 @@ export default function RoutesPage() {
             </div>
           </motion.div>
 
-        ) : (phase === "pass" || phase === "tearing") && selectedRoute ? (
-          <motion.div layout className="flex justify-center py-8">
+        ) : phase === "pass" && selectedRoute ? (
+          <motion.div
+            key="pass-view"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.35, ease: [0.2, 0, 0.2, 1] }}
+            layout
+            className="flex justify-center py-8"
+          >
             <div className="w-full max-w-lg">
               <ShipmentPass
                 route={selectedRoute}
