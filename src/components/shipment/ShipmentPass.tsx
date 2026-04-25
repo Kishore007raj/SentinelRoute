@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import {
   ArrowRight, Shield, Truck, Package, AlertTriangle, Zap,
+  TrendingUp, ShieldCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,18 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { cn, getRiskColor } from "@/lib/utils";
 import type { Route, Shipment } from "@/lib/types";
+import {
+  deriveConfidence,
+  confidenceLabel,
+  confidenceReasons,
+  recommendationBadge,
+  decisionVerdict,
+  selectionFeedback,
+  liveInsightHint,
+} from "@/lib/route-utils";
 import { toast } from "sonner";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ShipmentPassProps {
   route: Route;
@@ -24,9 +36,15 @@ export interface ShipmentPassProps {
   };
   onConfirm?: () => void;
   morphLayoutId?: string;
+  urgency?: string;
+  /** All routes — used for spread-aware confidence and selection feedback */
+  allRoutes?: Route[];
+  dataSource?: string;
 }
 
 export type TearPhase = "idle" | "tearing" | "torn";
+
+// ─── Shipment code visual ─────────────────────────────────────────────────────
 
 function ShipmentCode({ code }: { code: string }) {
   return (
@@ -50,6 +68,8 @@ function ShipmentCode({ code }: { code: string }) {
   );
 }
 
+// ─── Dispatched stub ──────────────────────────────────────────────────────────
+
 export function DispatchedStub({
   shipment,
   route,
@@ -60,7 +80,7 @@ export function DispatchedStub({
   const riskColor = getRiskColor(route.riskLevel);
   return (
     <div className="border border-dashed border-border/60 bg-card/60 overflow-hidden rounded-xl">
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
+      <div className="h-px w-full bg-linear-to-r from-transparent via-border to-transparent" />
       <div className="px-6 py-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
           <span>{shipment.origin}</span>
@@ -92,10 +112,21 @@ export function DispatchedStub({
   );
 }
 
-export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId }: ShipmentPassProps) {
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId, urgency, allRoutes = [], dataSource }: ShipmentPassProps) {
   const [tearPhase, setTearPhase] = useState<TearPhase>("idle");
-  const riskColor = getRiskColor(route.riskLevel);
-  const confidence = shipment.confidencePercent ?? 82;
+  const riskColor  = getRiskColor(route.riskLevel);
+
+  const confidence  = deriveConfidence(route, allRoutes, dataSource);
+  const confLabel   = confidenceLabel(confidence);
+  const confReasons = confidenceReasons(route, allRoutes, dataSource);
+  const recContext  = route.recommended
+    ? recommendationBadge(route, shipment.cargoType ?? "", urgency ?? "Standard", allRoutes)
+    : null;
+  const feedback    = selectionFeedback(route, shipment.cargoType, urgency, allRoutes);
+  const insight     = liveInsightHint(route, allRoutes, dataSource);
+  const verdict     = decisionVerdict(route, shipment.cargoType, urgency, allRoutes);
 
   const handleConfirm = () => {
     setTearPhase("tearing");
@@ -147,15 +178,22 @@ export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId }: Ship
         )}
       </AnimatePresence>
 
+      {/* ── Risk alert banner ─────────────────────────────────────────────── */}
       {route.riskLevel !== "low" && (
         <div className="bg-amber-400/10 border-b border-amber-400/20 px-6 py-3 flex items-center gap-3">
           <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
           <span className="text-xs text-amber-400 font-medium">
-            Risk Probability: {route.riskScore}% — {route.alerts[0] ?? "Monitor route conditions"}
+            Risk score {route.riskScore}/100 — {route.alerts[0] ?? "Monitor route conditions"}
           </span>
         </div>
       )}
 
+      {/* ── Decision verdict ─────────────────────────────────────────────── */}
+      <div className="px-6 py-3 border-b border-border/60 bg-muted/10">
+        <p className="text-xs text-foreground/70 leading-relaxed font-medium">{verdict}</p>
+      </div>
+
+      {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="px-6 py-5 border-b border-border">
         <div className="flex items-start justify-between mb-1">
           <div className="space-y-1">
@@ -167,14 +205,17 @@ export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId }: Ship
             </div>
           </div>
           <div className="text-right mt-1 space-y-1">
-            <p className="text-[10px] text-primary uppercase tracking-widest">
-              {route.recommended ? "Recommended" : route.name}
-            </p>
+            {recContext && (
+              <p className="text-[10px] text-primary uppercase tracking-widest flex items-center gap-1 justify-end">
+                <ShieldCheck className="w-3 h-3" /> {recContext}
+              </p>
+            )}
             <p className="text-sm font-semibold text-foreground">{route.name}</p>
           </div>
         </div>
       </div>
 
+      {/* ── Key metrics ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-px bg-border border-b border-border">
         <div className="bg-card px-6 py-5">
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">ETA</p>
@@ -199,6 +240,7 @@ export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId }: Ship
         </div>
       </div>
 
+      {/* ── Risk factors ─────────────────────────────────────────────────── */}
       <div className="px-6 py-5 space-y-3 border-b border-border">
         <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-4">Risk factors</p>
         {Object.entries(route.riskBreakdown).map(([key, val]) => (
@@ -214,6 +256,7 @@ export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId }: Ship
 
       <Separator className="opacity-20" />
 
+      {/* ── Metadata grid ────────────────────────────────────────────────── */}
       <div className="px-6 py-5 grid grid-cols-2 gap-x-8 gap-y-4 border-b border-border">
         <div className="space-y-1">
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Shipment ID</p>
@@ -221,7 +264,19 @@ export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId }: Ship
         </div>
         <div className="space-y-1">
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Confidence</p>
-          <p className="text-xs font-semibold text-foreground">{confidence}%</p>
+          <p className={cn("text-xs font-semibold", confLabel.color)}>
+            {confidence}% — {confLabel.label}
+          </p>
+          {confReasons.length > 0 && (
+            <ul className="mt-1.5 space-y-1">
+              {confReasons.map((r, i) => (
+                <li key={i} className="flex items-start gap-1.5 text-[10px] text-muted-foreground">
+                  <TrendingUp className="w-2.5 h-2.5 shrink-0 mt-0.5 text-muted-foreground/50" />
+                  {r}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 mb-0.5">
@@ -239,10 +294,24 @@ export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId }: Ship
         </div>
       </div>
 
+      {/* ── Selection feedback + live insight ────────────────────────────── */}
+      <div className="px-6 py-4 border-b border-border bg-muted/5">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">Selection rationale</p>
+        <p className="text-xs text-foreground/80 leading-relaxed">{feedback}</p>
+        {insight && (
+          <div className="mt-3 pt-3 border-t border-border/40 space-y-1">
+            <p className="text-[10px] text-primary/60 uppercase tracking-widest">Live insight</p>
+            <p className="text-[11px] text-primary/80 leading-relaxed">{insight}</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Shipment code ─────────────────────────────────────────────────── */}
       <div className="border-t border-dashed border-border/50 pt-5 pb-5 px-6">
         <ShipmentCode code={shipment.shipmentCode} />
       </div>
 
+      {/* ── Confirm button ────────────────────────────────────────────────── */}
       <div className="px-6 pb-6">
         <Button
           className="w-full h-11 font-semibold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg"

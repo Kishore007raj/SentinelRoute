@@ -1,48 +1,93 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Shipment, CreateShipmentRequest } from "@/lib/types";
 import { generateShipmentCode, getRiskLabel } from "@/lib/utils";
+import { getDb } from "@/lib/mongodb";
+import { getUserIdFromRequest } from "@/lib/auth";
 
 /**
  * GET /api/shipments
- * POST /api/shipments
+ * Returns shipments scoped to the authenticated user.
+ * No auth header → empty list (200).
+ * Invalid token → empty list (200).
+ * DB error → 503.
  *
- * In-memory storage using a global singleton so the array survives
- * Next.js hot-reloads in dev and is shared with the PATCH route.
- * Resets on full server restart — expected for Layer 1.
+ * POST /api/shipments
+ * Creates a shipment owned by the authenticated user.
+ * No/invalid auth → 401.
+ * Invalid payload → 400.
+ * DB error → 500.
  */
-
-// ─── Shared in-memory store ───────────────────────────────────────────────────
-
-declare global {
-  // eslint-disable-next-line no-var
-  var __sentinelShipments: Shipment[] | undefined;
-}
-
-if (!global.__sentinelShipments) {
-  global.__sentinelShipments = [];
-}
-
-const shipments = global.__sentinelShipments;
 
 // ─── GET /api/shipments ───────────────────────────────────────────────────────
 
-export async function GET() {
-  return NextResponse.json({ shipments, total: shipments.length });
+export async function GET(req: NextRequest) {
+  let userId: string | null;
+
+  try {
+    userId = await getUserIdFromRequest(req);
+  } catch {
+    // Admin SDK failure — not a client error
+    return NextResponse.json(
+      { error: "Authentication service unavailable" },
+      { status: 503 }
+    );
+  }
+
+  // No valid auth → return empty list, not an error
+  if (!userId) {
+    return NextResponse.json({ shipments: [], total: 0 });
+  }
+
+  try {
+    const db = await getDb();
+    const docs = await db
+      .collection("shipments")
+      .find({ userId })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    const shipments: Shipment[] = docs.map((doc) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { _id, userId: _uid, ...rest } = doc;
+      return rest as Shipment;
+    });
+
+    return NextResponse.json({ shipments, total: shipments.length });
+  } catch (err) {
+    console.error("[GET /api/shipments] DB error:", err);
+    return NextResponse.json(
+      { error: "Failed to fetch shipments" },
+      { status: 503 }
+    );
+  }
 }
 
 // ─── POST /api/shipments ──────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  let raw: Record<string, unknown>;
+  let userId: string | null;
 
+  try {
+    userId = await getUserIdFromRequest(req);
+  } catch {
+    console.error("[POST /api/shipments] Auth service error");
+    return NextResponse.json(
+      { error: "Authentication service unavailable" },
+      { status: 503 }
+    );
+  }
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let raw: Record<string, unknown>;
   try {
     raw = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  // Extract ONLY the fields defined in CreateShipmentRequest.
-  // Extra fields (e.g. urgency from older callers) are silently ignored.
   const {
     origin,
     destination,
@@ -58,43 +103,45 @@ export async function POST(req: NextRequest) {
     predictiveAlert,
   } = raw as CreateShipmentRequest;
 
-  // Validate string fields — must be non-empty strings
-  const missingString = [
-    ["origin",      origin],
-    ["destination", destination],
-    ["vehicleType", vehicleType],
-    ["cargoType",   cargoType],
-    ["routeId",     routeId],
-    ["routeName",   routeName],
-    ["eta",         eta],
-    ["distance",    distance],
-    ["riskLevel",   riskLevel],
-  ].find(([, v]) => !v || typeof v !== "string");
+  // Validate required string fields
+  const missingString = (
+    [
+      ["origin",      origin],
+      ["destination", destination],
+      ["vehicleType", vehicleType],
+      ["cargoType",   cargoType],
+      ["routeId",     routeId],
+      ["routeName",   routeName],
+      ["eta",         eta],
+      ["distance",    distance],
+      ["riskLevel",   riskLevel],
+    ] as [string, unknown][]
+  ).find(([, v]) => !v || typeof v !== "string");
 
   if (missingString) {
+    console.warn(`[POST /api/shipments] Invalid payload — missing field: ${missingString[0]}`);
     return NextResponse.json(
       { error: `Missing or invalid field: ${missingString[0]}` },
       { status: 400 }
     );
   }
 
-  // Validate numeric fields — must be finite numbers
   if (typeof riskScore !== "number" || !isFinite(riskScore)) {
+    console.warn("[POST /api/shipments] Invalid payload — riskScore not a number");
     return NextResponse.json({ error: "riskScore must be a number" }, { status: 400 });
   }
   if (typeof confidencePercent !== "number" || !isFinite(confidencePercent)) {
+    console.warn("[POST /api/shipments] Invalid payload — confidencePercent not a number");
     return NextResponse.json({ error: "confidencePercent must be a number" }, { status: 400 });
   }
 
   const now = new Date().toISOString();
 
-  // Derive selectedRoute from routeId — never undefined
   const selectedRoute =
     routeId.includes("fastest") ? "fastest" as const :
     routeId.includes("safest")  ? "safest"  as const :
     "balanced" as const;
 
-  // Build COMPLETE Shipment — every required field is explicitly set
   const shipment: Shipment = {
     id:                `shp-${Date.now()}`,
     shipmentCode:      generateShipmentCode(),
@@ -103,7 +150,7 @@ export async function POST(req: NextRequest) {
     selectedRoute,
     routeName,
     riskScore,
-    riskLevel:         getRiskLabel(riskScore),   // re-derive from score for consistency
+    riskLevel:         getRiskLabel(riskScore),
     eta,
     status:            "active",
     lastUpdate:        "just now",
@@ -119,7 +166,13 @@ export async function POST(req: NextRequest) {
     updatedAt:         now,
   };
 
-  shipments.unshift(shipment);
+  try {
+    const db = await getDb();
+    await db.collection("shipments").insertOne({ ...shipment, userId });
+  } catch (err) {
+    console.error("[POST /api/shipments] DB insert error:", err);
+    return NextResponse.json({ error: "Failed to save shipment" }, { status: 500 });
+  }
 
   return NextResponse.json({ shipment }, { status: 201 });
 }

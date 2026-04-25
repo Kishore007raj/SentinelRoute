@@ -6,8 +6,8 @@ import React, {
   useCallback,
   useEffect,
 } from "react";
-import type { Shipment, ShipmentStatus, RouteLabel, RiskLevel, Route, PendingShipment } from "./types";
-import { generateShipmentCode, getRiskLabel } from "./utils";
+import type { Shipment, ShipmentStatus, RiskLevel, Route, PendingShipment } from "./types";
+import { getRiskLabel } from "./utils";
 import { useUser } from "./auth-context";
 
 // ─── Re-exports ───────────────────────────────────────────────────────────────
@@ -111,24 +111,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
 
   // ── Fetch shipments from API ───────────────────────────────────────────────
-  // Layer 1: no auth header required — in-memory API accepts all requests.
-  // When user is present, pass uid as Bearer token (ready for Layer 2+).
   const fetchShipments = useCallback(async () => {
+    // No user → clear shipments immediately, don't call API
+    if (!user) {
+      dispatch({ type: "SET_SHIPMENTS", payload: [] });
+      return;
+    }
+
     dispatch({ type: "SET_LOADING", payload: true });
     try {
-      const headers: Record<string, string> = {};
-      if (user?.uid) headers["Authorization"] = `Bearer ${user.uid}`;
-
-      const res = await fetch("/api/shipments", { headers });
+      const token = await user.getIdToken();
+      const res = await fetch("/api/shipments", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) throw new Error(`API ${res.status}`);
       const data = await res.json();
       dispatch({ type: "SET_SHIPMENTS", payload: data.shipments ?? [] });
     } catch (err) {
       console.error("[store] Failed to fetch shipments:", err);
-      // Ensure loading is cleared so UI doesn't hang on spinner
       dispatch({ type: "SET_SHIPMENTS", payload: [] });
     }
-  }, [user?.uid]);
+  }, [user]);
 
   // Fetch on mount and whenever auth state changes
   useEffect(() => {
@@ -157,7 +160,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }): Promise<Shipment> => {
       const { route, pending, confidencePercent } = opts;
       const riskLevel: RiskLevel = getRiskLabel(route.riskScore);
-      const routeLabel: RouteLabel = route.label;
 
       // Build body matching CreateShipmentRequest exactly
       const body = {
@@ -176,74 +178,55 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         predictiveAlert:   route.alerts[0] ?? undefined,
       };
 
-      // POST to API — works with or without auth (Layer 1)
-      try {
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (user?.uid) headers["Authorization"] = `Bearer ${user.uid}`;
-
-        const res = await fetch("/api/shipments", {
-          method: "POST",
-          headers,
-          body: JSON.stringify(body),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const persisted: Shipment = data.shipment;
-          dispatch({ type: "ADD_SHIPMENT", payload: persisted });
-          dispatch({ type: "CLEAR_PENDING" });
-          return persisted;
-        }
-        console.error("[store] POST /api/shipments failed:", res.status);
-      } catch (err) {
-        console.error("[store] Failed to persist shipment:", err);
+      // Require auth — no user means no dispatch
+      if (!user) {
+        throw new Error("Cannot dispatch shipment: user is not authenticated");
       }
 
-      // Local fallback if API call fails — build complete Shipment explicitly
-      const now = new Date().toISOString();
-      const shipment: Shipment = {
-        id:                `shp-${Date.now()}`,
-        shipmentCode:      generateShipmentCode(),
-        origin:            pending.origin,
-        destination:       pending.destination,
-        selectedRoute:     routeLabel,
-        routeName:         body.routeName,
-        riskScore:         route.riskScore,
-        riskLevel,
-        eta:               route.eta,
-        status:            "active",
-        lastUpdate:        "just now",
-        cargoType:         pending.cargoType,
-        vehicleType:       pending.vehicleType,
-        distance:          route.distance,
-        departureTime:     new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-        confidencePercent,
-        predictiveAlert:   route.alerts[0] ?? "Monitoring route conditions",
-        createdAt:         now,
-        updatedAt:         now,
-      };
+      const token = await user.getIdToken();
+      const res = await fetch("/api/shipments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
 
-      dispatch({ type: "ADD_SHIPMENT", payload: shipment });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        const message = (errBody as { error?: string }).error ?? `HTTP ${res.status}`;
+        console.error(`[store] POST /api/shipments failed: ${message}`);
+        throw new Error(`Failed to dispatch shipment: ${message}`);
+      }
+
+      const data = await res.json();
+      const persisted: Shipment = data.shipment;
+      dispatch({ type: "ADD_SHIPMENT", payload: persisted });
       dispatch({ type: "CLEAR_PENDING" });
-      return shipment;
+      return persisted;
     },
-    [user?.uid]
+    [user]
   );
 
   const completeShipment = useCallback((id: string) => {
     // Optimistic local update
     dispatch({ type: "UPDATE_STATUS", payload: { id, status: "completed" } });
 
-    // Persist to API — PATCH /api/shipments/[id]
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (user?.uid) headers["Authorization"] = `Bearer ${user.uid}`;
+    // Persist to API — requires auth
+    if (!user) return;
 
-    fetch(`/api/shipments/${id}`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify({ status: "completed" }),
-    }).catch((err) => console.error("[store] completeShipment failed:", err));
-  }, [user?.uid]);
+    user.getIdToken().then((token) => {
+      fetch(`/api/shipments/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "completed" }),
+      }).catch((err) => console.error("[store] completeShipment failed:", err));
+    }).catch((err) => console.error("[store] getIdToken failed:", err));
+  }, [user]);
 
   const addStub = useCallback((stub: ShipmentStubRecord) => {
     dispatch({ type: "ADD_STUB", payload: stub });

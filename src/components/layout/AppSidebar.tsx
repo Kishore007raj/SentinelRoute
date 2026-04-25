@@ -42,6 +42,7 @@ const navItems = [
 // ─── Mobile slide-over drawer ─────────────────────────────────────────────────
 function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
+  const { user } = useUser();
 
   if (!open) return null;
 
@@ -98,11 +99,21 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
         <div className="px-5 py-4 border-t border-border">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
-              <span className="text-xs font-bold text-primary">OP</span>
+              <span className="text-xs font-bold text-primary">
+                {(user?.displayName ?? user?.email ?? "U")
+                  .split(/[\s@.]+/)
+                  .slice(0, 2)
+                  .map((s: string) => s[0]?.toUpperCase() ?? "")
+                  .join("") || "U"}
+              </span>
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">Ops Manager</p>
-              <p className="text-xs text-muted-foreground truncate">FleetCo Logistics</p>
+              <p className="text-sm font-semibold text-foreground truncate">
+                {user?.displayName ?? user?.email ?? "User"}
+              </p>
+              {user?.email && user?.displayName && (
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              )}
             </div>
           </div>
         </div>
@@ -116,6 +127,14 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { user } = useUser();
+
+  const displayName = user?.displayName ?? user?.email ?? "User";
+  const initials = displayName
+    .split(/[\s@.]+/)
+    .slice(0, 2)
+    .map((s: string) => s[0]?.toUpperCase() ?? "")
+    .join("") || "U";
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border bg-sidebar hidden md:flex">
@@ -169,12 +188,14 @@ export function AppSidebar() {
       <SidebarFooter className="px-3 py-4 border-t border-border">
         <div className={cn("flex items-center gap-3 px-2 py-2", collapsed && "justify-center")}>
           <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
-            <span className="text-xs font-bold text-primary">OP</span>
+            <span className="text-xs font-bold text-primary">{initials}</span>
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">Ops Manager</p>
-              <p className="text-xs text-muted-foreground truncate">FleetCo Logistics</p>
+              <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
+              {user?.email && user?.displayName && (
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              )}
             </div>
           )}
         </div>

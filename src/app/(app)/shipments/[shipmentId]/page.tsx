@@ -49,7 +49,10 @@ export default function ShipmentDetailPage({
     setShipment((prev) => prev ? { ...prev, status: "completed", lastUpdate: "just now" } : prev);
   };
 
-  // Build a minimal Route object for RouteMapView from shipment data
+  // Build a Route object for RouteMapView from stored shipment data.
+  // riskBreakdown is not stored on Shipment, so we reconstruct a proportional
+  // breakdown from the overall riskScore for display purposes.
+  const rs = shipment.riskScore;
   const routeForMap = {
     id:           shipment.id,
     label:        shipment.selectedRoute,
@@ -58,16 +61,17 @@ export default function ShipmentDetailPage({
     etaMinutes:   0,
     distance:     shipment.distance,
     distanceKm:   parseFloat(shipment.distance) || 0,
-    riskScore:    shipment.riskScore,
+    riskScore:    rs,
     riskLevel:    shipment.riskLevel,
     recommended:  false,
     summary:      "",
     alerts:       shipment.predictiveAlert ? [shipment.predictiveAlert] : [],
     riskBreakdown: {
-      traffic:          0,
-      weather:          0,
-      disruption:       0,
-      cargoSensitivity: 0,
+      // Proportional estimates from overall score — best available without re-scoring
+      traffic:          Math.round(rs * 0.30),
+      weather:          Math.round(rs * 0.30),
+      disruption:       Math.round(rs * 0.25),
+      cargoSensitivity: Math.round(rs * 0.15),
     },
   };
 

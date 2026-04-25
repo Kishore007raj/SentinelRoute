@@ -154,6 +154,9 @@ const features = [
 ];
 
 export default function HomePage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       <Navbar />
@@ -164,7 +167,7 @@ export default function HomePage() {
           <motion.div
             variants={stagger}
             initial="hidden"
-            animate="show"
+            animate={mounted ? "show" : "hidden"}
             className="flex flex-col items-center text-center gap-6"
           >
             <motion.div
@@ -226,7 +229,7 @@ export default function HomePage() {
         variants={stagger}
         initial="hidden"
         whileInView="show"
-        viewport={{ once: true, margin: "-60px" }}
+        viewport={{ once: true, amount: 0 }}
         className="py-16 border-y border-border/50"
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -295,7 +298,7 @@ export default function HomePage() {
             variants={fadeUp}
             initial="hidden"
             whileInView="show"
-            viewport={{ once: true, margin: "-60px" }}
+            viewport={{ once: true, amount: 0 }}
             className="text-center mb-14"
           >
             <h2 className="text-2xl md:text-3xl font-semibold mb-4">
@@ -310,7 +313,7 @@ export default function HomePage() {
             variants={stagger}
             initial="hidden"
             whileInView="show"
-            viewport={{ once: true, margin: "-60px" }}
+            viewport={{ once: true, amount: 0 }}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
           >
             {features.map((f, i) => (
@@ -348,7 +351,7 @@ export default function HomePage() {
             variants={fadeUp}
             initial="hidden"
             whileInView="show"
-            viewport={{ once: true, margin: "-60px" }}
+            viewport={{ once: true, amount: 0 }}
             className="text-center mb-12"
           >
             <h2 className="text-2xl md:text-3xl font-semibold mb-3">
@@ -363,7 +366,7 @@ export default function HomePage() {
             variants={stagger}
             initial="hidden"
             whileInView="show"
-            viewport={{ once: true, margin: "-60px" }}
+            viewport={{ once: true, amount: 0 }}
             className="flex flex-col gap-8 max-w-2xl mx-auto"
           >
             {howSteps.map((s, i) => (

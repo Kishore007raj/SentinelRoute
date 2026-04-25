@@ -9,19 +9,40 @@ import { DispatchedStub } from "@/components/shipment/ShipmentPass";
 import { generateShipmentCode, cn, getRiskColor } from "@/lib/utils";
 import { useStore, type ShipmentStubRecord } from "@/lib/store";
 import type { Route } from "@/lib/types";
+import {
+  recommendationBadge,
+  decisionContextText,
+  deriveConfidence,
+} from "@/lib/route-utils";
 import Link from "next/link";
 
-const FALLBACK_SHIPMENT = {
-  origin: "Chennai", destination: "Bangalore",
-  cargoType: "Electronics", vehicleType: "Container Truck",
-  urgency: "Standard",
-};
+// ─── Human-readable breakdown labels ─────────────────────────────────────────
+
+function breakdownLabel(key: string, score: number): string {
+  if (key === "traffic")          return score > 65 ? "Heavy"            : score > 35 ? "Moderate"  : "Light";
+  if (key === "weather")          return score > 65 ? "Severe"           : score > 35 ? "Rain risk" : "Clear";
+  if (key === "disruption")       return score > 65 ? "High"             : score > 35 ? "Moderate"  : "Low";
+  if (key === "cargoSensitivity") return score > 65 ? "High sensitivity" : score > 35 ? "Moderate"  : "Low";
+  return score > 50 ? "Elevated" : "Normal";
+}
+
+function breakdownLabelColor(score: number): string {
+  if (score > 65) return "text-red-400";
+  if (score > 35) return "text-amber-400";
+  return "text-emerald-400";
+}
 
 // ─── Dominant route ───────────────────────────────────────────────────────────
-function DominantRoute({ route, onSelect, selected }: {
+
+function DominantRoute({ route, onSelect, selected, cargoType, urgency, allRoutes }: {
   route: Route; onSelect: (id: string) => void; selected: boolean;
+  cargoType?: string; urgency?: string; allRoutes?: Route[];
 }) {
   const riskColor = getRiskColor(route.riskLevel);
+  const recBadge = route.recommended
+    ? recommendationBadge(route, cargoType ?? "", urgency ?? "Standard", allRoutes ?? [])
+    : null;
+
   return (
     <motion.div
       layoutId={`route-card-${route.id}`}
@@ -49,19 +70,15 @@ function DominantRoute({ route, onSelect, selected }: {
               )}>{route.label}</span>
               {route.recommended && (
                 <span className="text-xs text-primary border border-primary/30 bg-primary/5 px-3 py-1.5 uppercase tracking-widest rounded-md">
-                  Recommended
+                  {recBadge ?? "Recommended"}
                 </span>
               )}
             </div>
             <h2 className="text-2xl font-bold text-foreground">{route.name}</h2>
           </div>
           <div className="text-right shrink-0 ml-8">
-            <p className={cn("text-7xl font-bold tabular-nums leading-none", riskColor)}>
-              {route.riskScore}
-            </p>
-            <p className={cn("text-xs uppercase tracking-widest mt-2", riskColor)}>
-              {route.riskLevel} risk
-            </p>
+            <p className={cn("text-7xl font-bold tabular-nums leading-none", riskColor)}>{route.riskScore}</p>
+            <p className={cn("text-xs uppercase tracking-widest mt-2", riskColor)}>{route.riskLevel} risk</p>
           </div>
         </div>
 
@@ -91,7 +108,9 @@ function DominantRoute({ route, onSelect, selected }: {
                   transition={{ duration: 0.4 }}
                 />
               </div>
-              <span className="text-sm font-mono text-muted-foreground w-8 text-right shrink-0">{val}</span>
+              <span className={cn("text-sm font-medium w-28 text-right shrink-0", breakdownLabelColor(val))}>
+                {breakdownLabel(key, val)}
+              </span>
             </div>
           ))}
         </div>
@@ -124,10 +143,22 @@ function DominantRoute({ route, onSelect, selected }: {
 }
 
 // ─── Alternative row ──────────────────────────────────────────────────────────
-function AlternativeRow({ route, onSelect, selected }: {
+
+function AlternativeRow({ route, onSelect, selected, referenceRoute }: {
   route: Route; onSelect: (id: string) => void; selected: boolean;
+  referenceRoute?: Route;
 }) {
   const riskColor = getRiskColor(route.riskLevel);
+
+  let riskDelta: number | null = null;
+  let etaDelta: number | null = null;
+  if (referenceRoute) {
+    const rd = route.riskScore - referenceRoute.riskScore;
+    const ed = route.etaMinutes - referenceRoute.etaMinutes;
+    if (Number.isFinite(rd)) riskDelta = rd;
+    if (Number.isFinite(ed)) etaDelta  = ed;
+  }
+
   return (
     <motion.div
       layoutId={`route-card-${route.id}`}
@@ -150,6 +181,26 @@ function AlternativeRow({ route, onSelect, selected }: {
             route.label === "balanced" ? "text-primary" : "text-emerald-400"
           )}>{route.label}</span>
           <p className="text-sm font-semibold text-foreground">{route.eta} · {route.distance}</p>
+          {(riskDelta !== null || etaDelta !== null) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {etaDelta !== null && etaDelta !== 0 && (
+                <span className={cn(
+                  "text-[10px] font-semibold px-1.5 py-0.5 rounded",
+                  etaDelta > 0 ? "text-amber-400/80 bg-amber-400/10" : "text-emerald-400/80 bg-emerald-400/10"
+                )}>
+                  {etaDelta > 0 ? `+${etaDelta}` : etaDelta} min
+                </span>
+              )}
+              {riskDelta !== null && riskDelta !== 0 && (
+                <span className={cn(
+                  "text-[10px] font-semibold px-1.5 py-0.5 rounded",
+                  riskDelta > 0 ? "text-red-400/80 bg-red-400/10" : "text-emerald-400/80 bg-emerald-400/10"
+                )}>
+                  {riskDelta > 0 ? `+${riskDelta}` : riskDelta} risk
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="text-right shrink-0">
           <p className={cn("text-3xl font-bold tabular-nums", riskColor)}>{route.riskScore}</p>
@@ -161,10 +212,17 @@ function AlternativeRow({ route, onSelect, selected }: {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function RoutesPage() {
   const { state, dispatchShipment, completeShipment, addStub } = useStore();
-  const pending = state.pendingShipment;
-  const shipmentData = pending ?? FALLBACK_SHIPMENT;
+
+  // Capture pending shipment at mount time.
+  // After dispatch, store clears pendingShipment — if we read it reactively,
+  // the map phase falls back to null and shows wrong data.
+  // Capturing once at mount guarantees origin/destination stay correct
+  // through the entire cards → pass → map flow.
+  const [shipmentData] = useState(() => state.pendingShipment ?? null);
+
   const [shipmentCode] = useState(() => generateShipmentCode());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dispatchedId, setDispatchedId] = useState<string | null>(null);
@@ -172,17 +230,21 @@ export default function RoutesPage() {
   const [phase, setPhase] = useState<"cards" | "pass" | "map">("cards");
 
   const [routes, setRoutes] = useState<Route[]>([]);
-  const [loadingRoutes, setLoadingRoutes] = useState(true);
+  const [loadingRoutes, setLoadingRoutes] = useState(!!shipmentData);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [weatherScore, setWeatherScore] = useState(20);
+  const [dataSource, setDataSource] = useState<string | undefined>(undefined);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
+    if (!shipmentData) return;
+
     const fetchRoutes = async () => {
       setLoadingRoutes(true);
       setRouteError(null);
       try {
+        console.log("ROUTE INPUT:", shipmentData.origin, "→", shipmentData.destination);
         const res = await fetch("/api/analyze-routes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -191,46 +253,52 @@ export default function RoutesPage() {
             destination: shipmentData.destination,
             cargoType:   shipmentData.cargoType,
             vehicleType: shipmentData.vehicleType,
-            urgency:     "urgency" in shipmentData ? shipmentData.urgency : "Standard",
+            urgency:     shipmentData.urgency ?? "Standard",
           }),
         });
         if (!res.ok) throw new Error(`API error: ${res.status}`);
         const data = await res.json();
         setRoutes(data.routes ?? []);
         setWeatherScore(data.weatherScore ?? 20);
+        setDataSource(data.source);
       } catch (err) {
         setRouteError(err instanceof Error ? err.message : "Failed to load routes");
       } finally {
         setLoadingRoutes(false);
       }
     };
+
     fetchRoutes();
+  // shipmentData is captured once at mount — stable reference, no re-runs needed
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shipmentData.origin, shipmentData.destination]);
+  }, []);
 
   const selectedRoute = routes.find((r) => r.id === selectedId) ?? null;
-  const confidence = selectedRoute
-    ? selectedRoute.label === "balanced" ? 82 : selectedRoute.label === "safest" ? 94 : 61
-    : 82;
+  const confidence = selectedRoute ? deriveConfidence(selectedRoute, routes, dataSource) : 75;
   const recommended = routes.find((r) => r.recommended) ?? routes[1] ?? routes[0];
   const alternatives = routes.filter((r) => r.id !== recommended?.id);
+  const urgency = shipmentData?.urgency ?? "Standard";
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
     setPhase("pass");
 
     const selected = routes.find((r) => r.id === id);
-    if (!selected) return;
+    if (!selected || !shipmentData) return;
     setAiExplanation(null);
     setAiLoading(true);
     fetch("/api/ai-insight", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        origin: shipmentData.origin, destination: shipmentData.destination,
-        cargoType: shipmentData.cargoType, vehicleType: shipmentData.vehicleType,
-        urgency: "urgency" in shipmentData ? shipmentData.urgency : "Standard",
-        selectedRoute: selected, allRoutes: routes, weatherScore,
+        origin:        shipmentData.origin,
+        destination:   shipmentData.destination,
+        cargoType:     shipmentData.cargoType,
+        vehicleType:   shipmentData.vehicleType,
+        urgency,
+        selectedRoute: selected,
+        allRoutes:     routes,
+        weatherScore,
       }),
     })
       .then((r) => r.json())
@@ -241,6 +309,8 @@ export default function RoutesPage() {
 
   const handleConfirm = async () => {
     if (!selectedRoute) { setPhase("map"); return; }
+    // Use the original pending from the store (still valid at confirm time)
+    const pending = state.pendingShipment ?? shipmentData;
     if (pending) {
       const newShipment = await dispatchShipment({
         pending, route: selectedRoute, confidencePercent: confidence,
@@ -266,6 +336,23 @@ export default function RoutesPage() {
     setCompleted(true);
   };
 
+  // ── Guard: no shipment data ───────────────────────────────────────────────
+  if (!shipmentData) {
+    return (
+      <div className="max-w-7xl mx-auto w-full">
+        <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
+          <AlertTriangle className="w-8 h-8 text-amber-400" />
+          <p className="text-base font-semibold text-foreground">No shipment configured</p>
+          <p className="text-sm text-muted-foreground">Start by creating a shipment first.</p>
+          <Link href="/create-shipment">
+            <Button className="mt-4 h-10 px-6 rounded-lg">Create Shipment</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Loading ───────────────────────────────────────────────────────────────
   if (loadingRoutes) {
     return (
       <div className="max-w-7xl mx-auto w-full">
@@ -281,6 +368,7 @@ export default function RoutesPage() {
     );
   }
 
+  // ── Error ─────────────────────────────────────────────────────────────────
   if (routeError || routes.length === 0) {
     return (
       <div className="max-w-7xl mx-auto w-full">
@@ -296,6 +384,7 @@ export default function RoutesPage() {
     );
   }
 
+  // ── Completed ─────────────────────────────────────────────────────────────
   if (completed && selectedRoute) {
     return (
       <div className="max-w-lg mx-auto py-24 text-center px-4">
@@ -320,9 +409,12 @@ export default function RoutesPage() {
     );
   }
 
+  // ── Main render ───────────────────────────────────────────────────────────
   return (
     <LayoutGroup>
       <div className="max-w-7xl mx-auto w-full space-y-8">
+
+        {/* Page header */}
         <div className="flex flex-wrap items-center justify-between gap-4 pb-8 border-b border-border">
           <div className="flex flex-wrap items-center gap-5">
             <Link href="/create-shipment">
@@ -342,6 +434,7 @@ export default function RoutesPage() {
           <p className="text-sm text-muted-foreground">3 routes analyzed</p>
         </div>
 
+        {/* ── Map phase ── */}
         {phase === "map" && selectedRoute ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
             className="flex flex-col lg:flex-row gap-8"
@@ -351,6 +444,9 @@ export default function RoutesPage() {
                 route={selectedRoute} routes={routes} status="dispatched"
                 origin={shipmentData.origin} destination={shipmentData.destination}
                 aiExplanation={aiExplanation} aiLoading={aiLoading}
+                cargoType={shipmentData.cargoType}
+                urgency={urgency}
+                dataSource={dataSource}
               />
             </div>
             <div className="lg:w-80 shrink-0 space-y-5">
@@ -391,6 +487,7 @@ export default function RoutesPage() {
           </motion.div>
 
         ) : phase === "pass" && selectedRoute ? (
+          /* ── Pass phase ── */
           <motion.div
             key="pass-view"
             initial={{ opacity: 0, y: 16 }}
@@ -408,26 +505,68 @@ export default function RoutesPage() {
                 }}
                 onConfirm={handleConfirm}
                 morphLayoutId={`route-card-${selectedRoute.id}`}
+                urgency={urgency}
+                allRoutes={routes}
+                dataSource={dataSource}
               />
             </div>
           </motion.div>
 
         ) : (
+          /* ── Cards phase ── */
           <div className="flex flex-col lg:flex-row gap-8">
             <div className="flex-1 min-w-0">
+              {dataSource && (
+                <div className={cn(
+                  "flex items-start gap-2 text-xs font-medium px-4 py-3 rounded-lg border mb-5",
+                  dataSource === "osrm+openweather"
+                    ? "bg-emerald-400/5 border-emerald-400/20 text-emerald-400"
+                    : "bg-amber-400/5 border-amber-400/20 text-amber-400"
+                )}>
+                  {dataSource === "osrm+openweather" ? (
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 mt-0.5" />
+                      <span>Live data — OSRM routing + OpenWeather active</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-0.5" />
+                        <span>Estimated routes — live data unavailable</span>
+                      </div>
+                      <p className="text-[10px] text-amber-400/70 pl-3.5 leading-relaxed">
+                        Traffic data not available — verify ETAs before dispatch. Weather scoring is approximate. Use safest route for time-sensitive cargo.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
               {recommended && (
-                <DominantRoute route={recommended} onSelect={handleSelect} selected={selectedId === recommended.id} />
+                <DominantRoute
+                  route={recommended}
+                  onSelect={handleSelect}
+                  selected={selectedId === recommended.id}
+                  cargoType={shipmentData.cargoType}
+                  urgency={urgency}
+                  allRoutes={routes}
+                />
               )}
             </div>
             <div className="lg:w-80 xl:w-88 shrink-0 space-y-5">
               <p className="text-xs text-muted-foreground uppercase tracking-widest">Alternatives</p>
               {alternatives.map((route) => (
-                <AlternativeRow key={route.id} route={route} onSelect={handleSelect} selected={selectedId === route.id} />
+                <AlternativeRow
+                  key={route.id}
+                  route={route}
+                  onSelect={handleSelect}
+                  selected={selectedId === route.id}
+                  referenceRoute={recommended}
+                />
               ))}
               <div className="border border-border/50 rounded-xl p-6 space-y-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-widest">Decision context</p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Fastest route is not always the best. Balanced routes reduce disruption risk without major ETA loss.
+                  {decisionContextText(routes)}
                 </p>
               </div>
             </div>
