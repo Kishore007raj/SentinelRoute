@@ -11,8 +11,15 @@ import { useStore } from "@/lib/store";
 import { TrendingDown, TrendingUp, AlertTriangle, Zap } from "lucide-react";
 
 const C = {
-  primary: "#3b82f6", amber: "#f59e0b", emerald: "#10b981",
-  muted: "#4b5563", border: "#1f2937", popover: "#111827", fg: "#f9fafb",
+  primary: "#5eadd4",   // cyan-blue — matches new --primary oklch(0.68 0.17 210)
+  violet:  "#a78bfa",   // violet    — matches new --accent-2 oklch(0.70 0.18 300)
+  amber:   "#fbbf24",   // amber     — matches --sr-amber
+  emerald: "#34d399",   // green     — matches --sr-emerald
+  danger:  "#f87171",   // red       — matches --sr-danger
+  muted:   "#6b7280",   // neutral axis labels
+  border:  "#1e2a3a",   // dark border for tooltip
+  popover: "#0a0f1a",   // tooltip background
+  fg:      "#f5f9ff",   // tooltip text
 };
 
 const tip = {
@@ -57,7 +64,7 @@ export default function AnalyticsPage() {
       { 
         name: "Medium Risk", 
         value: total > 0 ? Math.round(((shipments || []).filter(s => s.riskLevel === "medium").length / total) * 100) : 33, 
-        color: C.primary 
+        color: C.violet
       },
       { 
         name: "High Risk", 
@@ -84,8 +91,8 @@ export default function AnalyticsPage() {
           {[
             { label: "Volume trend", value: `+${volTrend}`, sub: "vs prior 2 weeks", icon: TrendingUp, color: "text-emerald-400" },
             { label: "Avg risk exposure", value: String(avgRiskScore), sub: avgRiskScore < 40 ? "within safe range" : "elevated", icon: avgRiskScore > 50 ? AlertTriangle : TrendingDown, color: avgRiskScore > 50 ? "text-amber-400" : "text-emerald-400" },
-            { label: "High-risk avoided", value: String(highRiskAvoided), sub: `of ${total} total`, icon: TrendingUp, color: "text-blue-400" },
-            { label: "Active fleet", value: String(active), sub: "current operations", icon: Zap, color: "text-primary" },
+            { label: "High-risk avoided", value: String(highRiskAvoided), sub: `of ${total} total`, icon: TrendingUp, color: "text-primary" },
+            { label: "Active fleet", value: String(active), sub: "current operations", icon: Zap, color: "text-[oklch(0.70_0.18_300)]" },
           ].map(({ label, value, sub, icon: Icon, color }) => (
             <div key={label} className="bg-card border border-border rounded-2xl p-6 space-y-3 shadow-sm hover:border-border/60 transition-colors">
               <div className="flex items-center gap-2.5">
@@ -99,33 +106,33 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        <div className="flex-1 min-w-0 bg-card border border-border rounded-2xl p-7 shadow-sm">
+      <div className="flex flex-col lg:flex-row gap-8 min-w-0">
+        <div className="flex-1 min-w-0 bg-card border border-border rounded-2xl p-7 shadow-sm overflow-hidden">
           <div className="mb-6 space-y-1">
             <p className="text-lg font-bold text-foreground">Shipment Volume</p>
             <p className="text-sm text-muted-foreground font-medium">Last 7 weeks performance tracking</p>
           </div>
-          <div className="h-[240px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[240px] w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={volumeData} barGap={3} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 4" stroke={C.border} vertical={false} />
                 <XAxis dataKey="week" tick={{ fontSize: 10, fill: C.muted, fontWeight: 600 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: C.muted, fontWeight: 600 }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tip} labelStyle={{ color: C.fg }} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
                 <Bar dataKey="shipments" name="Total" fill={C.primary} radius={[3, 3, 0, 0]} />
-                <Bar dataKey="highRisk" name="High Risk" fill={C.amber} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="highRisk" name="High Risk" fill={C.violet} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="lg:w-80 shrink-0 bg-card border border-border rounded-2xl p-7 shadow-sm">
+        <div className="lg:w-80 shrink-0 bg-card border border-border rounded-2xl p-7 shadow-sm overflow-hidden">
           <div className="mb-5 space-y-1">
             <p className="text-lg font-bold text-foreground">Risk Distribution</p>
             <p className="text-sm text-muted-foreground font-medium">System-wide safety metrics</p>
           </div>
-          <div className="h-[180px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[180px] w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <PieChart>
                 <Pie data={riskDist} cx="50%" cy="50%" innerRadius={44} outerRadius={64} paddingAngle={4} dataKey="value">
                   {riskDist.map((entry, i) => <Cell key={i} fill={entry.color} />)}
@@ -155,11 +162,11 @@ export default function AnalyticsPage() {
           { title: "Safety Warning", context: "Elevated weather risks detected on northern corridors. Safest route selection highly recommended for pharmaceuticals.", tag: "Alert", color: "amber" },
         ].map((card, i) => (
           <div key={i} className="flex bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-             <div className={cn("w-1.5 shrink-0", card.color === "green" ? "bg-emerald-400" : card.color === "blue" ? "bg-blue-400" : "bg-amber-400")} />
+             <div className={cn("w-1.5 shrink-0", card.color === "green" ? "bg-emerald-400" : card.color === "blue" ? "bg-primary" : "bg-amber-400")} />
              <div className="p-6">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-bold text-foreground">{card.title}</p>
-                  <span className={cn("text-[9px] uppercase tracking-widest font-black", card.color === "green" ? "text-emerald-400" : card.color === "blue" ? "text-blue-400" : "text-amber-400")}>{card.tag}</span>
+                  <span className={cn("text-[9px] uppercase tracking-widest font-black", card.color === "green" ? "text-emerald-400" : card.color === "blue" ? "text-primary" : "text-amber-400")}>{card.tag}</span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed font-medium">{card.context}</p>
              </div>

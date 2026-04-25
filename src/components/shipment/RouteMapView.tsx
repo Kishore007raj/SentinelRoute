@@ -181,7 +181,7 @@ export function RouteMapView({
           />
           {polylinePoints.length === 2 && (
             <>
-              <Polyline positions={polylinePoints} color="#3b82f6" weight={4} opacity={0.8} />
+              <Polyline positions={polylinePoints} color="#5eadd4" weight={4} opacity={0.85} />
               <Marker position={polylinePoints[0]}>
                 <Popup>Origin: {origin}</Popup>
               </Marker>
@@ -193,13 +193,13 @@ export function RouteMapView({
         </MapContainer>
 
         {/* Status badge */}
-        <div className="absolute top-4 right-4 z-1000 bg-slate-900/90 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-xl">
+        <div className="absolute top-4 right-4 z-1000 bg-background/90 backdrop-blur-md border border-border p-3 rounded-lg shadow-xl" style={{ boxShadow: "var(--glow-soft)" }}>
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
-              <span className="text-[10px] uppercase tracking-wider text-white/70">Selected Route</span>
+              <div className="w-3 h-3 rounded-full bg-primary" />
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Selected Route</span>
             </div>
-            <div className="text-[10px] text-white/40 uppercase">{status}</div>
+            <div className="text-[10px] text-muted-foreground/60 uppercase">{status}</div>
           </div>
         </div>
       </div>

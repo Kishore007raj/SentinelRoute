@@ -11,10 +11,55 @@ import {
   TrendingUp,
   Package,
   Clock,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+
+// ─── Per-item sphere palette ──────────────────────────────────────────────────
+const SPHERES = [
+  // 0 — blue → indigo
+  {
+    bg: "radial-gradient(circle at 35% 35%, #60a5fa, #4f46e5 60%, #312e81 100%)",
+    shadow: "0 0 0 1px rgba(99,102,241,0.3), 0 4px 16px rgba(79,70,229,0.25)",
+    line: "linear-gradient(to bottom, rgba(99,102,241,0.4), rgba(99,102,241,0.1))",
+  },
+  // 1 — teal → emerald
+  {
+    bg: "radial-gradient(circle at 35% 35%, #5eead4, #059669 60%, #064e3b 100%)",
+    shadow: "0 0 0 1px rgba(5,150,105,0.3), 0 4px 16px rgba(5,150,105,0.25)",
+    line: "linear-gradient(to bottom, rgba(5,150,105,0.4), rgba(5,150,105,0.1))",
+  },
+  // 2 — violet → purple
+  {
+    bg: "radial-gradient(circle at 35% 35%, #c084fc, #7c3aed 60%, #3b0764 100%)",
+    shadow: "0 0 0 1px rgba(124,58,237,0.3), 0 4px 16px rgba(124,58,237,0.25)",
+    line: "linear-gradient(to bottom, rgba(124,58,237,0.4), rgba(124,58,237,0.1))",
+  },
+  // 3 — amber → orange
+  {
+    bg: "radial-gradient(circle at 35% 35%, #fcd34d, #ea580c 60%, #7c2d12 100%)",
+    shadow: "0 0 0 1px rgba(234,88,12,0.3), 0 4px 16px rgba(234,88,12,0.25)",
+    line: "linear-gradient(to bottom, rgba(234,88,12,0.4), rgba(234,88,12,0.1))",
+  },
+  // 4 — rose → pink
+  {
+    bg: "radial-gradient(circle at 35% 35%, #fb7185, #be185d 60%, #500724 100%)",
+    shadow: "0 0 0 1px rgba(190,24,93,0.3), 0 4px 16px rgba(190,24,93,0.25)",
+    line: "linear-gradient(to bottom, rgba(190,24,93,0.4), rgba(190,24,93,0.1))",
+  },
+  // 5 — sky → cyan
+  {
+    bg: "radial-gradient(circle at 35% 35%, #7dd3fc, #0284c7 60%, #0c4a6e 100%)",
+    shadow: "0 0 0 1px rgba(2,132,199,0.3), 0 4px 16px rgba(2,132,199,0.25)",
+    line: "linear-gradient(to bottom, rgba(2,132,199,0.4), rgba(2,132,199,0.1))",
+  },
+];
+
+// Navbar / logo always uses blue→indigo
+const SPHERE_BG = SPHERES[0].bg;
+const SPHERE_SHADOW = SPHERES[0].shadow;
 
 const easeOut = [0.0, 0.0, 0.2, 1.0] as [number, number, number, number];
 
@@ -52,39 +97,42 @@ function Navbar() {
       )}
     >
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0">
-            <Route className="w-3.5 h-3.5 text-primary" />
+        {/* Logo — mini sphere */}
+        <Link href="/" className="flex items-center gap-2.5">
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: SPHERE_BG, boxShadow: SPHERE_SHADOW }}
+          >
+            <Route className="w-3.5 h-3.5 text-white" />
           </div>
           <span className="font-bold text-foreground tracking-tight text-sm">
             SentinelRoute
           </span>
         </Link>
+
         <div className="flex items-center gap-4">
           <div className="hidden sm:flex items-center gap-4 text-sm text-muted-foreground">
-            <Link
-              href="#features"
-              className="hover:text-foreground transition-colors"
-            >
+            <Link href="#features" className="hover:text-foreground transition-colors">
               Features
             </Link>
-            <Link
-              href="#how-it-works"
-              className="hover:text-foreground transition-colors"
-            >
+            <Link href="#how-it-works" className="hover:text-foreground transition-colors">
               How It Works
             </Link>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/auth/signin">
-              <Button variant="ghost" size="sm" className="h-8 text-xs">
+              <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground">
                 Sign In
               </Button>
             </Link>
             <Link href="/auth/signup">
-              <Button size="sm" className="h-8 text-xs">
+              {/* CTA button uses the same blue→indigo */}
+              <button
+                className="h-8 px-4 text-xs font-semibold text-white rounded-md transition-opacity hover:opacity-90"
+                style={{ background: SPHERE_BG, boxShadow: SPHERE_SHADOW }}
+              >
                 Get Started
-              </Button>
+              </button>
             </Link>
           </div>
         </div>
@@ -93,32 +141,36 @@ function Navbar() {
   );
 }
 
+// ─── How It Works steps ───────────────────────────────────────────────────────
+
 const howSteps = [
   {
     step: "01",
-    icon: Package,
+    num: 1,
     label: "Configure Your Shipment",
     desc: "Specify origin, destination, vehicle type, cargo, urgency, and deadline. Our tile-based interface makes complex logistics simple.",
   },
   {
     step: "02",
-    icon: BarChart3,
+    num: 2,
     label: "View Route Options",
     desc: "Get three fully-analyzed routes: Fastest, Balanced (recommended), and Safest. Each shows ETA, cost, risk breakdown, and decision confidence.",
   },
   {
     step: "03",
-    icon: Shield,
+    num: 3,
     label: "Make the Decision",
     desc: "Select your route. The Shipment Pass formalizes your decision with complete metadata, risk assessment, and reasoning context for the record.",
   },
   {
     step: "04",
-    icon: CheckCircle,
+    num: 4,
     label: "Dispatch & Monitor",
     desc: "Confirm dispatch and watch live route execution. Access your complete order history, decision audit trail, and performance insights.",
   },
 ];
+
+// ─── Features ─────────────────────────────────────────────────────────────────
 
 const features = [
   {
@@ -147,74 +199,108 @@ const features = [
     desc: "Track outcome data against decisions. Learn what works and continuously refine your routing strategy.",
   },
   {
-    icon: CheckCircle,
+    icon: Activity,
     title: "Fast Configuration",
     desc: "Intuitive tile-based shipment setup. Configure complex routes in minutes, not hours.",
   },
 ];
 
-export default function HomePage() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+const trustCards = [
+  {
+    icon: BarChart3,
+    title: "Explainable Decisions",
+    desc: "Every route shows exactly why it was chosen.",
+  },
+  {
+    icon: Zap,
+    title: "Real-Time Risk Detection",
+    desc: "Live updates across traffic, weather, and disruptions.",
+  },
+  {
+    icon: Shield,
+    title: "Audit-Ready Logs",
+    desc: "Every decision is stored, traceable, and defensible.",
+  },
+  {
+    icon: Clock,
+    title: "Faster Execution",
+    desc: "Reduce manual analysis time across your operations team.",
+  },
+];
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function HomePage() {
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       <Navbar />
 
-      {/* Hero */}
+      {/* ── Hero ── */}
       <section className="pt-28 pb-16 md:pt-36 md:pb-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             variants={stagger}
             initial="hidden"
-            animate={mounted ? "show" : "hidden"}
+            animate="show"
             className="flex flex-col items-center text-center gap-6"
           >
+            {/* Badge — indigo dot */}
             <motion.div
               variants={fadeUp}
               custom={0}
-              className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs text-primary"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground"
             >
-              <Zap className="w-3 h-3" />
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{ background: SPHERE_BG }}
+              />
               Predictive route intelligence for logistics teams
             </motion.div>
+
+            {/* Headline */}
             <motion.h1
               variants={fadeUp}
               custom={1}
-              className="text-3xl md:text-5xl lg:text-6xl font-semibold leading-tight max-w-3xl"
+              className="text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tight max-w-3xl"
             >
-              Make Logistics Decisions You Can Defend
+              Make Logistics Decisions{" "}
+              <span className="text-foreground">You Can Defend</span>
             </motion.h1>
+
             <motion.p
               variants={fadeUp}
               custom={2}
-              className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-xl"
+              className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-lg"
             >
               SentinelRoute provides the intelligence and justification for
               every routing decision. Analyze tradeoffs between speed, cost, and
               risk — then move with confidence.
             </motion.p>
+
+            {/* CTAs */}
             <motion.div
               variants={fadeUp}
               custom={3}
-              className="flex items-center justify-center gap-2"
+              className="flex items-center justify-center gap-3"
             >
               <Link href="/auth/signin">
-                <motion.div
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <Button size="lg" className="gap-2">
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  {/* Sign In — same blue→indigo sphere style */}
+                  <button
+                    className="inline-flex items-center gap-2 h-11 px-6 text-sm font-semibold text-white rounded-lg transition-opacity hover:opacity-90"
+                    style={{ background: SPHERE_BG, boxShadow: SPHERE_SHADOW }}
+                  >
                     Sign In <ArrowRight className="w-4 h-4" />
-                  </Button>
+                  </button>
                 </motion.div>
               </Link>
               <Link href="#how-it-works">
-                <motion.div
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <Button variant="outline" size="lg">
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="font-semibold px-6 border-border/60 text-muted-foreground hover:text-foreground"
+                  >
                     How It Works
                   </Button>
                 </motion.div>
@@ -224,7 +310,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Trust cards */}
+      {/* ── Trust cards ── */}
       <motion.section
         variants={stagger}
         initial="hidden"
@@ -242,56 +328,31 @@ export default function HomePage() {
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              {
-                icon: BarChart3,
-                title: "Explainable Decisions",
-                desc: "Every route shows exactly why it was chosen.",
-              },
-              {
-                icon: Zap,
-                title: "Real-Time Risk Detection",
-                desc: "Live updates across traffic, weather, and disruptions.",
-              },
-              {
-                icon: Shield,
-                title: "Audit-Ready Logs",
-                desc: "Every decision is stored, traceable, and defensible.",
-              },
-              {
-                icon: Clock,
-                title: "Faster Execution",
-                desc: "Reduce manual analysis time across your operations team.",
-              },
-            ].map((card, i) => (
+            {trustCards.map((card, i) => (
               <motion.div
                 key={card.title}
                 variants={fadeUp}
                 custom={i}
-                whileHover={{
-                  y: -3,
-                  boxShadow:
-                    "0 0 0 1px rgba(59,130,246,0.2), 0 8px 24px rgba(0,0,0,0.3)",
-                }}
+                whileHover={{ y: -3 }}
                 transition={{ duration: 0.2 }}
-                className="rounded-xl border border-border/60 bg-card p-5 flex flex-col gap-3"
+                className="rounded-xl border border-border/60 bg-card p-5 flex flex-col gap-3 hover:border-white/10 transition-colors"
               >
-                <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                  <card.icon className="w-4 h-4 text-primary" />
+                {/* Per-card sphere */}
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                  style={{ background: SPHERES[i % SPHERES.length].bg, boxShadow: SPHERES[i % SPHERES.length].shadow }}
+                >
+                  <card.icon className="w-3.5 h-3.5 text-white" />
                 </div>
-                <p className="text-sm font-semibold text-foreground">
-                  {card.title}
-                </p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {card.desc}
-                </p>
+                <p className="text-sm font-semibold text-foreground">{card.title}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{card.desc}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </motion.section>
 
-      {/* Features */}
+      {/* ── Features ── */}
       <section id="features" className="py-16 md:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -314,83 +375,95 @@ export default function HomePage() {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
           >
             {features.map((f, i) => (
               <motion.div
                 key={f.title}
                 variants={fadeUp}
                 custom={i}
-                whileHover={{
-                  y: -3,
-                  boxShadow:
-                    "0 0 0 1px rgba(59,130,246,0.2), 0 8px 24px rgba(0,0,0,0.3)",
-                }}
+                whileHover={{ y: -3 }}
                 transition={{ duration: 0.2 }}
-                className="rounded-xl border border-border/60 bg-card p-6 flex flex-col gap-3"
+                className="rounded-xl border border-border/60 bg-card p-6 flex flex-col gap-3 hover:border-white/10 transition-colors"
               >
-                <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                  <f.icon className="w-4 h-4 text-primary" />
+                {/* Per-feature sphere */}
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                  style={{
+                    background: SPHERES[i % SPHERES.length].bg,
+                    boxShadow: SPHERES[i % SPHERES.length].shadow,
+                  }}
+                >
+                  <f.icon className="w-4 h-4 text-white" />
                 </div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  {f.title}
-                </h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {f.desc}
-                </p>
+                <h3 className="text-sm font-semibold text-foreground">{f.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
           </motion.div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section id="how-it-works" className="py-16 md:py-24 bg-muted/30">
+      {/* ── How It Works ── */}
+      <section id="how-it-works" className="py-16 md:py-24 bg-muted/20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             variants={fadeUp}
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0 }}
-            className="text-center mb-12"
+            className="text-center mb-14"
           >
             <h2 className="text-2xl md:text-3xl font-semibold mb-3">
               From Configuration to Dispatch
             </h2>
             <p className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
-              A four-step workflow designed for speed and confidence. From
-              shipment configuration to live route monitoring.
+              A four-step workflow designed for speed and confidence.
             </p>
           </motion.div>
+
           <motion.div
             variants={stagger}
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0 }}
-            className="flex flex-col gap-8 max-w-2xl mx-auto"
+            className="max-w-2xl mx-auto"
           >
             {howSteps.map((s, i) => (
               <motion.div
                 key={s.step}
                 variants={fadeUp}
                 custom={i}
-                className="flex gap-5"
+                className="flex gap-5 items-stretch"
               >
-                <div className="flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold shrink-0">
-                    {s.step}
+                {/* Left — gradient sphere + connector line */}
+                <div className="flex flex-col items-center shrink-0">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: SPHERES[i].bg, boxShadow: SPHERES[i].shadow }}
+                  >
+                    <span className="text-sm font-bold text-white tabular-nums drop-shadow">
+                      {s.num}
+                    </span>
                   </div>
                   {i < howSteps.length - 1 && (
-                    <div className="w-px flex-1 bg-border/60 mt-2" />
+                    <div
+                      style={{
+                        width: "1px",
+                        flexGrow: 1,
+                        minHeight: "56px",
+                        marginTop: "8px",
+                        background: SPHERES[i].line,
+                      }}
+                    />
                   )}
                 </div>
-                <div className="pb-8">
-                  <div className="flex items-center gap-2 mb-1">
-                    <s.icon className="w-4 h-4 text-primary" />
-                    <h3 className="text-sm font-semibold text-foreground">
-                      {s.label}
-                    </h3>
-                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+
+                {/* Right — content */}
+                <div className={cn("min-w-0 pt-1.5", i < howSteps.length - 1 ? "pb-10" : "pb-0")}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <h3 className="text-sm font-bold text-foreground">{s.label}</h3>
+                    <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
                   </div>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {s.desc}
@@ -402,14 +475,17 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* ── Footer ── */}
       <footer className="border-t border-border/50 py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
             <div className="flex flex-col gap-3">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-md bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0">
-                  <Route className="w-3.5 h-3.5 text-primary" />
+              <Link href="/" className="flex items-center gap-2.5">
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                  style={{ background: SPHERE_BG, boxShadow: SPHERE_SHADOW }}
+                >
+                  <Route className="w-3.5 h-3.5 text-white" />
                 </div>
                 <span className="font-bold text-foreground tracking-tight text-sm">
                   SentinelRoute
@@ -420,48 +496,30 @@ export default function HomePage() {
               </p>
             </div>
             <div className="flex flex-col gap-3">
-              <p className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                Product
-              </p>
+              <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Product</p>
               <div className="flex flex-col gap-2">
                 {["Features", "Pricing", "How It Works"].map((l) => (
-                  <Link
-                    key={l}
-                    href="#"
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <Link key={l} href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                     {l}
                   </Link>
                 ))}
               </div>
             </div>
             <div className="flex flex-col gap-3">
-              <p className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                Company
-              </p>
+              <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Company</p>
               <div className="flex flex-col gap-2">
                 {["About Us", "Blog", "Careers", "Contact"].map((l) => (
-                  <Link
-                    key={l}
-                    href="#"
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <Link key={l} href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                     {l}
                   </Link>
                 ))}
               </div>
             </div>
             <div className="flex flex-col gap-3">
-              <p className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                Legal
-              </p>
+              <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Legal</p>
               <div className="flex flex-col gap-2">
                 {["Privacy Policy", "Terms of Service", "Security"].map((l) => (
-                  <Link
-                    key={l}
-                    href="#"
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <Link key={l} href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                     {l}
                   </Link>
                 ))}
@@ -474,11 +532,7 @@ export default function HomePage() {
             </p>
             <div className="flex items-center gap-4">
               {["Twitter", "LinkedIn", "GitHub"].map((s) => (
-                <Link
-                  key={s}
-                  href="#"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
+                <Link key={s} href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                   {s}
                 </Link>
               ))}

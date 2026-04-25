@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import {
   LayoutDashboard,
   Package,
@@ -25,7 +24,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/lib/auth-context";
@@ -125,8 +123,6 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
 // ─── Desktop sidebar ──────────────────────────────────────────────────────────
 export function AppSidebar() {
   const pathname = usePathname();
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
   const { user } = useUser();
 
   const displayName = user?.displayName ?? user?.email ?? "User";
@@ -137,17 +133,15 @@ export function AppSidebar() {
     .join("") || "U";
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border bg-sidebar hidden md:flex">
+    <Sidebar collapsible="offcanvas" className="border-r border-border bg-sidebar hidden md:flex">
       <SidebarHeader className="px-5 py-5 border-b border-border">
         <Link href="/dashboard" className="flex items-center gap-3 min-w-0">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 border border-primary/30 shrink-0">
             <Route className="w-4 h-4 text-primary" />
           </div>
-          {!collapsed && (
-            <span className="font-semibold text-sm text-foreground tracking-tight truncate">
-              SentinelRoute
-            </span>
-          )}
+          <span className="font-semibold text-sm text-foreground tracking-tight truncate">
+            SentinelRoute
+          </span>
         </Link>
       </SidebarHeader>
 
@@ -173,7 +167,7 @@ export function AppSidebar() {
                     >
                       <item.icon className="w-4 h-4 shrink-0" />
                       <span className="text-sm font-medium">{item.label}</span>
-                      {isActive && !collapsed && (
+                      {isActive && (
                         <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />
                       )}
                     </SidebarMenuButton>
@@ -186,18 +180,16 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="px-3 py-4 border-t border-border">
-        <div className={cn("flex items-center gap-3 px-2 py-2", collapsed && "justify-center")}>
+        <div className="flex items-center gap-3 px-2 py-2">
           <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
             <span className="text-xs font-bold text-primary">{initials}</span>
           </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
-              {user?.email && user?.displayName && (
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-              )}
-            </div>
-          )}
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
+            {user?.email && user?.displayName && (
+              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+            )}
+          </div>
         </div>
       </SidebarFooter>
       <SidebarRail />

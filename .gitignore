@@ -1,6 +1,6 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# ─── Dependencies ────────────────────────────────────────────────────────────
 /node_modules
 /.pnp
 .pnp.*
@@ -10,39 +10,89 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# ─── Testing ─────────────────────────────────────────────────────────────────
 /coverage
 
-# next.js
+# ─── Next.js ─────────────────────────────────────────────────────────────────
 /.next/
 /out/
 
-# production
+# ─── Production build ────────────────────────────────────────────────────────
 /build
 
-# misc
+# ─── OS / editor junk ────────────────────────────────────────────────────────
 .DS_Store
+Thumbs.db
 *.pem
 
-# debug
+# ─── Debug logs ──────────────────────────────────────────────────────────────
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# ─── Environment variables (ALL variants) ────────────────────────────────────
+.env
+.env.*
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
 
-# Firebase service account keys
-sentinelroute-firebase-adminsdk-fbsvc-1888277e47.json
-firebase-adminsdk*.json
+# ─── Firebase service account keys ───────────────────────────────────────────
+# NEVER commit these — they grant full admin access to your Firebase project
+*firebase-adminsdk*.json
+*service-account*.json
+*serviceAccount*.json
+firebase-admin-*.json
 
-# vercel
+# ─── Other credential / secret files ─────────────────────────────────────────
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# ─── Vercel ──────────────────────────────────────────────────────────────────
 .vercel
 
-# typescript
+# ─── TypeScript ──────────────────────────────────────────────────────────────
 *.tsbuildinfo
 next-env.d.ts
+
+# ─── Tooling caches ──────────────────────────────────────────────────────────
 # Added by code-review-graph
 .code-review-graph/
 
+# ─── AI IDE / agent tooling (personal, not project config) ───────────────────
+# Claude
+CLAUDE.md
+.claude/
+
+# Cursor
+.cursorrules
+.cursor/
+
+# Windsurf
+.windsurfrules
+
+# Gemini CLI
+GEMINI.md
+
+# OpenCode
+.opencode.json
+
+# Generic agent instructions
+AGENTS.md
+
+# Kiro IDE
+.kiro/
+
+# MCP server configs (may contain local paths / tokens)
+.mcp.json
+
+# VSCode workspace settings (personal)
+.vscode/

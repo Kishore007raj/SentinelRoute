@@ -7,7 +7,7 @@ import type { Shipment } from "@/lib/types";
 import Link from "next/link";
 
 const statusConfig = {
-  in_transit: { label: "In Transit", icon: Zap, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" },
+  in_transit: { label: "In Transit", icon: Zap, color: "text-primary", bg: "bg-primary/10 border-primary/20" },
   completed: { label: "Completed", icon: CheckCircle, color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20" },
   pending: { label: "Pending", icon: Clock, color: "text-muted-foreground", bg: "bg-muted border-border" },
 };
