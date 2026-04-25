@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { toast } from "sonner";
 
 const features = [
   { icon: Shield, label: "Risk-first routing", text: "Every decision is scored and explainable" },
@@ -31,8 +32,37 @@ export default function SignInPage() {
 
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({ email: "", password: "" });
+
+  const handleForgotPassword = async () => {
+    if (!form.email || !/\S+@\S+\.\S+/.test(form.email)) {
+      setErrors({ email: "Enter your email address first" });
+      return;
+    }
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, form.email);
+      toast.success("Reset email sent", {
+        description: `Check ${form.email} for a password reset link.`,
+      });
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code ?? "";
+      if (code === "auth/user-not-found") {
+        // Don't reveal whether the email exists — show same success message
+        toast.success("Reset email sent", {
+          description: `If an account exists for ${form.email}, a reset link has been sent.`,
+        });
+      } else {
+        toast.error("Could not send reset email", {
+          description: "Please try again or contact support.",
+        });
+      }
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -155,7 +185,14 @@ export default function SignInPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-xs text-muted-foreground">Password</Label>
-                <button type="button" className="text-[11px] text-primary hover:underline">Forgot?</button>
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={resetLoading}
+                  className="text-[11px] text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {resetLoading ? "Sending..." : "Forgot password?"}
+                </button>
               </div>
               <div className="relative">
                 <Input

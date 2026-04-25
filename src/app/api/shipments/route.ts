@@ -1,107 +1,125 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { CreateShipmentRequest } from "@/lib/types";
+import type { Shipment, CreateShipmentRequest } from "@/lib/types";
 import { generateShipmentCode, getRiskLabel } from "@/lib/utils";
-import { createShipmentDoc, getShipmentsByUser } from "@/lib/firestore";
 
 /**
- * Extracts the userId from the Authorization header.
- * Client sends: Authorization: Bearer <firebase-uid>
+ * GET /api/shipments
+ * POST /api/shipments
+ *
+ * In-memory storage using a global singleton so the array survives
+ * Next.js hot-reloads in dev and is shared with the PATCH route.
+ * Resets on full server restart — expected for Layer 1.
  */
-function getUserId(req: NextRequest): string | null {
-  const auth = req.headers.get("authorization") ?? "";
-  if (!auth.startsWith("Bearer ")) return null;
-  const uid = auth.replace("Bearer ", "").trim();
-  return uid || null;
+
+// ─── Shared in-memory store ───────────────────────────────────────────────────
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __sentinelShipments: Shipment[] | undefined;
 }
+
+if (!global.__sentinelShipments) {
+  global.__sentinelShipments = [];
+}
+
+const shipments = global.__sentinelShipments;
 
 // ─── GET /api/shipments ───────────────────────────────────────────────────────
 
-export async function GET(req: NextRequest) {
-  const userId = getUserId(req);
-
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  try {
-    const shipments = await getShipmentsByUser(userId);
-    return NextResponse.json({ shipments, total: shipments.length });
-  } catch (err) {
-    console.error("[GET /api/shipments]", err);
-    return NextResponse.json(
-      { error: "Failed to fetch shipments" },
-      { status: 500 }
-    );
-  }
+export async function GET() {
+  return NextResponse.json({ shipments, total: shipments.length });
 }
 
 // ─── POST /api/shipments ──────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  const userId = getUserId(req);
+  let raw: Record<string, unknown>;
 
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  let body: CreateShipmentRequest;
   try {
-    body = await req.json();
+    raw = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const required: (keyof CreateShipmentRequest)[] = [
-    "origin", "destination", "vehicleType", "cargoType",
-    "urgency", "routeId", "routeName", "riskScore",
-    "riskLevel", "eta", "distance", "confidencePercent",
-  ];
+  // Extract ONLY the fields defined in CreateShipmentRequest.
+  // Extra fields (e.g. urgency from older callers) are silently ignored.
+  const {
+    origin,
+    destination,
+    vehicleType,
+    cargoType,
+    routeId,
+    routeName,
+    eta,
+    distance,
+    riskScore,
+    riskLevel,
+    confidencePercent,
+    predictiveAlert,
+  } = raw as CreateShipmentRequest;
 
-  for (const field of required) {
-    if (body[field] === undefined || body[field] === "") {
-      return NextResponse.json(
-        { error: `Missing required field: ${field}` },
-        { status: 400 }
-      );
-    }
-  }
+  // Validate string fields — must be non-empty strings
+  const missingString = [
+    ["origin",      origin],
+    ["destination", destination],
+    ["vehicleType", vehicleType],
+    ["cargoType",   cargoType],
+    ["routeId",     routeId],
+    ["routeName",   routeName],
+    ["eta",         eta],
+    ["distance",    distance],
+    ["riskLevel",   riskLevel],
+  ].find(([, v]) => !v || typeof v !== "string");
 
-  const now = new Date();
-
-  const shipmentData = {
-    shipmentCode:   generateShipmentCode(),
-    origin:         body.origin,
-    destination:    body.destination,
-    selectedRoute:  body.routeId.includes("fastest")
-                      ? "fastest" as const
-                      : body.routeId.includes("safest")
-                        ? "safest" as const
-                        : "balanced" as const,
-    routeName:      body.routeName,
-    riskScore:      body.riskScore,
-    riskLevel:      getRiskLabel(body.riskScore),
-    eta:            body.eta,
-    status:         "active" as const,
-    lastUpdate:     "just now",
-    cargoType:      body.cargoType,
-    vehicleType:    body.vehicleType,
-    distance:       body.distance,
-    departureTime:  now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-    confidencePercent: body.confidencePercent,
-    predictiveAlert: body.predictiveAlert,
-    userId,
-    createdAt:      now.toISOString(),
-  };
-
-  try {
-    const firestoreId = await createShipmentDoc(shipmentData, userId);
-    const shipment = { id: firestoreId, ...shipmentData };
-    return NextResponse.json({ shipment }, { status: 201 });
-  } catch (err) {
-    console.error("[POST /api/shipments]", err);
+  if (missingString) {
     return NextResponse.json(
-      { error: "Failed to create shipment" },
-      { status: 500 }
+      { error: `Missing or invalid field: ${missingString[0]}` },
+      { status: 400 }
     );
   }
+
+  // Validate numeric fields — must be finite numbers
+  if (typeof riskScore !== "number" || !isFinite(riskScore)) {
+    return NextResponse.json({ error: "riskScore must be a number" }, { status: 400 });
+  }
+  if (typeof confidencePercent !== "number" || !isFinite(confidencePercent)) {
+    return NextResponse.json({ error: "confidencePercent must be a number" }, { status: 400 });
+  }
+
+  const now = new Date().toISOString();
+
+  // Derive selectedRoute from routeId — never undefined
+  const selectedRoute =
+    routeId.includes("fastest") ? "fastest" as const :
+    routeId.includes("safest")  ? "safest"  as const :
+    "balanced" as const;
+
+  // Build COMPLETE Shipment — every required field is explicitly set
+  const shipment: Shipment = {
+    id:                `shp-${Date.now()}`,
+    shipmentCode:      generateShipmentCode(),
+    origin,
+    destination,
+    selectedRoute,
+    routeName,
+    riskScore,
+    riskLevel:         getRiskLabel(riskScore),   // re-derive from score for consistency
+    eta,
+    status:            "active",
+    lastUpdate:        "just now",
+    cargoType,
+    vehicleType,
+    distance,
+    departureTime:     new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+    confidencePercent,
+    predictiveAlert:   typeof predictiveAlert === "string" && predictiveAlert
+                         ? predictiveAlert
+                         : "Monitoring route conditions",
+    createdAt:         now,
+    updatedAt:         now,
+  };
+
+  shipments.unshift(shipment);
+
+  return NextResponse.json({ shipment }, { status: 201 });
 }

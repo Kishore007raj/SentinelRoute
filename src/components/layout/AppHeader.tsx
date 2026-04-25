@@ -83,19 +83,18 @@ export function AppHeader() {
 
         <div className="flex-1" />
 
-        {/* Search — hidden on mobile */}
+        {/* Shipments quick-link — navigates to shipments list */}
         <Link
           href="/shipments"
-          className="hidden md:flex items-center gap-2.5 h-9 px-4 rounded-lg border border-border bg-muted/30 text-muted-foreground text-sm hover:bg-muted/50 transition-colors"
+          className="hidden md:flex items-center gap-2.5 h-9 px-4 rounded-lg border border-border bg-muted/30 text-muted-foreground text-sm hover:bg-muted/50 hover:text-foreground transition-colors"
         >
           <Search className="w-3.5 h-3.5" />
-          <span>Search shipments...</span>
+          <span>Shipments</span>
         </Link>
 
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground shrink-0 rounded-lg">
           <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-400" />
         </Button>
 
         {/* User menu */}

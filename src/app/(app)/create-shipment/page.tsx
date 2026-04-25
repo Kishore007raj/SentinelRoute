@@ -133,29 +133,41 @@ export default function CreateShipmentPage() {
     eta: string;
     riskRange: string;
     distance: string;
-    weatherImpact: string;
+    routesFound: number;
   } | null>(null);
 
   useEffect(() => {
     if (form.origin && form.destination && form.origin !== form.destination) {
       const fetchPreview = async () => {
         try {
-          const res = await fetch("/api/route", {
+          const res = await fetch("/api/analyze-routes", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ origin: form.origin, destination: form.destination }),
+            body: JSON.stringify({
+              origin:      form.origin,
+              destination: form.destination,
+              cargoType:   form.cargoType || "General Freight",
+              vehicleType: form.vehicleType || "Container Truck",
+              urgency:     form.urgency || "Standard",
+            }),
           });
-          const result = await res.json();
-          if (result.success) {
-            const { durationHours, distanceKm, weatherScore } = result.data;
-            setRoutePreview({
-              eta: `${durationHours.toFixed(1)} hrs`,
-              distance: `${distanceKm.toFixed(0)} km`,
-              riskRange: `${Math.max(10, Math.floor(weatherScore * 0.8))} – ${Math.min(99, Math.floor(weatherScore * 1.5))}`,
-              weatherImpact: weatherScore > 50 ? "Critical" : weatherScore > 25 ? "Moderate" : "Low",
-            });
-          }
-        } catch (e) {
+          if (!res.ok) { setRoutePreview(null); return; }
+          const data = await res.json();
+          const routes: { eta: string; distance: string; riskScore: number; label: string }[] = data.routes ?? [];
+          if (routes.length === 0) { setRoutePreview(null); return; }
+
+          // Use balanced route for preview; fall back to first route
+          const balanced = routes.find((r) => r.label === "balanced") ?? routes[0];
+          const minRisk = Math.min(...routes.map((r) => r.riskScore));
+          const maxRisk = Math.max(...routes.map((r) => r.riskScore));
+
+          setRoutePreview({
+            eta:           balanced.eta,
+            distance:      balanced.distance,
+            riskRange:     `${minRisk} – ${maxRisk}`,
+            routesFound:   routes.length,
+          });
+        } catch {
           setRoutePreview(null);
         }
       };
@@ -163,7 +175,7 @@ export default function CreateShipmentPage() {
     } else {
       setRoutePreview(null);
     }
-  }, [form.origin, form.destination]);
+  }, [form.origin, form.destination, form.cargoType, form.urgency]);
 
   const handleAnalyze = () => {
     setLoading(true);
@@ -361,13 +373,13 @@ export default function CreateShipmentPage() {
 
             {routePreview && (
               <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-widest">Mission Profile</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-widest">Expected profile</p>
                 <div className="space-y-0">
                   {[
-                    { label: "ETA", value: routePreview.eta, color: "text-foreground" },
-                    { label: "Distance", value: routePreview.distance, color: "text-foreground" },
-                    { label: "Weather Impact", value: routePreview.weatherImpact, color: routePreview.weatherImpact === "Critical" ? "text-red-400" : routePreview.weatherImpact === "Moderate" ? "text-amber-400" : "text-emerald-400" },
-                    { label: "Risk Range", value: routePreview.riskRange, color: "text-amber-400" },
+                    { label: "Fastest ETA",      value: routePreview.eta,        color: "text-foreground" },
+                    { label: "Distance",          value: routePreview.distance,   color: "text-foreground" },
+                    { label: "Risk range",        value: routePreview.riskRange,  color: "text-amber-400" },
+                    { label: "Routes available",  value: String(routePreview.routesFound), color: "text-primary" },
                   ].map(({ label, value, color }) => (
                     <div key={label} className="flex items-center justify-between py-3 border-b border-border/30">
                       <span className="text-sm text-muted-foreground">{label}</span>
