@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Firebase service account keys
+sentinelroute-firebase-adminsdk-fbsvc-1888277e47.json
+firebase-adminsdk*.json
+
 # vercel
 .vercel
 
