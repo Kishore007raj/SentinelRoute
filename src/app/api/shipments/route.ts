@@ -1,64 +1,107 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getShipmentsCollection } from "@/lib/mongodb";
-import { Shipment } from "@/lib/types";
+import type { CreateShipmentRequest } from "@/lib/types";
+import { generateShipmentCode, getRiskLabel } from "@/lib/utils";
+import { createShipmentDoc, getShipmentsByUser } from "@/lib/firestore";
 
+/**
+ * Extracts the userId from the Authorization header.
+ * Client sends: Authorization: Bearer <firebase-uid>
+ */
 function getUserId(req: NextRequest): string | null {
   const auth = req.headers.get("authorization") ?? "";
-  if (!auth.startsWith("Bearer ")) return "demo-user"; // Default for demo if no auth
-  return auth.replace("Bearer ", "").trim() || "demo-user";
+  if (!auth.startsWith("Bearer ")) return null;
+  const uid = auth.replace("Bearer ", "").trim();
+  return uid || null;
 }
+
+// ─── GET /api/shipments ───────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
   const userId = getUserId(req);
-  
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const collection = await getShipmentsCollection();
-    const shipments = await collection.find({ userId }).sort({ createdAt: -1 }).toArray();
-    // Convert _id to string for the frontend
-    const formatted = shipments.map(s => ({ ...s, id: s._id.toString() }));
-    return NextResponse.json({ shipments: formatted });
-  } catch (error) {
-    console.error("GET Shipments Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    const shipments = await getShipmentsByUser(userId);
+    return NextResponse.json({ shipments, total: shipments.length });
+  } catch (err) {
+    console.error("[GET /api/shipments]", err);
+    return NextResponse.json(
+      { error: "Failed to fetch shipments" },
+      { status: 500 }
+    );
   }
 }
+
+// ─── POST /api/shipments ──────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   const userId = getUserId(req);
 
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let body: CreateShipmentRequest;
   try {
-    const body = await req.json();
-    const { origin, destination, cargoType, vehicleType, route } = body;
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
-    const shipmentId = `SR-${Math.floor(1000 + Math.random() * 9000)}`;
-    const collection = await getShipmentsCollection();
+  const required: (keyof CreateShipmentRequest)[] = [
+    "origin", "destination", "vehicleType", "cargoType",
+    "urgency", "routeId", "routeName", "riskScore",
+    "riskLevel", "eta", "distance", "confidencePercent",
+  ];
 
-    const newShipment = {
-      shipmentId,
-      userId,
-      origin,
-      destination,
-      cargoType,
-      vehicleType,
-      status: "pending",
-      riskScore: route.riskScore,
-      riskLevel: route.riskLevel,
-      distanceKm: route.distanceKm,
-      durationHours: route.durationHours,
-      weatherScore: route.riskBreakdown?.weather || 1,
-      routeName: route.name,
-      routeGeometry: route.routeGeometry,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+  for (const field of required) {
+    if (body[field] === undefined || body[field] === "") {
+      return NextResponse.json(
+        { error: `Missing required field: ${field}` },
+        { status: 400 }
+      );
+    }
+  }
 
-    const result = await collection.insertOne(newShipment);
-    return NextResponse.json({ 
-      shipment: { ...newShipment, id: result.insertedId.toString() } 
-    }, { status: 201 });
+  const now = new Date();
 
-  } catch (error) {
-    console.error("POST Shipment Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  const shipmentData = {
+    shipmentCode:   generateShipmentCode(),
+    origin:         body.origin,
+    destination:    body.destination,
+    selectedRoute:  body.routeId.includes("fastest")
+                      ? "fastest" as const
+                      : body.routeId.includes("safest")
+                        ? "safest" as const
+                        : "balanced" as const,
+    routeName:      body.routeName,
+    riskScore:      body.riskScore,
+    riskLevel:      getRiskLabel(body.riskScore),
+    eta:            body.eta,
+    status:         "active" as const,
+    lastUpdate:     "just now",
+    cargoType:      body.cargoType,
+    vehicleType:    body.vehicleType,
+    distance:       body.distance,
+    departureTime:  now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+    confidencePercent: body.confidencePercent,
+    predictiveAlert: body.predictiveAlert,
+    userId,
+    createdAt:      now.toISOString(),
+  };
+
+  try {
+    const firestoreId = await createShipmentDoc(shipmentData, userId);
+    const shipment = { id: firestoreId, ...shipmentData };
+    return NextResponse.json({ shipment }, { status: 201 });
+  } catch (err) {
+    console.error("[POST /api/shipments]", err);
+    return NextResponse.json(
+      { error: "Failed to create shipment" },
+      { status: 500 }
+    );
   }
 }
