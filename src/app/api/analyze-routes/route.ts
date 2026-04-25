@@ -1,220 +1,109 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { Route, AnalyzeRoutesRequest, AnalyzeRoutesResponse } from "@/lib/types";
-import { fetchGoogleRoutes } from "@/lib/google-maps";
-import { buildRoutesFromMapsResponse } from "@/lib/route-builder";
-import { computeRiskScore, selectRecommendedRoute } from "@/lib/risk";
-import { getRouteWeather } from "@/lib/weather";
-import { getRiskLabel } from "@/lib/utils";
+import { geocode, getOsrmRoute } from "@/lib/osrm";
+import { getRouteWeatherRisk } from "@/lib/weather-service";
+import { computeRisk } from "@/lib/risk";
+import { Route, RouteLabel } from "@/lib/types";
 
-/**
- * POST /api/analyze-routes
- *
- * Layer 4+5+6: Google Maps Routes API + Risk Engine + OpenWeather.
- *
- * Pipeline:
- *   1. Fetch real routes from Google Maps (or fall back to static)
- *   2. Fetch live weather for origin + destination corridor (parallel)
- *   3. Run full risk engine with real traffic + weather scores
- *
- * Falls back gracefully at each step — app always returns 3 routes.
- */
 export async function POST(req: NextRequest) {
-  let body: AnalyzeRoutesRequest;
-
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+    const body = await req.json();
+    const { origin, destination, cargoType, vehicleType, urgency } = body;
 
-  const { origin, destination, cargoType, vehicleType, urgency } = body;
+    if (!origin || !destination) {
+      return NextResponse.json({ error: "Origin and destination are required" }, { status: 400 });
+    }
 
-  if (!origin || !destination || !cargoType || !urgency) {
-    return NextResponse.json(
-      { error: "Missing required fields: origin, destination, cargoType, urgency" },
-      { status: 400 }
-    );
-  }
+    // 1. Convert city -> coordinates
+    const [originCoords, destCoords] = await Promise.all([
+      geocode(origin),
+      geocode(destination)
+    ]);
 
-  // ── Fetch routes + weather in parallel ───────────────────────────────────
-  const [mapsRoutes, weatherResult] = await Promise.all([
-    fetchGoogleRoutes(origin, destination),
-    getRouteWeather(origin, destination),
-  ]);
+    if (!originCoords || !destCoords) {
+      return NextResponse.json({ error: "Could not geocode origin or destination" }, { status: 400 });
+    }
 
-  const { weatherScore, weatherAlert } = weatherResult;
+    // 2. Call OSRM
+    const osrmRoute = await getOsrmRoute(originCoords[0], originCoords[1], destCoords[0], destCoords[1]);
+    if (!osrmRoute) {
+      return NextResponse.json({ error: "Could not find a route" }, { status: 400 });
+    }
 
-  let routes: Route[];
-  let source: "google-maps" | "static";
+    // 3. Sample route -> weather
+    const weatherResult = await getRouteWeatherRisk(osrmRoute.geometry.coordinates);
 
-  if (mapsRoutes && mapsRoutes.length > 0) {
-    routes = buildRoutesFromMapsResponse(
-      mapsRoutes,
-      origin,
-      destination,
+    // 4. Compute risk for the main route
+    const mainRisk = computeRisk(
+      osrmRoute.distanceKm,
+      osrmRoute.durationHours,
+      weatherResult.averageRisk,
       cargoType,
-      urgency,
-      vehicleType,
-      undefined,
-      weatherScore
+      urgency
     );
-    source = "google-maps";
-    console.log(
-      `[analyze-routes] Google Maps + risk engine + weather(${weatherScore}): ` +
-      `${routes.length} routes for ${origin} → ${destination}`
-    );
-  } else {
-    routes = buildStaticRoutesWithRiskEngine(
-      origin,
-      destination,
-      cargoType,
-      vehicleType ?? "Container Truck",
-      urgency,
-      weatherScore
-    );
-    source = "static";
-    console.log(
-      `[analyze-routes] Static + risk engine + weather(${weatherScore}) ` +
-      `fallback for ${origin} → ${destination}`
-    );
-  }
 
-  // ── Inject weather alert into the highest-risk route ─────────────────────
-  if (weatherAlert) {
-    const highestRisk = [...routes].sort((a, b) => b.riskScore - a.riskScore)[0];
-    if (highestRisk) {
-      const idx = routes.findIndex((r) => r.id === highestRisk.id);
-      if (idx !== -1 && !routes[idx].alerts.includes(weatherAlert)) {
-        routes[idx] = {
-          ...routes[idx],
-          alerts: [weatherAlert, ...routes[idx].alerts].slice(0, 3),
-        };
+    // 5. Generate 3 routes (Simulate variations based on the real OSRM route)
+    const labels: RouteLabel[] = ["fastest", "balanced", "safest"];
+    const routes: Route[] = labels.map((label) => {
+      let riskAdjustment = 0;
+      let timeAdjustment = 1;
+      let distAdjustment = 1;
+
+      if (label === "fastest") {
+        riskAdjustment = 5;
+        timeAdjustment = 1;
+        distAdjustment = 1;
+      } else if (label === "balanced") {
+        riskAdjustment = 0;
+        timeAdjustment = 1.1;
+        distAdjustment = 1.05;
+      } else if (label === "safest") {
+        riskAdjustment = -10;
+        timeAdjustment = 1.25;
+        distAdjustment = 1.15;
       }
-    }
-  }
 
-  const response: AnalyzeRoutesResponse & { source: string; weatherScore: number } = {
-    routes,
-    analyzedAt: new Date().toISOString(),
-    source,
-    weatherScore,
-  };
+      const distanceKm = osrmRoute.distanceKm * distAdjustment;
+      const durationHours = osrmRoute.durationHours * timeAdjustment;
+      const { score, level } = computeRisk(
+        distanceKm,
+        durationHours,
+        weatherResult.averageRisk + riskAdjustment,
+        cargoType,
+        urgency
+      );
 
-  return NextResponse.json(response);
-}
-
-// ─── Static fallback with full risk engine ────────────────────────────────────
-// Uses fixed distance/ETA/traffic baselines but runs them through
-// computeRiskScore so cargo type and urgency affect the scores.
-
-interface StaticRouteBase {
-  id: string;
-  label: "fastest" | "balanced" | "safest";
-  name: string;
-  etaMinutes: number;
-  distanceKm: number;
-  trafficScore: number;
-  staticEtaMinutes: number;
-  warnings: string[];
-}
-
-const STATIC_BASES: StaticRouteBase[] = [
-  {
-    id: "route-a", label: "fastest", name: "Route A — Fastest",
-    etaMinutes: 260, staticEtaMinutes: 210, distanceKm: 347,
-    trafficScore: 78,
-    warnings: [
-      "Congestion expected near primary toll corridor",
-      "Roadwork may add 22 minutes to arrival",
-    ],
-  },
-  {
-    id: "route-b", label: "balanced", name: "Route B — Balanced",
-    etaMinutes: 305, staticEtaMinutes: 285, distanceKm: 362,
-    trafficScore: 38,
-    warnings: ["Minor congestion possible near bypass"],
-  },
-  {
-    id: "route-c", label: "safest", name: "Route C — Safest",
-    etaMinutes: 370, staticEtaMinutes: 360, distanceKm: 398,
-    trafficScore: 12,
-    warnings: [],
-  },
-];
-
-function formatMinutes(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
-
-function buildStaticRoutesWithRiskEngine(
-  origin: string,
-  destination: string,
-  cargoType: string,
-  vehicleType: string,
-  urgency: string,
-  weatherScore: number
-): Route[] {
-  // Score all routes
-  const scored = STATIC_BASES.map((base) => {
-    const riskResult = computeRiskScore({
-      trafficScore:     base.trafficScore,
-      weatherScore,
-      warnings:         base.warnings,
-      distanceKm:       base.distanceKm,
-      etaMinutes:       base.etaMinutes,
-      staticEtaMinutes: base.staticEtaMinutes,
-      cargoType,
-      urgency,
-      vehicleType,
+      return {
+        id: `route-${label}-${Math.random().toString(36).substr(2, 9)}`,
+        label,
+        name: `Route via ${label === "fastest" ? "Primary Highway" : label === "balanced" ? "National Corridor" : "Expressway Bypass"}`,
+        distanceKm,
+        durationHours,
+        riskScore: score,
+        riskLevel: level,
+        recommended: label === "balanced", // Default to balanced
+        summary: `A ${label} route from ${origin} to ${destination}.`,
+        riskBreakdown: {
+          traffic: 20 + riskAdjustment,
+          weather: weatherResult.averageRisk,
+          disruption: 10,
+          cargoSensitivity: 15
+        },
+        alerts: score > 50 ? ["High risk detected on this corridor"] : [],
+        routeGeometry: osrmRoute.geometry,
+      };
     });
-    return { base, riskResult };
-  });
 
-  // Determine recommendation
-  const recommendedLabel = selectRecommendedRoute(
-    scored.map(({ base, riskResult }) => ({
-      label:      base.label,
-      riskScore:  riskResult.riskScore,
-      etaMinutes: base.etaMinutes,
-    })),
-    cargoType,
-    urgency
-  );
+    // Smart recommendation
+    const recommendedIdx = urgency === "Critical" ? 0 : cargoType === "Pharmaceuticals" ? 2 : 1;
+    routes.forEach((r, i) => r.recommended = (i === recommendedIdx));
 
-  const trafficDesc = (score: number) =>
-    score > 60 ? "heavy traffic conditions" :
-    score > 35 ? "moderate traffic" : "light traffic";
+    return NextResponse.json({
+      routes,
+      analyzedAt: new Date().toISOString()
+    });
 
-  return scored.map(({ base, riskResult }): Route => {
-    const alerts: string[] = [...base.warnings];
-    if (riskResult.predictiveAlert && !alerts.includes(riskResult.predictiveAlert)) {
-      alerts.push(riskResult.predictiveAlert);
-    }
-
-    const summaryMap: Record<string, string> = {
-      fastest: `Fastest path from ${origin} to ${destination} (${formatMinutes(base.etaMinutes)}, ${base.distanceKm} km). ${trafficDesc(base.trafficScore).charAt(0).toUpperCase() + trafficDesc(base.trafficScore).slice(1)} detected.`,
-      balanced: `Balanced route from ${origin} to ${destination}. Good tradeoff between travel time and disruption risk with ${trafficDesc(base.trafficScore)}.`,
-      safest: `Lowest-risk route from ${origin} to ${destination}. Longer path but minimal disruption probability. Recommended for sensitive cargo.`,
-    };
-
-    return {
-      id:          base.id,
-      label:       base.label,
-      name:        base.name,
-      eta:         formatMinutes(base.etaMinutes),
-      etaMinutes:  base.etaMinutes,
-      distance:    `${base.distanceKm} km`,
-      distanceKm:  base.distanceKm,
-      riskScore:   riskResult.riskScore,
-      riskLevel:   getRiskLabel(riskResult.riskScore),
-      recommended: base.label === recommendedLabel,
-      summary:     summaryMap[base.label] ?? "",
-      riskBreakdown: riskResult.riskBreakdown,
-      alerts:      alerts.slice(0, 3),
-    };
-  });
+  } catch (error) {
+    console.error("Analyze Routes API Error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
 }

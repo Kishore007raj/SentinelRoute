@@ -129,6 +129,42 @@ export default function CreateShipmentPage() {
   const filledRequired = requiredFields.filter((k) => !!form[k]).length;
   const requiredFilled = filledRequired === requiredFields.length;
 
+  const [routePreview, setRoutePreview] = useState<{
+    eta: string;
+    riskRange: string;
+    distance: string;
+    weatherImpact: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (form.origin && form.destination && form.origin !== form.destination) {
+      const fetchPreview = async () => {
+        try {
+          const res = await fetch("/api/route", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ origin: form.origin, destination: form.destination }),
+          });
+          const result = await res.json();
+          if (result.success) {
+            const { durationHours, distanceKm, weatherScore } = result.data;
+            setRoutePreview({
+              eta: `${durationHours.toFixed(1)} hrs`,
+              distance: `${distanceKm.toFixed(0)} km`,
+              riskRange: `${Math.max(10, Math.floor(weatherScore * 0.8))} – ${Math.min(99, Math.floor(weatherScore * 1.5))}`,
+              weatherImpact: weatherScore > 50 ? "Critical" : weatherScore > 25 ? "Moderate" : "Low",
+            });
+          }
+        } catch (e) {
+          setRoutePreview(null);
+        }
+      };
+      fetchPreview();
+    } else {
+      setRoutePreview(null);
+    }
+  }, [form.origin, form.destination]);
+
   const handleAnalyze = () => {
     setLoading(true);
     setPendingShipment({
@@ -243,10 +279,10 @@ export default function CreateShipmentPage() {
             </FieldRow>
             <FieldRow label="Deadline">
               <Input
+                type="datetime-local"
                 value={form.deadline ?? ""}
                 onChange={(e) => set("deadline", e.target.value)}
-                placeholder="e.g. 2026-04-24 18:00"
-                className="h-11 bg-muted/20 border-border text-sm max-w-xs rounded-lg"
+                className="h-11 bg-muted/20 border-border text-sm max-w-xs rounded-lg [color-scheme:dark]"
               />
             </FieldRow>
           </div>
@@ -323,14 +359,15 @@ export default function CreateShipmentPage() {
               )}
             </div>
 
-            {requiredFilled && (
+            {routePreview && (
               <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-widest">Expected profile</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-widest">Mission Profile</p>
                 <div className="space-y-0">
                   {[
-                    { label: "Fastest ETA", value: "~4–6 hours", color: "text-foreground" },
-                    { label: "Risk range", value: "14 – 72", color: "text-amber-400" },
-                    { label: "Routes available", value: "3", color: "text-primary" },
+                    { label: "ETA", value: routePreview.eta, color: "text-foreground" },
+                    { label: "Distance", value: routePreview.distance, color: "text-foreground" },
+                    { label: "Weather Impact", value: routePreview.weatherImpact, color: routePreview.weatherImpact === "Critical" ? "text-red-400" : routePreview.weatherImpact === "Moderate" ? "text-amber-400" : "text-emerald-400" },
+                    { label: "Risk Range", value: routePreview.riskRange, color: "text-amber-400" },
                   ].map(({ label, value, color }) => (
                     <div key={label} className="flex items-center justify-between py-3 border-b border-border/30">
                       <span className="text-sm text-muted-foreground">{label}</span>

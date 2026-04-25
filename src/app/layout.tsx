@@ -35,8 +35,9 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} dark`}
+      suppressHydrationWarning
     >
-      <body className="min-h-screen bg-background text-foreground antialiased">
+      <body suppressHydrationWarning className="min-h-screen bg-background text-foreground antialiased">
         <UserProvider>
           <StoreProvider>
             <TooltipProvider delayDuration={300}>

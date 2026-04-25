@@ -1,21 +1,15 @@
 "use client";
 import { useState, useEffect } from "react";
 import { motion, LayoutGroup } from "framer-motion";
-import { ArrowRight, ChevronLeft, CheckCircle, AlertTriangle } from "lucide-react";
+import { ArrowRight, ChevronLeft, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShipmentPass } from "@/components/shipment/ShipmentPass";
 import { RouteMapView } from "@/components/shipment/RouteMapView";
-import { DispatchedStub } from "@/components/shipment/ShipmentPass";
-import { generateShipmentCode, cn, getRiskColor } from "@/lib/utils";
-import { useStore, type ShipmentStubRecord } from "@/lib/store";
+import { cn, getRiskColor } from "@/lib/utils";
+import { useStore } from "@/lib/store";
 import type { Route } from "@/lib/types";
 import Link from "next/link";
-
-const FALLBACK_SHIPMENT = {
-  origin: "Chennai", destination: "Bangalore",
-  cargoType: "Electronics", vehicleType: "Container Truck",
-  urgency: "Standard",
-};
+import { useRouter } from "next/navigation";
 
 // ─── Dominant route ───────────────────────────────────────────────────────────
 function DominantRoute({ route, onSelect, selected }: {
@@ -27,96 +21,61 @@ function DominantRoute({ route, onSelect, selected }: {
       layoutId={`route-card-${route.id}`}
       layout
       onClick={() => onSelect(route.id)}
-      transition={{ layout: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}
       className={cn(
-        "border cursor-pointer transition-colors duration-150 overflow-hidden rounded-xl",
-        selected ? "border-primary bg-card" : "border-border bg-card hover:border-border/80",
+        "border cursor-pointer transition-colors duration-150 overflow-hidden rounded-2xl bg-card shadow-sm",
+        selected ? "border-blue-500 ring-1 ring-blue-500/20" : "border-border hover:border-border/80",
       )}
     >
-      <div className={cn("h-1.5 w-full",
-        route.riskLevel === "high" || route.riskLevel === "critical" ? "bg-red-400" :
-        route.riskLevel === "medium" ? "bg-amber-400" : "bg-emerald-400"
+      <div className={cn("h-1.5 w-full", 
+        route.riskLevel === "critical" || route.riskLevel === "high" ? "bg-red-500" : 
+        route.riskLevel === "medium" ? "bg-amber-500" : "bg-emerald-500"
       )} />
-      <div className="p-8 lg:p-10">
-        <div className="flex items-start justify-between mb-10">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
+      <div className="p-10">
+        <div className="flex items-start justify-between mb-8">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
               <span className={cn(
-                "text-xs font-semibold uppercase tracking-widest px-3 py-1.5 border rounded-md",
-                route.label === "fastest" ? "text-amber-400 border-amber-400/30 bg-amber-400/5" :
-                route.label === "balanced" ? "text-primary border-primary/30 bg-primary/5" :
-                "text-emerald-400 border-emerald-400/30 bg-emerald-400/5"
+                "text-[10px] font-black uppercase tracking-widest px-3 py-1.5 border rounded-md bg-white/5",
+                route.label === "fastest" ? "text-amber-400 border-amber-400/20" :
+                route.label === "balanced" ? "text-blue-400 border-blue-400/20" :
+                "text-emerald-400 border-emerald-400/20"
               )}>{route.label}</span>
               {route.recommended && (
-                <span className="text-xs text-primary border border-primary/30 bg-primary/5 px-3 py-1.5 uppercase tracking-widest rounded-md">
+                <span className="text-[10px] text-blue-400 border border-blue-400/20 bg-blue-400/10 px-3 py-1.5 uppercase tracking-widest rounded-md">
                   Recommended
                 </span>
               )}
             </div>
-            <h2 className="text-2xl font-bold text-foreground">{route.name}</h2>
+            <h2 className="text-3xl font-black text-foreground">{route.name}</h2>
           </div>
-          <div className="text-right shrink-0 ml-8">
-            <p className={cn("text-7xl font-bold tabular-nums leading-none", riskColor)}>
+          <div className="text-right">
+            <p className={cn("text-6xl font-black tabular-nums leading-none", riskColor)}>
               {route.riskScore}
             </p>
-            <p className={cn("text-xs uppercase tracking-widest mt-2", riskColor)}>
-              {route.riskLevel} risk
-            </p>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">Risk Index</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-12 mb-10 pb-10 border-b border-border/40">
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest">ETA</p>
-            <p className="text-4xl font-bold text-foreground">{route.eta}</p>
+        <div className="grid grid-cols-2 gap-8 mb-10 pb-10 border-b border-border/40">
+          <div className="space-y-1">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Est. Duration</p>
+            <p className="text-3xl font-bold">{route.durationHours.toFixed(1)}h</p>
           </div>
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest">Distance</p>
-            <p className="text-4xl font-bold text-foreground">{route.distance}</p>
+          <div className="space-y-1">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Distance</p>
+            <p className="text-3xl font-bold">{route.distanceKm.toFixed(0)} km</p>
           </div>
         </div>
 
-        <div className="space-y-4 mb-10">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">Risk breakdown</p>
-          {Object.entries(route.riskBreakdown).map(([key, val]) => (
-            <div key={key} className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground w-28 shrink-0 capitalize">
-                {key === "cargoSensitivity" ? "Cargo" : key}
-              </span>
-              <div className="flex-1 h-2 bg-muted overflow-hidden rounded-full">
-                <motion.div
-                  className={cn("h-full rounded-full", val > 60 ? "bg-red-400" : val > 35 ? "bg-amber-400" : "bg-emerald-400")}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${val}%` }}
-                  transition={{ duration: 0.4 }}
-                />
-              </div>
-              <span className="text-sm font-mono text-muted-foreground w-8 text-right shrink-0">{val}</span>
-            </div>
-          ))}
-        </div>
-
-        {route.alerts.length > 0 && (
-          <div className="space-y-3 mb-10">
-            {route.alerts.map((alert, i) => (
-              <div key={i} className="flex items-start gap-3 text-sm text-amber-400/90 bg-amber-400/5 border border-amber-400/15 rounded-lg px-4 py-3">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{alert}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <p className="text-sm text-muted-foreground leading-relaxed mb-10">{route.summary}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed mb-8">{route.summary}</p>
 
         <Button
           className={cn(
-            "w-full h-12 text-sm font-semibold rounded-lg",
-            selected ? "bg-primary text-primary-foreground" : "bg-muted/30 text-foreground hover:bg-muted/50 border border-border",
+            "w-full h-12 text-sm font-bold rounded-xl",
+            selected ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-muted/30 text-foreground hover:bg-muted/50 border border-border",
           )}
-          variant="ghost"
         >
-          {selected ? "Selected — Confirm Dispatch" : "Select This Route"}
+          {selected ? "Confirm Selection" : "Select This Route"}
         </Button>
       </div>
     </motion.div>
@@ -133,338 +92,138 @@ function AlternativeRow({ route, onSelect, selected }: {
       layoutId={`route-card-${route.id}`}
       layout
       onClick={() => onSelect(route.id)}
-      transition={{ layout: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}
       className={cn(
-        "border cursor-pointer transition-colors duration-150 overflow-hidden rounded-xl",
-        selected ? "border-primary bg-card" : "border-border/60 bg-card/50 hover:border-border hover:bg-card",
+        "border cursor-pointer transition-colors duration-150 overflow-hidden rounded-xl bg-card",
+        selected ? "border-blue-500" : "border-border/60 hover:border-border",
       )}
     >
-      <div className={cn("h-1 w-full",
-        route.riskLevel === "high" ? "bg-red-400/60" :
-        route.riskLevel === "medium" ? "bg-amber-400/60" : "bg-emerald-400/60"
-      )} />
-      <div className="px-6 py-6 flex items-center gap-6">
-        <div className="flex-1 min-w-0 space-y-2">
-          <span className={cn("text-xs uppercase tracking-widest font-semibold",
+      <div className="px-6 py-5 flex items-center justify-between">
+        <div className="space-y-1">
+          <span className={cn("text-[9px] uppercase tracking-widest font-black",
             route.label === "fastest" ? "text-amber-400" :
-            route.label === "balanced" ? "text-primary" : "text-emerald-400"
+            route.label === "balanced" ? "text-blue-400" : "text-emerald-400"
           )}>{route.label}</span>
-          <p className="text-sm font-semibold text-foreground">{route.eta} · {route.distance}</p>
+          <p className="text-sm font-bold">{route.durationHours.toFixed(1)}h · {route.distanceKm.toFixed(0)}km</p>
         </div>
-        <div className="text-right shrink-0">
-          <p className={cn("text-3xl font-bold tabular-nums", riskColor)}>{route.riskScore}</p>
-          <p className={cn("text-xs uppercase tracking-widest mt-1", riskColor)}>{route.riskLevel}</p>
+        <div className="text-right">
+          <p className={cn("text-2xl font-black tabular-nums", riskColor)}>{route.riskScore}</p>
         </div>
       </div>
     </motion.div>
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function RoutesPage() {
-  const { state, dispatchShipment, completeShipment, addStub } = useStore();
+  const router = useRouter();
+  const { state } = useStore();
   const pending = state.pendingShipment;
-  const shipmentData = pending ?? FALLBACK_SHIPMENT;
-  const [shipmentCode] = useState(() => generateShipmentCode());
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [dispatchedId, setDispatchedId] = useState<string | null>(null);
-  const [completed, setCompleted] = useState(false);
-  const [phase, setPhase] = useState<"cards" | "pass" | "tearing" | "map">("cards");
-
-  // ── API state ──────────────────────────────────────────────────────────────
+  const [phase, setPhase] = useState<"cards" | "pass" | "map">("cards");
   const [routes, setRoutes] = useState<Route[]>([]);
-  const [loadingRoutes, setLoadingRoutes] = useState(true);
-  const [routeError, setRouteError] = useState<string | null>(null);
-  const [weatherScore, setWeatherScore] = useState(20);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // ── AI insight state ───────────────────────────────────────────────────────
-  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-
-  // Fetch routes from API on mount
   useEffect(() => {
+    if (!pending) {
+      router.replace("/create-shipment");
+      return;
+    }
+
     const fetchRoutes = async () => {
-      setLoadingRoutes(true);
-      setRouteError(null);
+      setLoading(true);
       try {
         const res = await fetch("/api/analyze-routes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            origin: shipmentData.origin,
-            destination: shipmentData.destination,
-            cargoType: shipmentData.cargoType,
-            vehicleType: shipmentData.vehicleType,
-            urgency: "urgency" in shipmentData ? shipmentData.urgency : "Standard",
-          }),
+          body: JSON.stringify(pending),
         });
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        if (!res.ok) throw new Error("Failed to analyze routes");
         const data = await res.json();
-        setRoutes(data.routes ?? []);
-        setWeatherScore(data.weatherScore ?? 20);
+        setRoutes(data.routes);
       } catch (err) {
-        setRouteError(err instanceof Error ? err.message : "Failed to load routes");
+        setError(err instanceof Error ? err.message : "Analysis failed");
       } finally {
-        setLoadingRoutes(false);
+        setLoading(false);
       }
     };
-    fetchRoutes();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shipmentData.origin, shipmentData.destination]);
 
-  const selectedRoute = routes.find((r) => r.id === selectedId) ?? null;
-  const confidence = selectedRoute
-    ? selectedRoute.label === "balanced" ? 82 : selectedRoute.label === "safest" ? 94 : 61
-    : 82;
-  const recommended = routes.find((r) => r.recommended) ?? routes[1] ?? routes[0];
-  const alternatives = routes.filter((r) => r.id !== recommended?.id);
+    fetchRoutes();
+  }, [pending, router]);
+
+  if (loading) return (
+    <div className="max-w-7xl mx-auto py-32 flex flex-col items-center gap-6">
+      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full" />
+      <p className="text-muted-foreground animate-pulse">Running AI corridor analysis...</p>
+    </div>
+  );
+
+  if (error || !pending) return (
+    <div className="max-w-7xl mx-auto py-32 text-center">
+      <AlertTriangle className="mx-auto w-10 h-10 text-red-500 mb-4" />
+      <h2 className="text-xl font-bold">Analysis Failed</h2>
+      <p className="text-muted-foreground mb-8">{error}</p>
+      <Link href="/create-shipment"><Button>Restart Analysis</Button></Link>
+    </div>
+  );
+
+  const selectedRoute = routes.find(r => r.id === selectedId);
+  const recommended = routes.find(r => r.recommended) || routes[0];
+  const alternatives = routes.filter(r => r.id !== recommended.id);
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
-    setTimeout(() => setPhase("pass"), 350);
-
-    // Fetch AI insight for the selected route
-    const selected = routes.find((r) => r.id === id);
-    if (!selected) return;
-
-    setAiExplanation(null);
-    setAiLoading(true);
-
-    fetch("/api/ai-insight", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        origin:        shipmentData.origin,
-        destination:   shipmentData.destination,
-        cargoType:     shipmentData.cargoType,
-        vehicleType:   shipmentData.vehicleType,
-        urgency:       "urgency" in shipmentData ? shipmentData.urgency : "Standard",
-        selectedRoute: selected,
-        allRoutes:     routes,
-        weatherScore,
-      }),
-    })
-      .then((r) => r.json())
-      .then((data) => setAiExplanation(data.explanation ?? null))
-      .catch(() => setAiExplanation(null))
-      .finally(() => setAiLoading(false));
+    setPhase("pass");
   };
-
-  const handleConfirm = async () => {
-    if (!selectedRoute) { setPhase("map"); return; }
-    if (pending) {
-      const newShipment = await dispatchShipment({
-        pending,
-        route: selectedRoute,
-        confidencePercent: confidence,
-      });
-      setDispatchedId(newShipment.id);
-      const stub: ShipmentStubRecord = {
-        id: newShipment.id, shipmentCode: newShipment.shipmentCode,
-        origin: newShipment.origin, destination: newShipment.destination,
-        routeName: newShipment.routeName, riskScore: newShipment.riskScore,
-        riskLevel: newShipment.riskLevel, eta: newShipment.eta,
-        cargoType: newShipment.cargoType, vehicleType: newShipment.vehicleType,
-        confidencePercent: newShipment.confidencePercent,
-        dispatchedAt: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-        status: newShipment.status,
-      };
-      addStub(stub);
-    }
-    setPhase("map");
-  };
-
-  const handleComplete = () => {
-    if (dispatchedId) completeShipment(dispatchedId);
-    setCompleted(true);
-  };
-
-  // ── Loading state ──────────────────────────────────────────────────────────
-  if (loadingRoutes) {
-    return (
-      <div className="max-w-7xl mx-auto w-full">
-        <div className="flex flex-col items-center justify-center py-32 gap-4">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
-            className="w-8 h-8 border-2 border-border border-t-primary rounded-full"
-          />
-          <p className="text-sm text-muted-foreground">Analyzing routes...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Error state ────────────────────────────────────────────────────────────
-  if (routeError || routes.length === 0) {
-    return (
-      <div className="max-w-7xl mx-auto w-full">
-        <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
-          <AlertTriangle className="w-8 h-8 text-amber-400" />
-          <p className="text-base font-semibold text-foreground">Could not load routes</p>
-          <p className="text-sm text-muted-foreground">{routeError ?? "No routes returned"}</p>
-          <Button
-            className="mt-4 h-10 px-6 rounded-lg"
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (completed && selectedRoute) {
-    return (
-      <div className="max-w-lg mx-auto py-24 text-center px-4">
-        <div className="inline-flex items-center gap-5 border border-emerald-400/20 bg-emerald-400/5 px-10 py-8 rounded-xl">
-          <CheckCircle className="w-7 h-7 text-emerald-400 shrink-0" />
-          <div className="text-left space-y-1">
-            <p className="text-base font-semibold text-foreground">Shipment completed</p>
-            <p className="text-sm text-muted-foreground">
-              {selectedRoute.name} · {shipmentData.origin} → {shipmentData.destination}
-            </p>
-          </div>
-        </div>
-        <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href="/dashboard">
-            <Button className="h-11 px-8 w-full sm:w-auto rounded-lg">Go to Dashboard</Button>
-          </Link>
-          <Link href="/create-shipment">
-            <Button variant="outline" className="h-11 px-8 w-full sm:w-auto rounded-lg">New Shipment</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <LayoutGroup>
-      <div className="max-w-7xl mx-auto w-full space-y-8">
-
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-8 border-b border-border">
-          <div className="flex flex-wrap items-center gap-5">
+      <div className="max-w-7xl mx-auto w-full space-y-8 p-6">
+        <div className="flex items-center justify-between border-b border-border pb-8">
+          <div className="flex items-center gap-6">
             <Link href="/create-shipment">
-              <button className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors">
-                <ChevronLeft className="w-4 h-4" /> Back
-              </button>
+              <Button variant="ghost" size="sm" className="gap-2"><ChevronLeft size={16}/> Back</Button>
             </Link>
-            <div className="flex items-center gap-2.5 text-lg font-semibold text-foreground">
-              <span>{shipmentData.origin}</span>
-              <ArrowRight className="w-4 h-4 text-muted-foreground/50" />
-              <span>{shipmentData.destination}</span>
+            <div className="flex items-center gap-3 text-xl font-black">
+              <span>{pending.origin}</span>
+              <ArrowRight size={18} className="text-muted-foreground/40" />
+              <span>{pending.destination}</span>
             </div>
-            <span className="text-xs text-muted-foreground border border-border px-3 py-1.5 uppercase tracking-widest rounded-md hidden sm:inline">
-              {shipmentData.cargoType}
-            </span>
           </div>
-          <p className="text-sm text-muted-foreground">3 routes analyzed</p>
+          <div className="text-sm text-muted-foreground uppercase tracking-widest">3 Corridors Found</div>
         </div>
 
-        {/* Map view */}
-        {phase === "map" && selectedRoute ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-            className="flex flex-col lg:flex-row gap-8"
-          >
-            <div className="flex-1 min-w-0">
-              <RouteMapView
-                route={selectedRoute}
-                routes={routes}
-                status="dispatched"
-                origin={shipmentData.origin}
-                destination={shipmentData.destination}
-                aiExplanation={aiExplanation}
-                aiLoading={aiLoading}
-              />
-            </div>
-            <div className="lg:w-80 shrink-0 space-y-5">
-              <DispatchedStub
-                shipment={{
-                  origin: shipmentData.origin, destination: shipmentData.destination,
-                  cargoType: shipmentData.cargoType, vehicleType: shipmentData.vehicleType,
-                  shipmentCode, confidencePercent: confidence,
-                }}
-                route={selectedRoute}
-              />
-              <div className="border border-border rounded-xl p-6 space-y-5">
-                <p className="text-xs text-muted-foreground uppercase tracking-widest">Active risk</p>
-                <div className="space-y-4">
-                  {Object.entries(selectedRoute.riskBreakdown).map(([key, val]) => (
-                    <div key={key} className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground w-24 shrink-0 capitalize">
-                        {key === "cargoSensitivity" ? "Cargo" : key}
-                      </span>
-                      <div className="flex-1 h-2 bg-muted overflow-hidden rounded-full">
-                        <div className={cn("h-full rounded-full", val > 60 ? "bg-red-400" : val > 35 ? "bg-amber-400" : "bg-emerald-400")}
-                          style={{ width: `${val}%` }} />
-                      </div>
-                      <span className="text-sm font-mono text-muted-foreground w-6 text-right">{val}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="border border-border rounded-xl p-6 space-y-3">
-                <Button className="w-full h-11 text-sm font-semibold rounded-lg" onClick={handleComplete}>
-                  Mark as Completed
-                </Button>
-                <Link href="/dashboard" className="block">
-                  <Button variant="outline" className="w-full h-11 text-sm rounded-lg">Go to Dashboard</Button>
-                </Link>
-              </div>
-            </div>
-          </motion.div>
-
-        ) : phase === "pass" && selectedRoute ? (
-          <motion.div
-            key="pass-view"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.35, ease: [0.2, 0, 0.2, 1] }}
-            layout
-            className="flex justify-center py-8"
-          >
-            <div className="w-full max-w-lg">
-              <ShipmentPass
-                route={selectedRoute}
-                shipment={{
-                  origin: shipmentData.origin, destination: shipmentData.destination,
-                  cargoType: shipmentData.cargoType, vehicleType: shipmentData.vehicleType,
-                  shipmentCode, confidencePercent: confidence,
-                }}
-                onConfirm={handleConfirm}
-                morphLayoutId={`route-card-${selectedRoute.id}`}
-              />
-            </div>
-          </motion.div>
-
+        {phase === "pass" && selectedRoute ? (
+          <div className="py-12">
+            <ShipmentPass 
+              route={selectedRoute} 
+              pending={pending} 
+              onConfirm={() => router.push("/shipments")}
+            />
+          </div>
         ) : (
-          <div className="flex flex-col lg:flex-row gap-8">
-            <div className="flex-1 min-w-0">
-              <DominantRoute
-                route={recommended}
-                onSelect={handleSelect}
-                selected={selectedId === recommended.id}
+          <div className="flex flex-col lg:flex-row gap-10">
+            <div className="flex-1">
+              <DominantRoute 
+                route={recommended} 
+                onSelect={handleSelect} 
+                selected={selectedId === recommended.id} 
               />
             </div>
-            <div className="lg:w-80 xl:w-88 shrink-0 space-y-5">
-              <p className="text-xs text-muted-foreground uppercase tracking-widest">Alternatives</p>
-              {alternatives.map((route) => (
-                <AlternativeRow
-                  key={route.id}
-                  route={route}
-                  onSelect={handleSelect}
-                  selected={selectedId === route.id}
+            <div className="lg:w-96 space-y-6">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">Alternative Corridors</p>
+              {alternatives.map(r => (
+                <AlternativeRow 
+                  key={r.id} 
+                  route={r} 
+                  onSelect={handleSelect} 
+                  selected={selectedId === r.id} 
                 />
               ))}
-              <div className="border border-border/50 rounded-xl p-6 space-y-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-widest">Decision context</p>
+              
+              <div className="bg-blue-600/5 border border-blue-600/20 rounded-2xl p-6">
+                <p className="text-xs font-bold text-blue-400 mb-2 uppercase">Operational Intel</p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Fastest route is not always the best. Balanced routes reduce disruption risk without major ETA loss.
+                  The recommended route balances fuel efficiency with infrastructure stability. Weather patterns along this corridor are currently favorable.
                 </p>
               </div>
             </div>

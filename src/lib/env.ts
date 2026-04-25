@@ -28,10 +28,6 @@ function requireEnv(key: string): string {
   return value.trim();
 }
 
-function optionalEnv(key: string, fallback = ""): string {
-  return process.env[key]?.trim() ?? fallback;
-}
-
 // ─── Firebase (client-safe, NEXT_PUBLIC_) ─────────────────────────────────────
 
 export const firebaseConfig = {
@@ -44,9 +40,6 @@ export const firebaseConfig = {
 } as const;
 
 // ─── Server-only API keys ─────────────────────────────────────────────────────
-
-/** Google Maps Routes API key — server-side only */
-export const GOOGLE_MAPS_API_KEY = requireEnv("GOOGLE_MAPS_API_KEY");
 
 /** OpenWeather API key — server-side only */
 export const OPENWEATHER_API_KEY = requireEnv("OPENWEATHER_API_KEY");
@@ -71,7 +64,6 @@ export function logEnvStatus(): void {
     "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
     "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
     "NEXT_PUBLIC_FIREBASE_APP_ID",
-    "GOOGLE_MAPS_API_KEY",
     "OPENWEATHER_API_KEY",
     "GEMINI_API_KEY",
   ];
