@@ -27,7 +27,7 @@ const PUBLIC_PATHS = [
 
 const SESSION_COOKIE = "sr_session";
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Allow all API routes and Next.js internals through
