@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateExplanation } from "@/lib/gemini";
+import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import type { Route } from "@/lib/types";
 
 /**
  * POST /api/ai-insight
  * Generates a Gemini AI explanation for a selected route.
+ * Requires valid Firebase authentication.
  */
 export async function POST(req: NextRequest) {
+  // ── Auth: require valid Firebase token ────────────────────────────────────
+  try {
+    await verifyFirebaseToken(req);
+  } catch (err) {
+    if (err instanceof Response) return err;
+    console.error("[ai-insight] Auth service error:", err);
+    return NextResponse.json(
+      { error: "Authentication service unavailable" },
+      { status: 503 }
+    );
+  }
   let body: {
     origin: string;
     destination: string;

@@ -6,7 +6,7 @@ import { ArrowLeft, MapPin, Clock, Truck, Package, CheckCircle } from "lucide-re
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { RouteMapView } from "@/components/shipment/RouteMapView";
-import { getRiskColor, cn, formatRelativeTime } from "@/lib/utils";
+import { getRiskColor, cn, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import type { Shipment } from "@/lib/types";
 
@@ -186,12 +186,12 @@ export default function ShipmentDetailPage({
               </div>
             </div>
 
-            {shipment.predictiveAlert && (
+            {getMeaningfulAlert(shipment.predictiveAlert) && (
               <>
                 <Separator className="my-5 opacity-30" />
                 <div className="flex items-start gap-3 bg-amber-400/5 border border-amber-400/20 rounded-lg px-4 py-3">
                   <span className="text-amber-400 mt-0.5">⚠</span>
-                  <p className="text-sm text-amber-400/90 leading-relaxed">{shipment.predictiveAlert}</p>
+                  <p className="text-sm text-amber-400/90 leading-relaxed">{getMeaningfulAlert(shipment.predictiveAlert)}</p>
                 </div>
               </>
             )}

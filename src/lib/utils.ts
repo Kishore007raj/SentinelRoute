@@ -35,6 +35,22 @@ export function getRiskColor(riskLevel: RiskLevel): string {
   }
 }
 
+/**
+ * Returns the predictive alert only if it's a real, meaningful alert.
+ * Filters out generic fallback strings that were saved to the DB
+ * before the fix (e.g. "Monitor route conditions").
+ */
+const GENERIC_ALERTS = new Set([
+  "monitor route conditions",
+  "monitoring route conditions",
+]);
+
+export function getMeaningfulAlert(alert: string | undefined): string | undefined {
+  if (!alert) return undefined;
+  if (GENERIC_ALERTS.has(alert.toLowerCase().trim())) return undefined;
+  return alert;
+}
+
 export function getRiskBgColor(riskLevel: RiskLevel): string {
   switch (riskLevel) {
     case "low":      return "bg-emerald-400/10 border-emerald-400/20"

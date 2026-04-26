@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { getUserIdFromRequest } from "@/lib/auth";
+import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { emitToUser } from "@/lib/socket-server";
+import { utcNow } from "@/lib/time";
 
 /**
  * PATCH /api/shipments/[id]
@@ -18,20 +20,18 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  let userId: string | null;
+  let userId: string;
 
   try {
-    userId = await getUserIdFromRequest(req);
-  } catch {
-    console.error("[PATCH /api/shipments/[id]] Auth service error");
+    const user = await verifyFirebaseToken(req);
+    userId = user.uid;
+  } catch (err) {
+    if (err instanceof Response) return err;
+    console.error("[PATCH /api/shipments/[id]] Auth service error:", err);
     return NextResponse.json(
       { error: "Authentication service unavailable" },
       { status: 503 }
     );
-  }
-
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await params;
@@ -55,7 +55,7 @@ export async function PATCH(
 
   try {
     const db = await getDb();
-    const now = new Date().toISOString();
+    const now = utcNow(); // UTC ISO — clients display in their local timezone
 
     // Filter by both id AND userId — prevents cross-user modification
     const result = await db.collection("shipments").findOneAndUpdate(
@@ -71,6 +71,14 @@ export async function PATCH(
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { _id, userId: _uid, ...shipment } = result;
+
+    // Emit real-time status update to the user's connected clients
+    emitToUser(userId, "shipment:status", {
+      id,
+      status:     "completed",
+      lastUpdate: now,
+    });
+
     return NextResponse.json({ shipment });
   } catch (err) {
     console.error("[PATCH /api/shipments/[id]] DB error:", err);

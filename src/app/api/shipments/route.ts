@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Shipment, CreateShipmentRequest } from "@/lib/types";
 import { generateShipmentCode, getRiskLabel } from "@/lib/utils";
 import { getDb } from "@/lib/mongodb";
-import { getUserIdFromRequest } from "@/lib/auth";
+import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { encryptObjectFields, decryptObjectFields } from "@/lib/encryption";
+import { emitToUser } from "@/lib/socket-server";
+import { utcNow } from "@/lib/time";
 
 /**
  * GET /api/shipments
  * Returns shipments scoped to the authenticated user.
- * No auth header → empty list (200).
- * Invalid token → empty list (200).
+ * No/invalid auth → 401.
  * DB error → 503.
  *
  * POST /api/shipments
@@ -21,35 +23,35 @@ import { getUserIdFromRequest } from "@/lib/auth";
 // ─── GET /api/shipments ───────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
-  let userId: string | null;
+  let userId: string;
 
   try {
-    userId = await getUserIdFromRequest(req);
-  } catch {
-    // Admin SDK failure — not a client error
+    const user = await verifyFirebaseToken(req);
+    userId = user.uid;
+  } catch (err) {
+    // verifyFirebaseToken throws a Response on 401 — return it directly
+    if (err instanceof Response) return err;
+    console.error("[GET /api/shipments] Auth service error:", err);
     return NextResponse.json(
       { error: "Authentication service unavailable" },
       { status: 503 }
     );
   }
 
-  // No valid auth → return empty list, not an error
-  if (!userId) {
-    return NextResponse.json({ shipments: [], total: 0 });
-  }
-
   try {
     const db = await getDb();
     const docs = await db
       .collection("shipments")
-      .find({ userId })
+      .find({ userId })           // ← always scoped to authenticated user
       .sort({ createdAt: -1 })
       .toArray();
 
     const shipments: Shipment[] = docs.map((doc) => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { _id, userId: _uid, ...rest } = doc;
-      return rest as Shipment;
+      // Decrypt sensitive fields before sending to client
+      const decrypted = decryptObjectFields(rest, ["notes", "contactDetails", "specialInstructions"]);
+      return decrypted as Shipment;
     });
 
     return NextResponse.json({ shipments, total: shipments.length });
@@ -65,20 +67,18 @@ export async function GET(req: NextRequest) {
 // ─── POST /api/shipments ──────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  let userId: string | null;
+  let userId: string;
 
   try {
-    userId = await getUserIdFromRequest(req);
-  } catch {
-    console.error("[POST /api/shipments] Auth service error");
+    const user = await verifyFirebaseToken(req);
+    userId = user.uid;
+  } catch (err) {
+    if (err instanceof Response) return err;
+    console.error("[POST /api/shipments] Auth service error:", err);
     return NextResponse.json(
       { error: "Authentication service unavailable" },
       { status: 503 }
     );
-  }
-
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let raw: Record<string, unknown>;
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "confidencePercent must be a number" }, { status: 400 });
   }
 
-  const now = new Date().toISOString();
+  const now = utcNow(); // UTC ISO — clients display in their local timezone
 
   const selectedRoute =
     routeId.includes("fastest") ? "fastest" as const :
@@ -184,21 +184,31 @@ export async function POST(req: NextRequest) {
 
   try {
     const db = await getDb();
+
     // Strip undefined values — MongoDB rejects documents containing undefined fields
     const cleanBreakdown = shipment.riskBreakdown
       ? Object.fromEntries(Object.entries(shipment.riskBreakdown).filter(([, v]) => v !== undefined))
       : undefined;
-    const cleanShipment = Object.fromEntries(
-      Object.entries({ ...shipment, riskBreakdown: cleanBreakdown, userId })
+
+    const rawDocument: Record<string, unknown> = Object.fromEntries(
+      Object.entries({ ...shipment, riskBreakdown: cleanBreakdown })
         .filter(([, v]) => v !== undefined)
     );
-    console.log("📦 Clean Shipment Payload:", JSON.stringify(cleanShipment, null, 2));
-    await db.collection("shipments").insertOne(cleanShipment);
+
+    // Encrypt sensitive fields (notes, contactDetails, specialInstructions)
+    // before persisting — non-sensitive operational fields are stored as-is
+    const encryptedDocument = encryptObjectFields(rawDocument, ["notes", "contactDetails", "specialInstructions"]);
+
+    // Always scope to authenticated userId — never trust userId from request body
+    await db.collection("shipments").insertOne({ ...encryptedDocument, userId });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("[POST /api/shipments] DB insert error:", detail);
     return NextResponse.json({ error: `Failed to save shipment: ${detail}` }, { status: 500 });
   }
+
+  // Emit real-time event to the user's connected clients
+  emitToUser(userId, "shipment:created", { shipment });
 
   return NextResponse.json({ shipment }, { status: 201 });
 }

@@ -5,23 +5,39 @@ import { getOsrmRoutes } from "@/lib/osrm";
 import { getRouteWeather } from "@/lib/weather";
 import { computeRiskScore, selectRecommendedRoute } from "@/lib/risk";
 import { getRouteWeatherRisk } from "@/lib/weather-service";
+import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { createDecisionHash } from "@/lib/hash";
 
 /**
  * POST /api/analyze-routes
  *
  * Real route intelligence pipeline:
- *   1. OSRM  → routing (distance, duration, geometry)
- *   2. OpenWeather → weather risk for the corridor
- *   3. Risk engine → composite score per route variant
- *   4. Route construction → full Route[] matching the app's type
+ *   1. Auth  → Firebase token verification (required)
+ *   2. OSRM  → routing (distance, duration, geometry)
+ *   3. OpenWeather → weather risk for the corridor
+ *   4. Risk engine → composite score per route variant
+ *   5. Route construction → full Route[] matching the app's type
+ *   6. Integrity hash → SHA-256 of each route decision
  *
  * Falls back to static routes if external APIs are unavailable.
  * Response shape is identical to Layer 1 — no frontend changes required.
  */
 
-// ─── Request validation ───────────────────────────────────────────────────────
+// ─── Request handler ──────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  // ── Auth: require valid Firebase token ────────────────────────────────────
+  try {
+    await verifyFirebaseToken(req);
+  } catch (err) {
+    if (err instanceof Response) return err;
+    console.error("[analyze-routes] Auth service error:", err);
+    return NextResponse.json(
+      { error: "Authentication service unavailable" },
+      { status: 503 }
+    );
+  }
+
   let raw: Record<string, unknown>;
   try {
     raw = await req.json();
@@ -43,8 +59,19 @@ export async function POST(req: NextRequest) {
   if (!osrmRoutes.length) {
     console.warn(`[analyze-routes] OSRM failed for ${origin}→${destination} — using static fallback`);
     const routes = buildStaticRoutes(origin, destination, cargoType, urgency);
+
+    // Attach integrity hash to each route decision
+    const routesWithHash = routes.map((route) => ({
+      ...route,
+      decisionHash: createDecisionHash({
+        route,
+        riskScore:  route.riskScore,
+        weather:    route.riskBreakdown.weather,
+      }),
+    }));
+
     const response: AnalyzeRoutesResponse = {
-      routes,
+      routes: routesWithHash,
       analyzedAt: new Date().toISOString(),
       source: "static-fallback",
     };
@@ -105,7 +132,7 @@ export async function POST(req: NextRequest) {
     urgency
   );
 
-  // Build final Route objects
+  // Build final Route objects with SHA-256 integrity hash per decision
   const routes: Route[] = scoredRoutes.map(
     ({ osrmRoute, riskResult, trafficScore }, i): Route => {
       const routeIndex = i + 1; // 1-based for naming
@@ -115,6 +142,13 @@ export async function POST(req: NextRequest) {
         corridorWeather.weatherAlert,
         riskResult.predictiveAlert
       );
+
+      // Compute integrity hash over the immutable decision data
+      const decisionHash = createDecisionHash({
+        route:     { id: `route-${osrmRoute.label}`, label: osrmRoute.label, riskBreakdown: riskResult.riskBreakdown },
+        riskScore: riskResult.riskScore,
+        weather:   weatherScore,
+      });
 
       return {
         id:          `route-${osrmRoute.label}`,
@@ -130,9 +164,8 @@ export async function POST(req: NextRequest) {
         summary:     buildSummary(osrmRoute.label, origin, destination, osrmRoute.durationMins, osrmRoute.distanceKm),
         riskBreakdown: riskResult.riskBreakdown,
         alerts,
-        // Only the fastest route uses real OSRM geometry.
-        // Balanced and safest are synthesized estimates.
-        isSimulated: osrmRoute.label !== "fastest",
+        isSimulated:  osrmRoute.label !== "fastest",
+        decisionHash,
       };
     }
   );

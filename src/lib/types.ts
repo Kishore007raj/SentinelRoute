@@ -42,6 +42,11 @@ export interface Route {
    * or any route from the static fallback). False only for the live OSRM fastest route.
    */
   isSimulated?:  boolean;
+  /**
+   * SHA-256 hash of the route decision data for integrity verification.
+   * Used to detect tampering of route recommendations.
+   */
+  decisionHash?: string;
 }
 
 // ─── Shipment ─────────────────────────────────────────────────────────────────

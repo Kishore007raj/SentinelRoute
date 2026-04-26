@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, LayoutGroup } from "framer-motion";
 import { ArrowRight, ChevronLeft, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { RouteMapView } from "@/components/shipment/RouteMapView";
 import { DispatchedStub } from "@/components/shipment/ShipmentPass";
 import { generateShipmentCode, cn, getRiskColor } from "@/lib/utils";
 import { useStore } from "@/lib/store";
+import { useUser } from "@/lib/auth-context";
 import type { Route } from "@/lib/types";
 import {
   recommendationBadge,
@@ -215,6 +216,7 @@ function AlternativeRow({ route, onSelect, selected, referenceRoute }: {
 
 export default function RoutesPage() {
   const { state, dispatchShipment, completeShipment } = useStore();
+  const { user } = useUser();
 
   // Capture pending shipment at mount time.
   // After dispatch, store clears pendingShipment — if we read it reactively,
@@ -236,6 +238,8 @@ export default function RoutesPage() {
   const [dataSource, setDataSource] = useState<string | undefined>(undefined);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  // Cache AI explanations per route ID — avoids re-calling Gemini when switching back
+  const aiCacheRef = useRef<Record<string, string | null>>({});
 
   useEffect(() => {
     if (!shipmentData) return;
@@ -245,9 +249,13 @@ export default function RoutesPage() {
       setRouteError(null);
       try {
         console.log("ROUTE INPUT:", shipmentData.origin, "→", shipmentData.destination);
+        const token = user ? await user.getIdToken() : null;
         const res = await fetch("/api/analyze-routes", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({
             origin:      shipmentData.origin,
             destination: shipmentData.destination,
@@ -285,6 +293,14 @@ export default function RoutesPage() {
 
     const selected = routes.find((r) => r.id === id);
     if (!selected || !shipmentData) return;
+
+    // Return cached result immediately — no Gemini call needed
+    if (id in aiCacheRef.current) {
+      setAiExplanation(aiCacheRef.current[id]);
+      setAiLoading(false);
+      return;
+    }
+
     setAiExplanation(null);
     setAiLoading(true);
 
@@ -294,27 +310,42 @@ export default function RoutesPage() {
       // explanation stays null → AiInsightBox renders deterministic fallback
     }, 10_000);
 
-    fetch("/api/ai-insight", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        origin:        shipmentData.origin,
-        destination:   shipmentData.destination,
-        cargoType:     shipmentData.cargoType,
-        vehicleType:   shipmentData.vehicleType,
-        urgency,
-        selectedRoute: selected,
-        allRoutes:     routes,
-        weatherScore,
-      }),
-    })
-      .then((r) => r.json())
-      .then((data) => setAiExplanation(data.explanation ?? null))
-      .catch(() => setAiExplanation(null))
-      .finally(() => {
-        clearTimeout(aiTimeout);
-        setAiLoading(false);
-      });
+    user?.getIdToken().then((token) => {
+      fetch("/api/ai-insight", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          origin:        shipmentData.origin,
+          destination:   shipmentData.destination,
+          cargoType:     shipmentData.cargoType,
+          vehicleType:   shipmentData.vehicleType,
+          urgency,
+          selectedRoute: selected,
+          allRoutes:     routes,
+          weatherScore,
+        }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          const explanation = data.explanation ?? null;
+          aiCacheRef.current[id] = explanation; // cache for this session
+          setAiExplanation(explanation);
+        })
+        .catch(() => {
+          aiCacheRef.current[id] = null;
+          setAiExplanation(null);
+        })
+        .finally(() => {
+          clearTimeout(aiTimeout);
+          setAiLoading(false);
+        });
+    }).catch(() => {
+      clearTimeout(aiTimeout);
+      setAiLoading(false);
+    });
   };
 
   const handleConfirm = async () => {
@@ -369,14 +400,18 @@ export default function RoutesPage() {
 
   // ── Error ─────────────────────────────────────────────────────────────────
   if (routeError || routes.length === 0) {
-    const handleRetry = () => {
+    const handleRetry = async () => {
       setRouteError(null);
       setRoutes([]);
       setLoadingRoutes(true);
 
+      const token = user ? await user.getIdToken() : null;
       fetch("/api/analyze-routes", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           origin:      shipmentData.origin,
           destination: shipmentData.destination,

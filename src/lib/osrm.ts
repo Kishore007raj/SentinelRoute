@@ -52,10 +52,13 @@ export async function geocodeCity(city: string): Promise<[number, number] | null
   // Nominatim fallback for cities not in the table
   try {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)},India&format=json&limit=1`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(url, {
       headers: { "User-Agent": "SentinelRoute/1.0" },
-      signal: AbortSignal.timeout(5000),
+      signal: controller.signal,
     });
+    clearTimeout(timer);
     if (!res.ok) return null;
     const data = await res.json();
     if (!data.length) return null;
@@ -87,11 +90,17 @@ async function fetchOsrmRoute(
     `${startLng},${startLat};${endLng},${endLat}` +
     `?overview=full&geometries=geojson`;
 
+  // Use a manual AbortController + setTimeout instead of AbortSignal.timeout()
+  // to avoid unhandled rejection crashes on ECONNRESET in some Node.js versions.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+
   try {
     const res = await fetch(url, {
-      signal: AbortSignal.timeout(10_000),
+      signal: controller.signal,
       headers: { "User-Agent": "SentinelRoute/1.0" },
     });
+    clearTimeout(timer);
     if (!res.ok) {
       console.error(`[osrm] API error ${res.status}`);
       return null;
@@ -100,7 +109,16 @@ async function fetchOsrmRoute(
     if (!data.routes?.length) return null;
     return data.routes[0] as OsrmApiRoute;
   } catch (err) {
-    console.error("[osrm] Fetch failed:", err);
+    clearTimeout(timer);
+    const code = (err as { code?: string }).code;
+    const name = (err as { name?: string }).name;
+    if (name === "AbortError") {
+      console.warn("[osrm] Request timed out");
+    } else if (code === "ECONNRESET" || code === "ECONNREFUSED" || code === "ENOTFOUND") {
+      console.warn(`[osrm] Network error (${code}) — OSRM demo server unavailable`);
+    } else {
+      console.error("[osrm] Fetch failed:", err);
+    }
     return null;
   }
 }

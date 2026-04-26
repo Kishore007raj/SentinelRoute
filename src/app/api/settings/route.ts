@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { getUserIdFromRequest } from "@/lib/auth";
+import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import type { UserSettings } from "@/lib/types";
 import { DEFAULT_SETTINGS } from "@/lib/types";
 
@@ -16,15 +16,18 @@ import { DEFAULT_SETTINGS } from "@/lib/types";
 // ─── GET ──────────────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
-  let userId: string | null;
-  try {
-    userId = await getUserIdFromRequest(req);
-  } catch {
-    return NextResponse.json({ error: "Authentication service unavailable" }, { status: 503 });
-  }
+  let userId: string;
 
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const user = await verifyFirebaseToken(req);
+    userId = user.uid;
+  } catch (err) {
+    if (err instanceof Response) return err;
+    console.error("[GET /api/settings] Auth service error:", err);
+    return NextResponse.json(
+      { error: "Authentication service unavailable" },
+      { status: 503 }
+    );
   }
 
   try {
@@ -53,15 +56,18 @@ export async function GET(req: NextRequest) {
 // ─── POST ─────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  let userId: string | null;
-  try {
-    userId = await getUserIdFromRequest(req);
-  } catch {
-    return NextResponse.json({ error: "Authentication service unavailable" }, { status: 503 });
-  }
+  let userId: string;
 
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const user = await verifyFirebaseToken(req);
+    userId = user.uid;
+  } catch (err) {
+    if (err instanceof Response) return err;
+    console.error("[POST /api/settings] Auth service error:", err);
+    return NextResponse.json(
+      { error: "Authentication service unavailable" },
+      { status: 503 }
+    );
   }
 
   let body: Partial<Omit<UserSettings, "userId" | "updatedAt">>;

@@ -178,12 +178,12 @@ export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId, urgenc
         )}
       </AnimatePresence>
 
-      {/* ── Risk alert banner ─────────────────────────────────────────────── */}
-      {route.riskLevel !== "low" && (
+      {/* ── Risk alert banner — only shown when there is a real alert ──── */}
+      {route.alerts.length > 0 && (
         <div className="bg-amber-400/10 border-b border-amber-400/20 px-6 py-3 flex items-center gap-3">
           <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
           <span className="text-xs text-amber-400 font-medium">
-            Risk score {route.riskScore}/100 — {route.alerts[0] ?? "Monitor route conditions"}
+            Risk score {route.riskScore}/100 — {route.alerts[0]}
           </span>
         </div>
       )}

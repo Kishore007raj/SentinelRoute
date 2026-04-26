@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { PlusSquare, AlertTriangle, ArrowRight, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
-import { cn, getRiskColor, formatRelativeTime } from "@/lib/utils";
+import { cn, getRiskColor, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import Link from "next/link";
 import type { Shipment } from "@/lib/types";
 
@@ -79,10 +79,10 @@ function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: numbe
             </div>
 
             {/* Alert sub-row */}
-            {shipment.predictiveAlert && (
+            {getMeaningfulAlert(shipment.predictiveAlert) && (
               <div className="flex items-start gap-2.5 mt-4 pt-4 border-t border-border/20">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-400/80 leading-relaxed">{shipment.predictiveAlert}</p>
+                <p className="text-sm text-amber-400/80 leading-relaxed">{getMeaningfulAlert(shipment.predictiveAlert)}</p>
               </div>
             )}
           </div>
@@ -107,8 +107,8 @@ export default function DashboardPage() {
   const highRiskAvoided = shipments.filter(
     (s) => s.selectedRoute !== "fastest" && s.riskScore > 50
   ).length;
-  const topAlert         = shipments.find((s) => s.status === "at-risk" && s.predictiveAlert)
-    ?? shipments.find((s) => s.predictiveAlert);
+  const topAlert = shipments.find((s) => s.status === "at-risk" && getMeaningfulAlert(s.predictiveAlert))
+    ?? shipments.find((s) => getMeaningfulAlert(s.predictiveAlert));
   const feedShipments    = [...activeShipments, ...completedShipments.slice(0, 3)];
 
   if (loading) {
@@ -260,8 +260,8 @@ export default function DashboardPage() {
                         <span className="text-base font-bold text-amber-400">{s.riskScore}</span>
                       </div>
                       <p className="text-sm font-semibold text-foreground">{s.origin} → {s.destination}</p>
-                      {s.predictiveAlert && (
-                        <p className="text-xs text-amber-400/80 leading-relaxed">{s.predictiveAlert}</p>
+                      {getMeaningfulAlert(s.predictiveAlert) && (
+                        <p className="text-xs text-amber-400/80 leading-relaxed">{getMeaningfulAlert(s.predictiveAlert)}</p>
                       )}
                     </div>
                   </Link>

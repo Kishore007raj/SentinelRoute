@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
-import { cn, getRiskColor, formatRelativeTime } from "@/lib/utils";
+import { cn, getRiskColor, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import type { Shipment, ShipmentStatus } from "@/lib/types";
 
 const tabConfig: { value: ShipmentStatus | "all"; label: string }[] = [
@@ -60,10 +60,10 @@ function ShipmentCard({ shipment, index }: { shipment: Shipment; index: number }
             <p className="text-sm font-semibold text-foreground">{shipment.routeName}</p>
           </div>
         </div>
-        {shipment.predictiveAlert && (
+        {getMeaningfulAlert(shipment.predictiveAlert) && (
           <div className="flex items-start gap-2.5 bg-amber-400/5 border border-amber-400/15 rounded-lg px-4 py-3">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-            <p className="text-sm text-amber-400/80 leading-relaxed">{shipment.predictiveAlert}</p>
+            <p className="text-sm text-amber-400/80 leading-relaxed">{getMeaningfulAlert(shipment.predictiveAlert)}</p>
           </div>
         )}
         <div className="flex items-center justify-between pt-4 border-t border-border/30">
@@ -124,10 +124,10 @@ function ShipmentRow({ shipment, index }: { shipment: Shipment; index: number })
           </div>
 
           {/* Alert */}
-          {shipment.predictiveAlert && (
+          {getMeaningfulAlert(shipment.predictiveAlert) && (
             <div className="hidden xl:flex items-start gap-2 max-w-56 shrink-0">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-400/80 truncate">{shipment.predictiveAlert}</p>
+              <p className="text-xs text-amber-400/80 truncate">{getMeaningfulAlert(shipment.predictiveAlert)}</p>
             </div>
           )}
 

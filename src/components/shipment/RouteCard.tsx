@@ -43,7 +43,7 @@ export function RouteCard({ route, selected, onSelect, index = 0 }: RouteCardPro
       {selected && (
         <motion.div
           layoutId="card-selected-glow"
-          className="absolute inset-0 bg-primary/[0.03] pointer-events-none"
+          className="absolute inset-0 bg-primary/3 pointer-events-none"
           transition={{ duration: 0.2 }}
         />
       )}

@@ -32,8 +32,17 @@ export default function AnalyticsPage() {
   const { shipments = [] } = state;
   const [hydrated, setHydrated] = useState(false);
 
+  // Handle hydration properly with useEffect
   useEffect(() => {
-    setHydrated(true);
+    const timer = setTimeout(() => setHydrated(true), 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Move Date.now() to useEffect to avoid calling impure function during render
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  
+  useEffect(() => {
+    setCurrentTime(Date.now());
   }, []);
 
   const memoStats = useMemo(() => {
@@ -52,7 +61,7 @@ export default function AnalyticsPage() {
     ).length;
 
     // Volume chart: real per-week bucketing from createdAt, or empty if no data
-    const now = Date.now();
+    const now = currentTime || Date.now(); // Fallback for SSR
     const volumeData = Array.from({ length: 7 }, (_, i) => {
       const weekStart = now - (6 - i) * 7 * 24 * 60 * 60 * 1000;
       const weekEnd   = weekStart + 7 * 24 * 60 * 60 * 1000;
@@ -92,7 +101,7 @@ export default function AnalyticsPage() {
     ];
 
     return { total, completed, active, avgRiskScore, highRiskAvoided, volumeData, riskDist, volTrend };
-  }, [shipments]);
+  }, [shipments, currentTime]);
 
   if (!hydrated) return null;
 

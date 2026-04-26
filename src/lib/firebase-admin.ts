@@ -1,5 +1,5 @@
 /**
- * firebase-admin.ts — Firebase Admin SDK singleton.
+ * firebase-admin.ts — Firebase Admin SDK singleton + token verification.
  *
  * Initialises with service account credentials when available.
  * Degrades gracefully when credentials are missing — the app starts
@@ -61,3 +61,77 @@ const adminApp = initAdmin();
  * Check for null before calling verifyIdToken.
  */
 export const adminAuth: Auth | null = adminApp ? getAuth(adminApp) : null;
+
+// ─── Token verification ───────────────────────────────────────────────────────
+
+export interface VerifiedUser {
+  uid: string;
+}
+
+/**
+ * Verifies a Firebase ID token from the Authorization header.
+ *
+ * Reads:  Authorization: Bearer <token>
+ * Returns { uid } on success.
+ * Throws a Response (401) when:
+ *   - No Authorization header present
+ *   - Token is missing, malformed, expired, or revoked
+ *   - Admin SDK is not configured (cannot verify)
+ *
+ * Usage in API routes:
+ *   const user = await verifyFirebaseToken(req);
+ *   const userId = user.uid;
+ */
+export async function verifyFirebaseToken(req: Request): Promise<VerifiedUser> {
+  const authHeader = req.headers.get("authorization") ?? "";
+
+  if (!authHeader.startsWith("Bearer ")) {
+    throw new Response(
+      JSON.stringify({ error: "Unauthorized: missing Authorization header" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const token = authHeader.slice(7).trim();
+  if (!token) {
+    throw new Response(
+      JSON.stringify({ error: "Unauthorized: empty token" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Admin SDK not configured — cannot verify cryptographically
+  if (!adminAuth) {
+    throw new Response(
+      JSON.stringify({ error: "Unauthorized: authentication service not configured" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  try {
+    const decoded = await adminAuth.verifyIdToken(token);
+    return { uid: decoded.uid };
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code ?? "";
+
+    // Known invalid-token codes → 401
+    const invalidTokenCodes = [
+      "auth/id-token-expired",
+      "auth/id-token-revoked",
+      "auth/invalid-id-token",
+      "auth/argument-error",
+      "auth/user-disabled",
+    ];
+
+    if (invalidTokenCodes.some((c) => code.startsWith(c))) {
+      throw new Response(
+        JSON.stringify({ error: `Unauthorized: ${code}` }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Unexpected Admin SDK error — re-throw for caller to handle as 503
+    console.error("[firebase-admin] verifyFirebaseToken unexpected error:", code, err);
+    throw err;
+  }
+}

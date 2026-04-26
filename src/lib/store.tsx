@@ -5,6 +5,7 @@ import React, {
   useReducer,
   useCallback,
   useEffect,
+  useMemo,
 } from "react";
 import { signOut } from "firebase/auth";
 import { usePathname } from "next/navigation";
@@ -12,6 +13,8 @@ import type { Shipment, ShipmentStatus, RiskLevel, Route, PendingShipment } from
 import { getRiskLabel } from "./utils";
 import { useUser } from "./auth-context";
 import { auth } from "./firebase";
+import { useSocket } from "@/hooks/use-socket";
+import { utcNow } from "./time";
 
 export type { PendingShipment } from "./types";
 
@@ -230,6 +233,38 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const refreshShipments = useCallback(async () => { await fetchShipments(); }, [fetchShipments]);
 
+  // ── Real-time socket updates ───────────────────────────────────────────────
+  // Handlers are memoised so useSocket doesn't re-subscribe on every render
+  const socketHandlers = useMemo(() => ({
+    // A new shipment was created (e.g. from another tab or device)
+    "shipment:created": (data: unknown) => {
+      const { shipment } = data as { shipment: Shipment };
+      if (shipment) dispatch({ type: "ADD_SHIPMENT", payload: shipment });
+    },
+    // A shipment's status changed (e.g. completed from another tab)
+    "shipment:status": (data: unknown) => {
+      const { id, status, lastUpdate } = data as {
+        id: string; status: ShipmentStatus; lastUpdate: string;
+      };
+      if (id && status) {
+        dispatch({ type: "UPDATE_STATUS", payload: { id, status, lastUpdate: lastUpdate ?? utcNow() } });
+      }
+    },
+    // Full shipment object updated
+    "shipment:updated": (data: unknown) => {
+      const { shipment } = data as { shipment: Shipment };
+      if (shipment) {
+        dispatch({ type: "UPDATE_STATUS", payload: {
+          id:         shipment.id,
+          status:     shipment.status,
+          lastUpdate: shipment.lastUpdate,
+        }});
+      }
+    },
+  }), []);
+
+  useSocket({ on: socketHandlers });
+
   // ── Actions ────────────────────────────────────────────────────────────────
 
   const setPendingShipment  = useCallback((data: PendingShipment) => dispatch({ type: "SET_PENDING",  payload: data }), []);
@@ -294,7 +329,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const completeShipment = useCallback((id: string) => {
-    const now = new Date().toISOString();
+    const now = utcNow();
     dispatch({ type: "UPDATE_STATUS", payload: { id, status: "completed", lastUpdate: now } });
     if (!user) return;
     fetchWithAuth(

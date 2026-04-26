@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
+import { useUser } from "@/lib/auth-context";
 
 const LOCATION_OPTIONS = [
   "Chennai", "Bangalore", "Hyderabad", "Pune",
@@ -77,18 +78,26 @@ function LocationInput({ value, onChange, placeholder }: {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
 
-  useEffect(() => { setQuery(value); }, [value]);
-
   const filtered = LOCATION_OPTIONS.filter(
     (o) => o.toLowerCase().includes(query.toLowerCase())
   );
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVal = e.target.value;
+    setQuery(newVal);
+    setOpen(true);
+    // Clear the confirmed value if the user edits away from it
+    if (newVal !== value) {
+      onChange("");
+    }
+  };
 
   return (
     <div className="relative max-w-sm">
       <div className="flex items-center gap-3">
         <Input
           value={query}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onChange={handleChange}
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           placeholder={placeholder ?? "Enter city or hub..."}
@@ -120,6 +129,7 @@ function LocationInput({ value, onChange, placeholder }: {
 export default function CreateShipmentPage() {
   const router = useRouter();
   const { setPendingShipment } = useStore();
+  const { user } = useUser();
   const [form, setForm] = useState<FormState>({});
   const [loading, setLoading] = useState(false);
 
@@ -141,9 +151,13 @@ export default function CreateShipmentPage() {
       const controller = new AbortController();
       const timer = setTimeout(async () => {
         try {
+          const token = user ? await user.getIdToken() : null;
           const res = await fetch("/api/analyze-routes", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+            },
             body: JSON.stringify({
               origin:      form.origin,
               destination: form.destination,
@@ -180,10 +194,17 @@ export default function CreateShipmentPage() {
         clearTimeout(timer);
         controller.abort();
       };
-    } else {
-      setRoutePreview(null);
     }
-  }, [form.origin, form.destination, form.cargoType, form.urgency]);
+    
+    // Clear preview when conditions aren't met - do this in a separate effect or timeout
+    const clearTimer = setTimeout(() => {
+      if (!form.origin || !form.destination || form.origin === form.destination) {
+        setRoutePreview(null);
+      }
+    }, 0);
+
+    return () => clearTimeout(clearTimer);
+  }, [form.origin, form.destination, form.cargoType, form.vehicleType, form.urgency, user]);
 
   const handleAnalyze = () => {
     setLoading(true);
@@ -302,7 +323,7 @@ export default function CreateShipmentPage() {
                 type="datetime-local"
                 value={form.deadline ?? ""}
                 onChange={(e) => set("deadline", e.target.value)}
-                className="h-11 bg-muted/20 border-border text-sm max-w-xs rounded-lg [color-scheme:dark]"
+                className="h-11 bg-muted/20 border-border text-sm max-w-xs rounded-lg scheme-dark"
               />
             </FieldRow>
           </div>
