@@ -135,8 +135,16 @@ const initialState: StoreState = {
 
 function reducer(state: StoreState, action: Action): StoreState {
   switch (action.type) {
-    case "SET_SHIPMENTS":
-      return { ...state, shipments: action.payload ?? [], loading: false };
+    case "SET_SHIPMENTS": {
+      // Deduplicate by id — guards against duplicate records from DB or concurrent fetches
+      const seen = new Set<string>();
+      const unique = (action.payload ?? []).filter((s) => {
+        if (seen.has(s.id)) return false;
+        seen.add(s.id);
+        return true;
+      });
+      return { ...state, shipments: unique, loading: false };
+    }
     case "SET_LOADING":
       return { ...state, loading: action.payload };
     case "SET_PENDING":
@@ -144,6 +152,16 @@ function reducer(state: StoreState, action: Action): StoreState {
     case "CLEAR_PENDING":
       return { ...state, pendingShipment: null };
     case "ADD_SHIPMENT":
+      // Deduplicate — if the shipment already exists (e.g. from a concurrent fetch),
+      // replace it rather than prepend a second copy.
+      if (state.shipments.some((s) => s.id === action.payload.id)) {
+        return {
+          ...state,
+          shipments: state.shipments.map((s) =>
+            s.id === action.payload.id ? action.payload : s
+          ),
+        };
+      }
       return { ...state, shipments: [action.payload, ...state.shipments] };
     case "UPDATE_STATUS":
       return {

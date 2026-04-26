@@ -153,7 +153,7 @@ export default function AnalyticsPage() {
                 <p className="text-sm text-muted-foreground font-medium">Last 7 weeks performance tracking</p>
               </div>
               <div className="h-[240px] w-full min-w-0">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
                   <BarChart data={volumeData} barGap={3} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="2 4" stroke={C.border} vertical={false} />
                     <XAxis dataKey="week" tick={{ fontSize: 10, fill: C.muted, fontWeight: 600 }} axisLine={false} tickLine={false} />
@@ -172,7 +172,7 @@ export default function AnalyticsPage() {
                 <p className="text-sm text-muted-foreground font-medium">System-wide safety metrics</p>
               </div>
               <div className="h-[180px] w-full min-w-0">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180}>
                   <PieChart>
                     <Pie data={riskDist} cx="50%" cy="50%" innerRadius={44} outerRadius={64} paddingAngle={4} dataKey="value">
                       {riskDist.map((entry, i) => <Cell key={i} fill={entry.color} />)}
