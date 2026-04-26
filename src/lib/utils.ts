@@ -6,6 +6,26 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Formats an ISO timestamp as a human-readable relative string.
+ * e.g. "2 min ago", "1 hr ago", "3 days ago"
+ * Falls back to the raw string if parsing fails.
+ */
+export function formatRelativeTime(isoString: string | undefined): string {
+  if (!isoString) return "—";
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return isoString;
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60)  return `${diffSec}s ago`;
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60)  return `${diffMin} min ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24)   return `${diffHr} hr ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `${diffDay} day${diffDay !== 1 ? "s" : ""} ago`;
+}
+
 export function getRiskColor(riskLevel: RiskLevel): string {
   switch (riskLevel) {
     case "low":      return "text-emerald-400"
@@ -24,12 +44,15 @@ export function getRiskBgColor(riskLevel: RiskLevel): string {
   }
 }
 
-/** Converts a numeric risk score (0–100) to a RiskLevel */
+/**
+ * Converts a numeric risk score (0–100) to a RiskLevel.
+ * Thresholds match risk.ts: >75 critical, >50 high, >25 medium, else low.
+ */
 export function getRiskLabel(score: number): RiskLevel {
-  if (score <= 30) return "low"
-  if (score <= 60) return "medium"
-  if (score <= 80) return "high"
-  return "critical"
+  if (score > 75) return "critical"
+  if (score > 50) return "high"
+  if (score > 25) return "medium"
+  return "low"
 }
 
 export function formatRiskScore(score: number): string {

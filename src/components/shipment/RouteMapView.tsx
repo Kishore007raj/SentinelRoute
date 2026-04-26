@@ -74,7 +74,7 @@ function breakdownColor(score: number): string {
 interface RouteMapViewProps {
   route: Route;
   routes: Route[];
-  status?: "pending" | "in_transit" | "dispatched" | "completed";
+  status?: "active" | "at-risk" | "dispatched" | "completed";
   origin?: string;
   destination?: string;
   aiExplanation?: string | null;
@@ -90,7 +90,7 @@ interface RouteMapViewProps {
 export function RouteMapView({
   route,
   routes,
-  status = "pending",
+  status = "active",
   origin,
   destination,
   aiExplanation,

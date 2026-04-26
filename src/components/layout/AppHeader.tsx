@@ -13,6 +13,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -91,10 +96,16 @@ export function AppHeader() {
           <span>Shipments</span>
         </Link>
 
-        {/* Notifications — disabled until real notifications are implemented */}
-        <Button variant="ghost" size="icon" disabled className="relative h-9 w-9 text-muted-foreground shrink-0 rounded-lg opacity-40 cursor-not-allowed">
-          <Bell className="w-4 h-4" />
-        </Button>
+        {/* Notifications — not yet implemented; tooltip explains why */}
+        <Tooltip>
+          <TooltipTrigger
+            aria-label="Notifications"
+            className="relative h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground opacity-40 cursor-not-allowed"
+          >
+            <Bell className="w-4 h-4" />
+          </TooltipTrigger>
+          <TooltipContent>Notifications coming soon</TooltipContent>
+        </Tooltip>
 
         {/* User menu */}
         <DropdownMenu>

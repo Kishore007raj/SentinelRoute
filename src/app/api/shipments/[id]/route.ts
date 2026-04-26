@@ -46,9 +46,9 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (body.status !== "completed") {
+  if (body.status !== "completed" && body.status !== "at-risk" && body.status !== "active") {
     return NextResponse.json(
-      { error: "Invalid status update. Only 'completed' is accepted." },
+      { error: "Invalid status. Allowed values: 'active', 'at-risk', 'completed'." },
       { status: 400 }
     );
   }
@@ -60,7 +60,7 @@ export async function PATCH(
     // Filter by both id AND userId — prevents cross-user modification
     const result = await db.collection("shipments").findOneAndUpdate(
       { id, userId },
-      { $set: { status: "completed", lastUpdate: "just now", updatedAt: now } },
+      { $set: { status: "completed", lastUpdate: now, updatedAt: now } },
       { returnDocument: "after" }
     );
 

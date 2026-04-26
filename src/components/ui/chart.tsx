@@ -1,6 +1,12 @@
 import type * as React from "react";
 import { cn } from "@/lib/utils";
-import type { TooltipProps } from "recharts";
+
+// recharts v3 changed TooltipProps — use a compatible local type
+interface RechartsTooltipProps {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number | string; [key: string]: unknown }>;
+  label?: string | number;
+}
 
 interface ChartContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   config?: Record<string, { label: string; color: string }>;
@@ -46,7 +52,7 @@ export function ChartTooltip({
   active,
   payload,
   label,
-}: TooltipProps<number, string>) {
+}: RechartsTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
 
   return (
@@ -71,6 +77,6 @@ export function ChartTooltip({
   );
 }
 
-export function ChartTooltipContent(props: TooltipProps<number, string>) {
+export function ChartTooltipContent(props: RechartsTooltipProps) {
   return <ChartTooltip {...props} />;
 }

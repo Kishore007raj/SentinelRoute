@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { PlusSquare, AlertTriangle, ArrowRight, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
-import { cn, getRiskColor } from "@/lib/utils";
+import { cn, getRiskColor, formatRelativeTime } from "@/lib/utils";
 import Link from "next/link";
 import type { Shipment } from "@/lib/types";
 
@@ -68,7 +68,7 @@ function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: numbe
 
               {/* Time */}
               <div className="shrink-0 hidden sm:block w-24 text-right space-y-1">
-                <p className="text-xs text-muted-foreground">{shipment.lastUpdate}</p>
+                <p className="text-xs text-muted-foreground">{formatRelativeTime(shipment.lastUpdate)}</p>
                 <p className={cn(
                   "text-[10px] uppercase tracking-widest font-medium",
                   isAtRisk ? "text-amber-400" : isCompleted ? "text-emerald-400" : "text-primary",
@@ -101,7 +101,12 @@ export default function DashboardPage() {
   const avgRisk          = totalShipments > 0
     ? Math.round(shipments.reduce((sum, s) => sum + s.riskScore, 0) / totalShipments)
     : 0;
-  const highRiskAvoided  = shipments.filter((s) => s.selectedRoute !== "fastest").length;
+  // "High-risk avoided" = shipments where the user chose balanced/safest
+  // AND the riskScore was above the "high" threshold (> 50).
+  // Rationale: if even the chosen route scored > 50, the fastest would have been worse.
+  const highRiskAvoided = shipments.filter(
+    (s) => s.selectedRoute !== "fastest" && s.riskScore > 50
+  ).length;
   const topAlert         = shipments.find((s) => s.status === "at-risk" && s.predictiveAlert)
     ?? shipments.find((s) => s.predictiveAlert);
   const feedShipments    = [...activeShipments, ...completedShipments.slice(0, 3)];
@@ -269,7 +274,7 @@ export default function DashboardPage() {
                         <span className={cn("text-base font-bold", getRiskColor(s.riskLevel))}>{s.riskScore}</span>
                       </div>
                       <p className="text-sm font-semibold text-foreground">{s.origin} → {s.destination}</p>
-                      <p className="text-xs text-muted-foreground">{s.eta} · {s.lastUpdate}</p>
+                      <p className="text-xs text-muted-foreground">{formatRelativeTime(s.lastUpdate)} · {s.eta}</p>
                     </div>
                   </Link>
                 ))}

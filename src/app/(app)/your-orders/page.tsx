@@ -2,18 +2,18 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
-  ArrowRight, CheckCircle, Zap, Clock, Package, PlusSquare, AlertTriangle,
+  ArrowRight, CheckCircle, Zap, Package, PlusSquare, AlertTriangle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useStore } from "@/lib/store";
-import { cn, getRiskColor } from "@/lib/utils";
+import { cn, getRiskColor, formatRelativeTime } from "@/lib/utils";
 import type { Shipment, ShipmentStatus } from "@/lib/types";
 import Link from "next/link";
 
-// Canonical status config — matches ShipmentStatus: "pending" | "active" | "at-risk" | "completed"
-const statusConfig: Record<ShipmentStatus, { label: string; icon: typeof Zap; color: string; bg: string }> = {
+// Canonical status config — matches ShipmentStatus: "active" | "at-risk" | "completed"
+const statusConfig: Record<string, { label: string; icon: typeof Zap; color: string; bg: string }> = {
   active: {
     label: "Active",
     icon: Zap,
@@ -32,17 +32,11 @@ const statusConfig: Record<ShipmentStatus, { label: string; icon: typeof Zap; co
     color: "text-emerald-400",
     bg: "bg-emerald-400/10 border-emerald-400/20",
   },
-  pending: {
-    label: "Pending",
-    icon: Clock,
-    color: "text-muted-foreground",
-    bg: "bg-muted border-border",
-  },
 };
 
 function OrderRow({ shipment, index }: { shipment: Shipment; index: number }) {
   // Defensive fallback for any unexpected status value
-  const status = statusConfig[shipment.status] ?? statusConfig.pending;
+  const status = statusConfig[shipment.status] ?? statusConfig.active;
   const StatusIcon = status.icon;
   const riskColor = getRiskColor(shipment.riskLevel);
 
@@ -100,7 +94,7 @@ function OrderRow({ shipment, index }: { shipment: Shipment; index: number }) {
               {shipment.shipmentCode}
             </span>
             <span className="text-[10px] text-muted-foreground">
-              {shipment.lastUpdate}
+              {formatRelativeTime(shipment.lastUpdate)}
             </span>
           </div>
         </div>

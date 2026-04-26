@@ -84,7 +84,7 @@ export function RouteCard({ route, selected, onSelect, index = 0 }: RouteCardPro
               <Clock className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Duration</span>
             </div>
-            <p className="text-base font-black text-foreground">{route.durationHours.toFixed(1)}h</p>
+            <p className="text-base font-black text-foreground">{route.eta}</p>
           </div>
           <div className="bg-muted/10 border border-border/30 rounded-xl px-4 py-3">
             <div className="flex items-center gap-1.5 mb-1.5">

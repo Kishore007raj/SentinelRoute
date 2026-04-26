@@ -101,7 +101,12 @@ export async function POST(req: NextRequest) {
     riskLevel,
     confidencePercent,
     predictiveAlert,
-  } = raw as CreateShipmentRequest;
+    riskBreakdown,
+  } = raw as unknown as CreateShipmentRequest;
+
+  // Also extract weather/disruption scores for at-risk classification
+  const weatherScore    = typeof (raw as Record<string, unknown>).weatherScore    === "number" ? (raw as Record<string, unknown>).weatherScore    as number : riskBreakdown?.weather    ?? 0;
+  const disruptionScore = typeof (raw as Record<string, unknown>).disruptionScore === "number" ? (raw as Record<string, unknown>).disruptionScore as number : riskBreakdown?.disruption ?? 0;
 
   // Validate required string fields
   const missingString = (
@@ -142,6 +147,16 @@ export async function POST(req: NextRequest) {
     routeId.includes("safest")  ? "safest"  as const :
     "balanced" as const;
 
+  // At-risk classification:
+  //   riskScore >= 60 (default autoFlagThreshold)
+  //   OR weatherScore > 70 (severe weather on corridor)
+  //   OR disruptionScore > 60 (active disruptions)
+  const isAtRisk =
+    riskScore >= 60 ||
+    weatherScore > 70 ||
+    disruptionScore > 60;
+  const shipmentStatus: Shipment["status"] = isAtRisk ? "at-risk" : "active";
+
   const shipment: Shipment = {
     id:                `shp-${Date.now()}`,
     shipmentCode:      generateShipmentCode(),
@@ -152,8 +167,8 @@ export async function POST(req: NextRequest) {
     riskScore,
     riskLevel:         getRiskLabel(riskScore),
     eta,
-    status:            "active",
-    lastUpdate:        "just now",
+    status:            shipmentStatus,
+    lastUpdate:        now,
     cargoType,
     vehicleType,
     distance,
@@ -161,17 +176,28 @@ export async function POST(req: NextRequest) {
     confidencePercent,
     predictiveAlert:   typeof predictiveAlert === "string" && predictiveAlert
                          ? predictiveAlert
-                         : "Monitoring route conditions",
+                         : undefined,
+    riskBreakdown:     riskBreakdown ?? undefined,
     createdAt:         now,
     updatedAt:         now,
   };
 
   try {
     const db = await getDb();
-    await db.collection("shipments").insertOne({ ...shipment, userId });
+    // Strip undefined values — MongoDB rejects documents containing undefined fields
+    const cleanBreakdown = shipment.riskBreakdown
+      ? Object.fromEntries(Object.entries(shipment.riskBreakdown).filter(([, v]) => v !== undefined))
+      : undefined;
+    const cleanShipment = Object.fromEntries(
+      Object.entries({ ...shipment, riskBreakdown: cleanBreakdown, userId })
+        .filter(([, v]) => v !== undefined)
+    );
+    console.log("📦 Clean Shipment Payload:", JSON.stringify(cleanShipment, null, 2));
+    await db.collection("shipments").insertOne(cleanShipment);
   } catch (err) {
-    console.error("[POST /api/shipments] DB insert error:", err);
-    return NextResponse.json({ error: "Failed to save shipment" }, { status: 500 });
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("[POST /api/shipments] DB insert error:", detail);
+    return NextResponse.json({ error: `Failed to save shipment: ${detail}` }, { status: 500 });
   }
 
   return NextResponse.json({ shipment }, { status: 201 });

@@ -498,31 +498,34 @@ export default function HomePage() {
             <div className="flex flex-col gap-3">
               <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Product</p>
               <div className="flex flex-col gap-2">
-                {["Features", "Pricing", "How It Works"].map((l) => (
-                  <Link key={l} href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                    {l}
-                  </Link>
-                ))}
+                <Link href="#features" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  Features
+                </Link>
+                <Link href="#how-it-works" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  How It Works
+                </Link>
+                <Link href="/auth/signup" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  Get Started
+                </Link>
               </div>
             </div>
             <div className="flex flex-col gap-3">
               <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Company</p>
               <div className="flex flex-col gap-2">
-                {["About Us", "Blog", "Careers", "Contact"].map((l) => (
-                  <Link key={l} href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                    {l}
-                  </Link>
-                ))}
+                <span className="text-xs text-muted-foreground/40">About Us</span>
+                <span className="text-xs text-muted-foreground/40">Blog</span>
+                <span className="text-xs text-muted-foreground/40">Careers</span>
+                <Link href="/auth/signin" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  Sign In
+                </Link>
               </div>
             </div>
             <div className="flex flex-col gap-3">
               <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Legal</p>
               <div className="flex flex-col gap-2">
-                {["Privacy Policy", "Terms of Service", "Security"].map((l) => (
-                  <Link key={l} href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                    {l}
-                  </Link>
-                ))}
+                <span className="text-xs text-muted-foreground/40">Privacy Policy</span>
+                <span className="text-xs text-muted-foreground/40">Terms of Service</span>
+                <span className="text-xs text-muted-foreground/40">Security</span>
               </div>
             </div>
           </div>
@@ -532,9 +535,9 @@ export default function HomePage() {
             </p>
             <div className="flex items-center gap-4">
               {["Twitter", "LinkedIn", "GitHub"].map((s) => (
-                <Link key={s} href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <span key={s} className="text-xs text-muted-foreground/40">
                   {s}
-                </Link>
+                </span>
               ))}
             </div>
           </div>

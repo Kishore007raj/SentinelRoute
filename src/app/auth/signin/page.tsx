@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Route, ArrowRight, Shield, Zap, BarChart3 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -37,12 +37,20 @@ const features = [
   { icon: BarChart3, label: "Audit trail", text: "Full dispatch history for compliance", sphere: SPHERES[2] },
 ];
 
-function setSessionCookie() {
+function setSessionCookie(token: string) {
   const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
-  document.cookie = `sr_session=1; path=/; expires=${expires}; SameSite=Lax`;
+  document.cookie = `sr_session=${encodeURIComponent(token)}; path=/; expires=${expires}; SameSite=Lax`;
 }
 
 export default function SignInPage() {
+  return (
+    <Suspense>
+      <SignInForm />
+    </Suspense>
+  );
+}
+
+function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") ?? "/dashboard";
@@ -98,7 +106,8 @@ export default function SignInPage() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, form.email, form.password);
-      setSessionCookie();
+      const token = await auth.currentUser!.getIdToken();
+      setSessionCookie(token);
       router.push(redirectTo);
     } catch (err: unknown) {
       setLoading(false);
@@ -125,7 +134,8 @@ export default function SignInPage() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      setSessionCookie();
+      const token = await auth.currentUser!.getIdToken();
+      setSessionCookie(token);
       router.push(redirectTo);
     } catch (err: unknown) {
       setGoogleLoading(false);

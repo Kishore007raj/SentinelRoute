@@ -138,7 +138,8 @@ export default function CreateShipmentPage() {
 
   useEffect(() => {
     if (form.origin && form.destination && form.origin !== form.destination) {
-      const fetchPreview = async () => {
+      const controller = new AbortController();
+      const timer = setTimeout(async () => {
         try {
           const res = await fetch("/api/analyze-routes", {
             method: "POST",
@@ -150,6 +151,7 @@ export default function CreateShipmentPage() {
               vehicleType: form.vehicleType || "Container Truck",
               urgency:     form.urgency || "Standard",
             }),
+            signal: controller.signal,
           });
           if (!res.ok) { setRoutePreview(null); return; }
           const data = await res.json();
@@ -167,11 +169,17 @@ export default function CreateShipmentPage() {
             riskRange:     `${minRisk} – ${maxRisk}`,
             routesFound:   routes.length,
           });
-        } catch {
-          setRoutePreview(null);
+        } catch (err) {
+          if ((err as { name?: string }).name !== "AbortError") {
+            setRoutePreview(null);
+          }
         }
+      }, 600);
+
+      return () => {
+        clearTimeout(timer);
+        controller.abort();
       };
-      fetchPreview();
     } else {
       setRoutePreview(null);
     }

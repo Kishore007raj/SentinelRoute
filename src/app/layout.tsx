@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { StoreProvider } from "@/lib/store";
 import { UserProvider } from "@/lib/auth-context";
+import { SettingsProvider } from "@/lib/settings-context";
 import { logEnvStatus } from "@/lib/env";
 
 // Runs once on server cold-start — confirms all env vars are present
@@ -40,10 +41,12 @@ export default function RootLayout({
       <body suppressHydrationWarning className="min-h-screen bg-background text-foreground antialiased">
         <UserProvider>
           <StoreProvider>
-            <TooltipProvider delayDuration={300}>
-              {children}
-            </TooltipProvider>
-            <Toaster position="bottom-right" theme="dark" richColors />
+            <SettingsProvider>
+              <TooltipProvider delay={300}>
+                {children}
+              </TooltipProvider>
+              <Toaster position="bottom-right" theme="dark" richColors />
+            </SettingsProvider>
           </StoreProvider>
         </UserProvider>
       </body>

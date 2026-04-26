@@ -7,7 +7,7 @@ import { ShipmentPass } from "@/components/shipment/ShipmentPass";
 import { RouteMapView } from "@/components/shipment/RouteMapView";
 import { DispatchedStub } from "@/components/shipment/ShipmentPass";
 import { generateShipmentCode, cn, getRiskColor } from "@/lib/utils";
-import { useStore, type ShipmentStubRecord } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import type { Route } from "@/lib/types";
 import {
   recommendationBadge,
@@ -214,7 +214,7 @@ function AlternativeRow({ route, onSelect, selected, referenceRoute }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RoutesPage() {
-  const { state, dispatchShipment, completeShipment, addStub } = useStore();
+  const { state, dispatchShipment, completeShipment } = useStore();
 
   // Capture pending shipment at mount time.
   // After dispatch, store clears pendingShipment — if we read it reactively,
@@ -287,6 +287,13 @@ export default function RoutesPage() {
     if (!selected || !shipmentData) return;
     setAiExplanation(null);
     setAiLoading(true);
+
+    // Hard 10s client-side timeout for AI insight — never leave loading state open
+    const aiTimeout = setTimeout(() => {
+      setAiLoading(false);
+      // explanation stays null → AiInsightBox renders deterministic fallback
+    }, 10_000);
+
     fetch("/api/ai-insight", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -304,7 +311,10 @@ export default function RoutesPage() {
       .then((r) => r.json())
       .then((data) => setAiExplanation(data.explanation ?? null))
       .catch(() => setAiExplanation(null))
-      .finally(() => setAiLoading(false));
+      .finally(() => {
+        clearTimeout(aiTimeout);
+        setAiLoading(false);
+      });
   };
 
   const handleConfirm = async () => {
@@ -316,17 +326,6 @@ export default function RoutesPage() {
         pending, route: selectedRoute, confidencePercent: confidence,
       });
       setDispatchedId(newShipment.id);
-      const stub: ShipmentStubRecord = {
-        id: newShipment.id, shipmentCode: newShipment.shipmentCode,
-        origin: newShipment.origin, destination: newShipment.destination,
-        routeName: newShipment.routeName, riskScore: newShipment.riskScore,
-        riskLevel: newShipment.riskLevel, eta: newShipment.eta,
-        cargoType: newShipment.cargoType, vehicleType: newShipment.vehicleType,
-        confidencePercent: newShipment.confidencePercent,
-        dispatchedAt: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-        status: newShipment.status,
-      };
-      addStub(stub);
     }
     setPhase("map");
   };
@@ -370,13 +369,44 @@ export default function RoutesPage() {
 
   // ── Error ─────────────────────────────────────────────────────────────────
   if (routeError || routes.length === 0) {
+    const handleRetry = () => {
+      setRouteError(null);
+      setRoutes([]);
+      setLoadingRoutes(true);
+
+      fetch("/api/analyze-routes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          origin:      shipmentData.origin,
+          destination: shipmentData.destination,
+          cargoType:   shipmentData.cargoType,
+          vehicleType: shipmentData.vehicleType,
+          urgency:     shipmentData.urgency ?? "Standard",
+        }),
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error(`API error: ${r.status}`);
+          return r.json();
+        })
+        .then((data) => {
+          setRoutes(data.routes ?? []);
+          setWeatherScore(data.weatherScore ?? 20);
+          setDataSource(data.source);
+        })
+        .catch((err) => {
+          setRouteError(err instanceof Error ? err.message : "Failed to load routes");
+        })
+        .finally(() => setLoadingRoutes(false));
+    };
+
     return (
       <div className="max-w-7xl mx-auto w-full">
         <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
           <AlertTriangle className="w-8 h-8 text-amber-400" />
           <p className="text-base font-semibold text-foreground">Could not load routes</p>
           <p className="text-sm text-muted-foreground">{routeError ?? "No routes returned"}</p>
-          <Button className="mt-4 h-10 px-6 rounded-lg" onClick={() => window.location.reload()}>
+          <Button className="mt-4 h-10 px-6 rounded-lg" onClick={handleRetry}>
             Retry
           </Button>
         </div>
@@ -563,6 +593,12 @@ export default function RoutesPage() {
                   referenceRoute={recommended}
                 />
               ))}
+              {/* Simulation disclosure — shown when any alternative is a synthesized estimate */}
+              {alternatives.some((r) => r.isSimulated) && (
+                <p className="text-[10px] text-muted-foreground/50 leading-relaxed px-1">
+                  Alternative routes are simulated estimates based on the primary corridor.
+                </p>
+              )}
               <div className="border border-border/50 rounded-xl p-6 space-y-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-widest">Decision context</p>
                 <p className="text-sm text-muted-foreground leading-relaxed">

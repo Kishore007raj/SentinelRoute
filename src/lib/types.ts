@@ -1,14 +1,13 @@
 /**
  * types.ts — Single source of truth for all types in SentinelRoute.
- *
  * ALL files must import types from here.
- * DO NOT define types anywhere else.
  */
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 export type RiskLevel      = "low" | "medium" | "high" | "critical";
-export type ShipmentStatus = "pending" | "active" | "at-risk" | "completed";
+/** "pending" is intentionally excluded — all dispatched shipments start as "active" */
+export type ShipmentStatus = "active" | "at-risk" | "completed";
 export type RouteLabel     = "fastest" | "balanced" | "safest";
 
 // ─── Risk breakdown ───────────────────────────────────────────────────────────
@@ -23,53 +22,50 @@ export interface RiskBreakdown {
 // ─── Route ────────────────────────────────────────────────────────────────────
 
 export interface Route {
-  id:           string;
-  label:        RouteLabel;
-  name:         string;
-  /** Human-readable ETA string, e.g. "4h 20m" */
-  eta:          string;
-  etaMinutes:   number;
-  /** Human-readable distance string, e.g. "347 km" */
-  distance:     string;
-  distanceKm:   number;
-  riskScore:    number;
-  riskLevel:    RiskLevel;
-  recommended:  boolean;
-  summary:      string;
+  id:            string;
+  label:         RouteLabel;
+  name:          string;
+  eta:           string;
+  etaMinutes:    number;
+  distance:      string;
+  distanceKm:    number;
+  riskScore:     number;
+  riskLevel:     RiskLevel;
+  recommended:   boolean;
+  summary:       string;
   riskBreakdown: RiskBreakdown;
-  alerts:       string[];
-  /** Encoded polyline from Google Maps Routes API */
-  polyline?:    string;
-  /** AI-generated explanation from Gemini */
+  alerts:        string[];
+  polyline?:     string;
   aiExplanation?: string;
+  /**
+   * True when this route is a synthesized estimate (balanced/safest from OSRM,
+   * or any route from the static fallback). False only for the live OSRM fastest route.
+   */
+  isSimulated?:  boolean;
 }
 
 // ─── Shipment ─────────────────────────────────────────────────────────────────
 
 export interface Shipment {
-  /** Firestore document ID */
   id:                string;
   shipmentCode:      string;
   origin:            string;
   destination:       string;
-  /** Route label selected at dispatch */
   selectedRoute:     RouteLabel;
   routeName:         string;
   riskScore:         number;
   riskLevel:         RiskLevel;
-  /** Human-readable ETA string, e.g. "5h 05m" */
   eta:               string;
   status:            ShipmentStatus;
-  /** Human-readable last update, e.g. "12 min ago" */
   lastUpdate:        string;
   cargoType:         string;
   vehicleType:       string;
-  /** Human-readable distance string, e.g. "362 km" */
   distance:          string;
   departureTime:     string;
   confidencePercent: number;
   predictiveAlert?:  string;
-  /** Firebase UID of the owner */
+  /** Full breakdown stored at dispatch time — never reconstructed */
+  riskBreakdown?:    RiskBreakdown;
   userId?:           string;
   createdAt?:        string;
   updatedAt?:        string;
@@ -78,19 +74,18 @@ export interface Shipment {
 // ─── Pending shipment (form state before dispatch) ────────────────────────────
 
 export interface PendingShipment {
-  origin:        string;
-  destination:   string;
-  vehicleType:   string;
-  cargoType:     string;
-  urgency:       string;
-  deadline?:     string;
-  insurance?:    string;
+  origin:         string;
+  destination:    string;
+  vehicleType:    string;
+  cargoType:      string;
+  urgency:        string;
+  deadline?:      string;
+  insurance?:     string;
   tempSensitive?: string;
 }
 
 // ─── API shapes ───────────────────────────────────────────────────────────────
 
-/** POST /api/analyze-routes — request */
 export interface AnalyzeRoutesRequest {
   origin:      string;
   destination: string;
@@ -99,15 +94,13 @@ export interface AnalyzeRoutesRequest {
   urgency:     string;
 }
 
-/** POST /api/analyze-routes — response */
 export interface AnalyzeRoutesResponse {
-  routes:      Route[];
-  analyzedAt:  string;
-  source?:     string;
+  routes:       Route[];
+  analyzedAt:   string;
+  source?:      string;
   weatherScore?: number;
 }
 
-/** POST /api/shipments — request */
 export interface CreateShipmentRequest {
   origin:            string;
   destination:       string;
@@ -122,9 +115,48 @@ export interface CreateShipmentRequest {
   distance:          string;
   confidencePercent: number;
   predictiveAlert?:  string;
+  /** Full breakdown from the route analysis — stored on the shipment */
+  riskBreakdown?:    RiskBreakdown;
 }
 
-// ─── Analytics / KPI ─────────────────────────────────────────────────────────
+// ─── User Settings ────────────────────────────────────────────────────────────
+
+export interface UserSettings {
+  userId:                  string;
+  // Notifications
+  notifyRiskAlerts:        boolean;
+  notifyDispatchConfirm:   boolean;
+  notifyDisruptions:       boolean;
+  notifyCompletionSummary: boolean;
+  notifyWeatherWarnings:   boolean;
+  notifyAnalyticsDigest:   boolean;
+  // Risk thresholds
+  autoFlagThreshold:       number;
+  requireApprovalAbove:    number;
+  autoBlockThreshold:      number;
+  preferredRouteType:      RouteLabel;
+  // Dispatch defaults
+  defaultVehicleType:      string;
+  dispatchConfirmWindow:   number;
+  updatedAt:               string;
+}
+
+export const DEFAULT_SETTINGS: Omit<UserSettings, "userId" | "updatedAt"> = {
+  notifyRiskAlerts:        true,
+  notifyDispatchConfirm:   true,
+  notifyDisruptions:       true,
+  notifyCompletionSummary: false,
+  notifyWeatherWarnings:   true,
+  notifyAnalyticsDigest:   false,
+  autoFlagThreshold:       60,
+  requireApprovalAbove:    75,
+  autoBlockThreshold:      90,
+  preferredRouteType:      "balanced",
+  defaultVehicleType:      "Container Truck",
+  dispatchConfirmWindow:   30,
+};
+
+// ─── KPI ─────────────────────────────────────────────────────────────────────
 
 export interface KPI {
   label:         string;

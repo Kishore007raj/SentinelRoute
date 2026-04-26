@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { origin, destination, cargoType, vehicleType, urgency } =
-    raw as AnalyzeRoutesRequest;
+    raw as unknown as AnalyzeRoutesRequest;
 
   if (!origin      || typeof origin      !== "string") return NextResponse.json({ error: "Missing required field: origin" },      { status: 400 });
   if (!destination || typeof destination !== "string") return NextResponse.json({ error: "Missing required field: destination" }, { status: 400 });
@@ -130,6 +130,9 @@ export async function POST(req: NextRequest) {
         summary:     buildSummary(osrmRoute.label, origin, destination, osrmRoute.durationMins, osrmRoute.distanceKm),
         riskBreakdown: riskResult.riskBreakdown,
         alerts,
+        // Only the fastest route uses real OSRM geometry.
+        // Balanced and safest are synthesized estimates.
+        isSimulated: osrmRoute.label !== "fastest",
       };
     }
   );
@@ -263,6 +266,7 @@ function buildStaticRoutes(
       disruption:       b.disruption,
       cargoSensitivity: b.cargoSens,
     },
-    alerts: b.alerts,
+    alerts:      b.alerts,
+    isSimulated: true, // all static fallback routes are estimates
   }));
 }

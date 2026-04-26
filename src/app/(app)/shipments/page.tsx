@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
-import { cn, getRiskColor } from "@/lib/utils";
+import { cn, getRiskColor, formatRelativeTime } from "@/lib/utils";
 import type { Shipment, ShipmentStatus } from "@/lib/types";
 
 const tabConfig: { value: ShipmentStatus | "all"; label: string }[] = [
@@ -18,16 +18,15 @@ const tabConfig: { value: ShipmentStatus | "all"; label: string }[] = [
 ];
 
 const statusConfig: Record<ShipmentStatus, { label: string; color: string; dot: string }> = {
-  active:    { label: "Active",    color: "text-primary",          dot: "bg-primary" },
-  "at-risk": { label: "At Risk",   color: "text-amber-400",        dot: "bg-amber-400" },
-  completed: { label: "Completed", color: "text-emerald-400",      dot: "bg-emerald-400" },
-  pending:   { label: "Pending",   color: "text-muted-foreground", dot: "bg-muted-foreground" },
+  active:    { label: "Active",    color: "text-primary",     dot: "bg-primary" },
+  "at-risk": { label: "At Risk",   color: "text-amber-400",   dot: "bg-amber-400" },
+  completed: { label: "Completed", color: "text-emerald-400", dot: "bg-emerald-400" },
 };
 
 // ─── Mobile card ──────────────────────────────────────────────────────────────
 function ShipmentCard({ shipment, index }: { shipment: Shipment; index: number }) {
   const riskColor = getRiskColor(shipment.riskLevel);
-  const status = statusConfig[shipment.status] ?? statusConfig.pending;
+  const status = statusConfig[shipment.status] ?? statusConfig.active;
   return (
     <Link href={`/shipments/${shipment.id}`} className="block">
       <motion.div
@@ -69,7 +68,7 @@ function ShipmentCard({ shipment, index }: { shipment: Shipment; index: number }
         )}
         <div className="flex items-center justify-between pt-4 border-t border-border/30">
           <span className="text-xs font-mono text-muted-foreground">{shipment.shipmentCode}</span>
-          <span className="text-xs text-muted-foreground">{shipment.lastUpdate}</span>
+          <span className="text-xs text-muted-foreground">{formatRelativeTime(shipment.lastUpdate)}</span>
         </div>
       </motion.div>
     </Link>
@@ -79,8 +78,8 @@ function ShipmentCard({ shipment, index }: { shipment: Shipment; index: number }
 // ─── Desktop row ──────────────────────────────────────────────────────────────
 function ShipmentRow({ shipment, index }: { shipment: Shipment; index: number }) {
   const riskColor = getRiskColor(shipment.riskLevel);
-  // Fallback to pending config if status is unrecognised
-  const status = statusConfig[shipment.status] ?? statusConfig.pending;
+  // Fallback to active config if status is unrecognised
+  const status = statusConfig[shipment.status] ?? statusConfig.active;
   return (
     <Link href={`/shipments/${shipment.id}`} className="block">
       <motion.div
@@ -134,7 +133,7 @@ function ShipmentRow({ shipment, index }: { shipment: Shipment; index: number })
 
           {/* Updated */}
           <div className="shrink-0 hidden sm:block">
-            <p className="text-xs text-muted-foreground">{shipment.lastUpdate}</p>
+            <p className="text-xs text-muted-foreground">{formatRelativeTime(shipment.lastUpdate)}</p>
           </div>
         </div>
       </motion.div>

@@ -45,9 +45,9 @@ const SPHERES = [
 
 const STEPS = ["Account", "Company", "Review"];
 
-function setSessionCookie() {
+function setSessionCookie(token: string) {
   const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
-  document.cookie = `sr_session=1; path=/; expires=${expires}; SameSite=Lax`;
+  document.cookie = `sr_session=${encodeURIComponent(token)}; path=/; expires=${expires}; SameSite=Lax`;
 }
 
 function GoogleIcon() {
@@ -157,7 +157,8 @@ export default function SignUpPage() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      setSessionCookie();
+      const token = await auth.currentUser!.getIdToken();
+      setSessionCookie(token);
       router.push("/dashboard");
     } catch (err: unknown) {
       setGoogleLoading(false);
@@ -181,7 +182,8 @@ export default function SignUpPage() {
       await updateProfile(credential.user, {
         displayName: `${form.companyName} (${form.operationalLevel})`,
       });
-      setSessionCookie();
+      const token = await credential.user.getIdToken();
+      setSessionCookie(token);
       router.push("/dashboard");
     } catch (err: unknown) {
       setLoading(false);

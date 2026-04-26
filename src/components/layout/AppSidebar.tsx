@@ -11,6 +11,7 @@ import {
   Route,
   ChevronRight,
   X,
+  Brain,
 } from "lucide-react";
 import {
   Sidebar,
@@ -29,12 +30,13 @@ import { cn } from "@/lib/utils";
 import { useUser } from "@/lib/auth-context";
 
 const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Shipments", href: "/shipments", icon: Package },
-  { label: "Create Shipment", href: "/create-shipment", icon: PlusSquare },
-  { label: "Your Orders", href: "/your-orders", icon: ClipboardList },
-  { label: "Analytics", href: "/analytics", icon: BarChart3 },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Dashboard",          href: "/dashboard",          icon: LayoutDashboard },
+  { label: "Shipments",          href: "/shipments",          icon: Package },
+  { label: "Create Shipment",    href: "/create-shipment",    icon: PlusSquare },
+  { label: "Your Orders",        href: "/your-orders",        icon: ClipboardList },
+  { label: "Route Intelligence", href: "/route-intelligence", icon: Brain },
+  { label: "Analytics",          href: "/analytics",          icon: BarChart3 },
+  { label: "Settings",           href: "/settings",           icon: Settings },
 ];
 
 // ─── Mobile slide-over drawer ─────────────────────────────────────────────────

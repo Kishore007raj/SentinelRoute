@@ -6,7 +6,7 @@ import { ArrowLeft, MapPin, Clock, Truck, Package, CheckCircle } from "lucide-re
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { RouteMapView } from "@/components/shipment/RouteMapView";
-import { getRiskColor, cn } from "@/lib/utils";
+import { getRiskColor, cn, formatRelativeTime } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import type { Shipment } from "@/lib/types";
 
@@ -15,21 +15,15 @@ export default function ShipmentDetailPage({
 }: {
   params: Promise<{ shipmentId: string }>;
 }) {
-  // URL param is the shipment's `id` (Firestore doc ID)
   const { shipmentId } = use(params);
   const { state, completeShipment } = useStore();
   const [shipment, setShipment] = useState<Shipment | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
-    // Look up by `id` — the URL is built from shipment.id everywhere
     const found = (state.shipments ?? []).find((item) => item.id === shipmentId);
-    if (found) {
-      setShipment(found);
-      setLoading(false);
-    } else if (!state.loading) {
-      setLoading(false);
-    }
+    if (found) { setShipment(found); setLoading(false); }
+    else if (!state.loading) { setLoading(false); }
   }, [shipmentId, state.shipments, state.loading]);
 
   if (loading) {
@@ -44,42 +38,54 @@ export default function ShipmentDetailPage({
   if (!shipment) notFound();
 
   const handleComplete = () => {
-    // Uses store's completeShipment which calls PATCH /api/shipments/[id]/status
     completeShipment(shipment.id);
-    setShipment((prev) => prev ? { ...prev, status: "completed", lastUpdate: "just now" } : prev);
+    setShipment((prev) =>
+      prev ? { ...prev, status: "completed", lastUpdate: new Date().toISOString() } : prev
+    );
   };
 
-  // Build a Route object for RouteMapView from stored shipment data.
-  // riskBreakdown is not stored on Shipment, so we reconstruct a proportional
-  // breakdown from the overall riskScore for display purposes.
-  const rs = shipment.riskScore;
+  // Use stored riskBreakdown only — never fabricate values.
+  // If not stored (legacy shipments), show a disclosure instead.
+  const hasBreakdown = !!shipment.riskBreakdown;
+  const breakdown = shipment.riskBreakdown ?? {
+    traffic: 0, weather: 0, disruption: 0, cargoSensitivity: 0,
+  };
+
   const routeForMap = {
-    id:           shipment.id,
-    label:        shipment.selectedRoute,
-    name:         shipment.routeName,
-    eta:          shipment.eta,
-    etaMinutes:   0,
-    distance:     shipment.distance,
-    distanceKm:   parseFloat(shipment.distance) || 0,
-    riskScore:    rs,
-    riskLevel:    shipment.riskLevel,
-    recommended:  false,
-    summary:      "",
-    alerts:       shipment.predictiveAlert ? [shipment.predictiveAlert] : [],
-    riskBreakdown: {
-      // Proportional estimates from overall score — best available without re-scoring
-      traffic:          Math.round(rs * 0.30),
-      weather:          Math.round(rs * 0.30),
-      disruption:       Math.round(rs * 0.25),
-      cargoSensitivity: Math.round(rs * 0.15),
-    },
+    id:            shipment.id,
+    label:         shipment.selectedRoute,
+    name:          shipment.routeName,
+    eta:           shipment.eta,
+    etaMinutes:    0,
+    distance:      shipment.distance,
+    distanceKm:    parseFloat(shipment.distance) || 0,
+    riskScore:     shipment.riskScore,
+    riskLevel:     shipment.riskLevel,
+    recommended:   false,
+    summary:       "",
+    alerts:        shipment.predictiveAlert ? [shipment.predictiveAlert] : [],
+    riskBreakdown: breakdown,
   };
 
   const statusBadgeClass =
     shipment.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
     shipment.status === "at-risk"   ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
-    shipment.status === "active"    ? "bg-primary/10 text-primary border-primary/20" :
-    "bg-muted/10 text-muted-foreground border-border";
+    "bg-primary/10 text-primary border-primary/20";
+
+  // Dynamic decision context based on actual data
+  const decisionContext = (() => {
+    const label = shipment.selectedRoute;
+    const risk  = shipment.riskScore;
+    const cargo = shipment.cargoType;
+
+    if (label === "safest") {
+      return `Safest route selected for ${cargo} cargo (risk: ${risk}). Longer ETA accepted to minimise disruption probability and protect cargo integrity.`;
+    }
+    if (label === "fastest") {
+      return `Fastest route selected (risk: ${risk}). Speed was prioritised — monitor for congestion and weather alerts during transit.`;
+    }
+    return `Balanced route selected (risk: ${risk}). Optimal tradeoff between ETA and disruption risk for ${cargo} cargo.`;
+  })();
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-10">
@@ -89,9 +95,7 @@ export default function ShipmentDetailPage({
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground uppercase tracking-widest">Shipment detail</p>
           <h1 className="text-3xl font-bold text-foreground">{shipment.shipmentCode}</h1>
-          <p className="text-sm text-muted-foreground">
-            {shipment.origin} → {shipment.destination}
-          </p>
+          <p className="text-sm text-muted-foreground">{shipment.origin} → {shipment.destination}</p>
         </div>
         <div className="flex items-center gap-3">
           {(shipment.status === "active" || shipment.status === "at-risk") && (
@@ -114,10 +118,9 @@ export default function ShipmentDetailPage({
 
       <div className="grid gap-8 xl:grid-cols-[1.5fr_1fr]">
 
-        {/* Left: details */}
+        {/* Left */}
         <div className="space-y-6">
           <div className="panel p-7">
-            {/* Badges */}
             <div className="flex flex-wrap items-center gap-3 mb-6">
               <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 px-3 py-1 text-xs font-semibold">
                 {shipment.routeName}
@@ -127,7 +130,6 @@ export default function ShipmentDetailPage({
               </Badge>
             </div>
 
-            {/* Key metrics */}
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="space-y-1.5">
                 <p className="label-meta">ETA</p>
@@ -137,16 +139,13 @@ export default function ShipmentDetailPage({
                 <p className="label-meta">Risk Score</p>
                 <p className={cn("text-2xl font-bold", getRiskColor(shipment.riskLevel))}>
                   {shipment.riskScore}
-                  <span className="text-sm font-normal text-muted-foreground ml-1.5 capitalize">
-                    / {shipment.riskLevel}
-                  </span>
+                  <span className="text-sm font-normal text-muted-foreground ml-1.5 capitalize">/ {shipment.riskLevel}</span>
                 </p>
               </div>
             </div>
 
             <Separator className="my-5 opacity-30" />
 
-            {/* Metadata grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2.5">
                 <MapPin className="w-4 h-4 shrink-0" />
@@ -154,7 +153,7 @@ export default function ShipmentDetailPage({
               </div>
               <div className="flex items-center gap-2.5">
                 <Clock className="w-4 h-4 shrink-0" />
-                <span>Updated {shipment.lastUpdate}</span>
+                <span>Updated {formatRelativeTime(shipment.lastUpdate)}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Package className="w-4 h-4 shrink-0" />
@@ -168,8 +167,7 @@ export default function ShipmentDetailPage({
 
             <Separator className="my-5 opacity-30" />
 
-            {/* Secondary metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-muted-foreground">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="label-meta">Distance</p>
                 <p className="text-sm font-semibold text-foreground">{shipment.distance}</p>
@@ -199,25 +197,24 @@ export default function ShipmentDetailPage({
             )}
           </div>
 
-          {/* Decision context */}
+          {/* Dynamic decision context */}
           <div className="panel p-7">
             <p className="label-meta mb-4">Decision context</p>
-            <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
-              <p>
-                Selected route is <span className="text-foreground font-semibold capitalize">{shipment.selectedRoute}</span> — 
-                justified by a balanced tradeoff between ETA and disruption risk.
-              </p>
-              <p>All route decisions are recorded with risk scoring and predictive alert context.</p>
-            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">{decisionContext}</p>
           </div>
         </div>
 
         {/* Right: map */}
         <div>
+          {!hasBreakdown && (
+            <p className="text-xs text-muted-foreground/50 mb-3 px-1">
+              Risk breakdown unavailable for this shipment.
+            </p>
+          )}
           <RouteMapView
             route={routeForMap}
             routes={[routeForMap]}
-            status={shipment.status === "completed" ? "dispatched" : "active"}
+            status={shipment.status === "completed" ? "completed" : "active"}
             origin={shipment.origin}
             destination={shipment.destination}
           />
