@@ -7,12 +7,30 @@
 *From shipment creation to dynamic rerouting and explainable dispatch decisions — all in one platform.*
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.2-black?style=flat-square&logo=next.js)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Shadcn UI](https://img.shields.io/badge/Shadcn_UI-Components-black?style=flat-square)](https://ui.shadcn.com)
+[![Framer Motion](https://img.shields.io/badge/Framer_Motion-Animations-black?style=flat-square&logo=framer)](https://www.framer.com/motion/)
+[![Leaflet](https://img.shields.io/badge/Leaflet-Maps-199900?style=flat-square&logo=leaflet&logoColor=white)](https://leafletjs.com)
+[![Recharts](https://img.shields.io/badge/Recharts-Analytics-FF6384?style=flat-square)](https://recharts.org)
+
+[![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
-[![Firebase](https://img.shields.io/badge/Firebase-Auth-FFCA28?style=flat-square&logo=firebase&logoColor=black)](https://firebase.google.com)
+[![Firebase Auth](https://img.shields.io/badge/Firebase-Auth-FFCA28?style=flat-square&logo=firebase&logoColor=black)](https://firebase.google.com)
+[![Socket.io](https://img.shields.io/badge/Socket.io-Realtime-black?style=flat-square&logo=socket.io)](https://socket.io)
+
+[![OpenStreetMap](https://img.shields.io/badge/OpenStreetMap-Tiles-7EBC6F?style=flat-square&logo=openstreetmap&logoColor=white)](https://www.openstreetmap.org)
+[![OSRM](https://img.shields.io/badge/OSRM-Routing-0A84FF?style=flat-square)](https://project-osrm.org)
+[![OpenWeather](https://img.shields.io/badge/OpenWeather-API-FFB300?style=flat-square)](https://openweathermap.org/api)
 [![Gemini AI](https://img.shields.io/badge/Gemini-AI-4285F4?style=flat-square&logo=google&logoColor=white)](https://deepmind.google/technologies/gemini)
+
+[![Zod](https://img.shields.io/badge/Zod-Validation-3E67B1?style=flat-square)](https://zod.dev)
+[![JWT](https://img.shields.io/badge/JWT-Secure_Auth-000000?style=flat-square&logo=jsonwebtokens)](https://jwt.io)
+
+[![Vercel](https://img.shields.io/badge/Vercel-Deploy-black?style=flat-square&logo=vercel)](https://vercel.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Prototype%20Ready-brightgreen?style=flat-square)]()
+[![Status](https://img.shields.io/badge/Status-Prototype_Ready-brightgreen?style=flat-square)]()
 
 ---
 
@@ -26,7 +44,7 @@
 
 Modern logistics tools optimize for speed. They ignore reliability.
 
-The fastest route fails more often than it should — and when it does, there's no intelligence to explain why or what to do next.
+The fastest route fails more often than it should - and when it does, there's no intelligence to explain why or what to do next.
 
 | Root Cause | Real-World Impact |
 |---|---|
@@ -42,7 +60,7 @@ Logistics teams are left guessing. SentinelRoute changes that.
 
 ## The Solution
 
-SentinelRoute generates multiple route options for every shipment and scores each one using a composite risk engine — before dispatch, not after failure.
+SentinelRoute generates multiple route options for every shipment and scores each one using a composite risk engine - before dispatch, not after failure.
 
 Every route is evaluated across:
 
@@ -52,7 +70,7 @@ Every route is evaluated across:
 - Cargo type sensitivity and urgency level
 - Distance, ETA accuracy, and fuel exposure
 
-The platform then recommends the optimal route with a clear AI-generated explanation — so dispatchers understand *why*, not just *what*.
+The platform then recommends the optimal route with a clear AI-generated explanation - so dispatchers understand *why*, not just *what*.
 
 ---
 
@@ -74,24 +92,27 @@ The platform then recommends the optimal route with a clear AI-generated explana
 ## Core Features
 
 **Route Intelligence**
-- 🚚 Multi-route generation — fastest, balanced, and safest options per shipment
-- ⚠️ Dynamic risk scoring — composite 0–100 score per route, updated per analysis
-- 🌦 Weather disruption intelligence — live OpenWeather corridor sampling
-- 🗺 Live route intelligence map — interactive Leaflet map with route overlays
+- 🚚 Multi-route generation - fastest, balanced, and safest options per shipment
+- ⚠️ Dynamic risk scoring - composite 0–100 score per route, updated per analysis
+- 🌦 Weather disruption intelligence - live OpenWeather corridor sampling
+- 🗺 Live route intelligence map - interactive Leaflet map with route overlays
 
 **AI & Decision Layer**
-- 🧠 Gemini-powered route reasoning — explainable AI rationale for every dispatch decision
-- 🔁 Smart rerouting engine — risk-aware route comparison with delta indicators
-- 📦 Shipment Pass — structured dispatch authorization with integrity hash
+- 🧠 Gemini-powered route reasoning - explainable AI rationale for every dispatch decision
+- 🔁 Smart rerouting engine - risk-aware route comparison with delta indicators
+- 📦 Shipment Pass - structured dispatch authorization with integrity hash
 
 **Operations & Analytics**
-- 📊 Analytics dashboard — risk trends, route performance, cargo breakdown
-- 🔔 Real-time alerts — predictive warnings surfaced before dispatch
-- 📈 Historical shipment insights — full audit trail per shipment
+- 📊 Analytics dashboard - risk trends, route performance, cargo breakdown
+- 🔔 Real-time alerts - predictive warnings surfaced before dispatch
+- 📈 Historical shipment insights - full audit trail per shipment
 
 ---
 
 ## Product Walkthrough
+
+<img src="assets/SentinelRoute user flow chart.png" width="900" alt="SentinelRoute Architecture Diagram" />
+
 
 ```
 1. Authenticate          →  Firebase Auth (email / OAuth)
@@ -106,73 +127,54 @@ The platform then recommends the optimal route with a clear AI-generated explana
 
 ---
 
-## Screenshots
-
-### Landing Page
-![Landing Page](public/screenshots/landing.png)
-
-### Authentication
-![Authentication](public/screenshots/auth.png)
-
-### Shipment Creation
-![Shipment Creation](public/screenshots/create-shipment.png)
-
-### Route Selection
-![Route Selection](public/screenshots/routes.png)
-
-### Dashboard Analytics
-![Dashboard](public/screenshots/dashboard.png)
-
-### Shipment Summary
-![Shipment Summary](public/screenshots/shipment-detail.png)
-
-> Screenshots will be added after final UI polish. Replace paths above with actual captures.
-
----
-
 ## System Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Client (Browser)                      │
-│         Next.js 16 · React 19 · Tailwind · Framer       │
-└──────────────────────────┬──────────────────────────────┘
-                           │ HTTPS / WebSocket
-┌──────────────────────────▼──────────────────────────────┐
-│                   Next.js API Layer                      │
-│     /api/analyze-routes  /api/shipments  /api/ai-insight │
-│              Firebase Admin · Zod · JWT                  │
-└────┬──────────────┬──────────────┬───────────────────────┘
-     │              │              │
-┌────▼────┐  ┌──────▼──────┐  ┌───▼──────────────────────┐
-│ MongoDB │  │ Firebase    │  │   External Services       │
-│  Atlas  │  │    Auth     │  │  OSRM · OpenWeather       │
-│         │  │             │  │  Gemini AI · Nominatim    │
-└─────────┘  └─────────────┘  └───────────────────────────┘
-                           │
-              ┌────────────▼────────────┐
-              │      Socket.io          │
-              │  Real-time shipment     │
-              │  status + alerts        │
-              └─────────────────────────┘
-```
+<img src="assets/SentinelRoute architecture.png" width="900" alt="SentinelRoute Architecture Diagram" />
 
 ---
 
 ## Tech Stack
 
-| Layer | Technologies |
-|---|---|
-| **Frontend** | Next.js 16, TypeScript, Tailwind CSS 4, Shadcn UI, Framer Motion |
-| **Maps & Routing** | Leaflet, React-Leaflet, OSRM, OpenStreetMap, Nominatim |
-| **Charts** | Recharts |
-| **Backend** | Next.js API Routes, Node.js |
-| **Database** | MongoDB Atlas |
-| **Authentication** | Firebase Auth, Firebase Admin SDK |
-| **AI** | Google Gemini 2.0 Flash |
-| **Real-time** | Socket.io 4.8 |
-| **Security** | Zod validation, JWT, AES-256-GCM field encryption, SHA-256 decision hashing |
-| **Deployment** | Vercel |
+SentinelRoute is built with a lean prototype stack optimized for rapid execution, real-world testing, and low operational cost.  
+Its architecture is intentionally modular, allowing a direct upgrade path into the Google ecosystem for enterprise-scale logistics intelligence.
+
+---
+
+### Current Prototype Stack
+
+| Layer | Technologies | Role |
+|---|---|---|
+| **Frontend** | Next.js, TypeScript, Tailwind CSS, Shadcn UI, Framer Motion | High-performance responsive web platform |
+| **Maps & Routing** | Leaflet, React-Leaflet, OpenStreetMap, OSRM, Nominatim | Route visualization, geocoding, dynamic path generation |
+| **Backend** | Next.js API Routes, Node.js | Shipment workflows, route orchestration, analytics APIs |
+| **Database** | MongoDB Atlas | Shipment records, route history, operational insights |
+| **Authentication** | Firebase Authentication, Firebase Admin SDK | Secure user login, Google Sign-In, session control |
+| **AI Layer** | Google Gemini API | Route reasoning, explainable recommendations, decision support |
+| **Real-Time** | Socket.io | Live shipment updates, route alerts, instant notifications |
+| **Analytics** | Recharts | Operational dashboards, trend intelligence |
+| **Security** | Zod, JWT, AES-256-GCM, SHA-256 | Validation, token security, encrypted fields, audit integrity |
+| **Deployment** | Vercel | Fast global deployment for prototype and MVP stage |
+
+---
+
+### Google Ecosystem Scale-Up Roadmap
+
+SentinelRoute is designed to transition into a Google-native logistics SaaS platform capable of serving enterprise fleets, high shipment volumes, and multi-region operations.
+
+| Layer | Google Ecosystem Upgrade | Strategic Value |
+|---|---|---|
+| **Cloud Platform** | Google Cloud Platform | Unified enterprise infrastructure |
+| **Compute** | Cloud Run | Auto-scaling containerized backend services |
+| **API Management** | API Gateway | Secure, monitored external integrations |
+| **Database** | Firestore + BigQuery | Real-time operational data + large-scale analytics |
+| **Maps Intelligence** | Google Maps Platform | Premium routing, traffic intelligence, ETA precision |
+| **AI & Prediction** | Gemini + Vertex AI | Delay prediction, optimization models, decision automation |
+| **Storage** | Google Cloud Storage | Documents, shipment proofs, reports, media |
+| **Streaming Data** | Pub/Sub | Real-time fleet events and logistics signals |
+| **Monitoring** | Cloud Logging, Cloud Monitoring | Production observability and alerting |
+| **Identity & Security** | Firebase Auth + IAM + Secret Manager | Enterprise-grade access control and secret management |
+| **Global Scale** | Multi-region deployment + CDN | Low-latency global logistics operations |
+| **CI/CD** | Cloud Build + GitHub Actions | Automated testing and production releases |
 
 ---
 
@@ -201,18 +203,18 @@ riskScore = (
 
 **Output:** `low` · `medium` · `high` · `critical`
 
-Each route also receives a SHA-256 integrity hash at analysis time — tamper-evident by design.
+Each route also receives a SHA-256 integrity hash at analysis time - tamper-evident by design.
 
 ---
 
 ## Why It Matters
 
-- **Reduces route uncertainty** — risk is quantified before every dispatch, not discovered after
-- **Improves ETA accuracy** — risk-adjusted estimates outperform speed-only predictions
-- **Lowers operational cost** — fewer failed routes, fewer reactive decisions
-- **Prevents repeated mistakes** — historical shipment data informs future routing
-- **Builds dispatcher trust** — AI reasoning is transparent, not a black box
-- **Scales with operations** — architecture supports fleet-level volume without redesign
+- **Reduces route uncertainty** - risk is quantified before every dispatch, not discovered after
+- **Improves ETA accuracy** - risk-adjusted estimates outperform speed-only predictions
+- **Lowers operational cost** - fewer failed routes, fewer reactive decisions
+- **Prevents repeated mistakes** - historical shipment data informs future routing
+- **Builds dispatcher trust** - AI reasoning is transparent, not a black box
+- **Scales with operations** - architecture supports fleet-level volume without redesign
 
 ---
 
@@ -220,14 +222,14 @@ Each route also receives a SHA-256 integrity hash at analysis time — tamper-ev
 
 | Phase | Feature |
 |---|---|
-| v1.1 | Fleet optimization engine — multi-vehicle dispatch coordination |
-| v1.2 | Driver mobile app — React Native with live GPS push |
-| v1.3 | IoT live GPS tracking — real-time vehicle position on map |
-| v2.0 | Carbon-efficient routing — emissions scoring per route |
-| v2.1 | Enterprise reporting suite — exportable PDF/CSV analytics |
-| v2.2 | Role-based access control — dispatcher, manager, admin tiers |
-| v3.0 | BigQuery analytics integration — warehouse-scale shipment intelligence |
-| v3.1 | Google Cloud deployment — auto-scaling, global edge delivery |
+| v1.1 | Fleet optimization engine - multi-vehicle dispatch coordination |
+| v1.2 | Driver mobile app - React Native with live GPS push |
+| v1.3 | IoT live GPS tracking - real-time vehicle position on map |
+| v2.0 | Carbon-efficient routing - emissions scoring per route |
+| v2.1 | Enterprise reporting suite - exportable PDF/CSV analytics |
+| v2.2 | Role-based access control - dispatcher, manager, admin tiers |
+| v3.0 | BigQuery analytics integration - warehouse-scale shipment intelligence |
+| v3.1 | Google Cloud deployment - auto-scaling, global edge delivery |
 
 ---
 
@@ -283,38 +285,18 @@ NEXT_PUBLIC_ENABLE_WEBSOCKET=true
 
 ---
 
-## Live Demo
-
-| | Link |
-|---|---|
-| **Live App** | _Coming soon_ |
-| **GitHub Repo** | [github.com/your-username/sentinelroute](https://github.com/your-username/sentinelroute) |
-| **Demo Video** | _Coming soon_ |
-
----
-
-## For Judges & Reviewers
-
-SentinelRoute is not a CRUD app with an AI label attached.
-
-The AI layer is purposeful — Gemini generates route-specific reasoning grounded in real risk data, not generic text. The risk engine is deterministic and auditable. Every dispatch decision is hashed for integrity. The architecture is production-grade: encrypted fields, token-verified API routes, resilient fetch with retry logic, and a real-time layer that degrades gracefully on serverless.
-
-**What makes it stand out:**
-
-- Solves a real, measurable logistics problem
-- AI is used to explain decisions, not decorate them
-- Full-stack implementation: auth, database, external APIs, real-time, analytics
-- Security-first: AES-256 encryption, SHA-256 hashing, Firebase Admin token verification
-- Scalable business model with a clear enterprise path
-
----
-
 ## License
 
-MIT © 2026 SentinelRoute
+The SentinelRoute platform is released under the  [MIT License](LICENSE).
+
+> Advanced enterprise modules, large-scale fleet orchestration, and premium analytics capabilities may be introduced in future commercial releases.
 
 ---
 
 <div align="center">
-<sub>Built with precision. Designed for scale.</sub>
+
+**Built for resilient logistics and smarter operations**
+
+**SentinelRoute** — Because routing decisions should be reliable, explainable, and data-driven.
+
 </div>
