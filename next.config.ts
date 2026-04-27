@@ -3,7 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // ── Performance ────────────────────────────────────────────────────────────
   compress: true,
-
+  "devIndicators" : false, // Disable the "Development" indicator in the browser during development.
+  "productionBrowserSourceMaps": false, // Disable source maps in production for better performance and security.
+  
   // ── Images ─────────────────────────────────────────────────────────────────
   images: {
     formats: ["image/avif", "image/webp"],
