@@ -297,6 +297,6 @@ The SentinelRoute platform is released under the  [MIT License](LICENSE).
 
 **Built for resilient logistics and smarter operations**
 
-**SentinelRoute** — Because routing decisions should be reliable, explainable, and data-driven.
+**SentinelRoute** - Because routing decisions should be reliable, explainable, and data-driven.
 
 </div>
