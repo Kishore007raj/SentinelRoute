@@ -100,23 +100,56 @@ async function fetchIncidents(
   apiKey: string,
   signal: AbortSignal
 ): Promise<{ incidents: string[]; hasRoadClosure: boolean }> {
-  const url =
+  // Try v5 first, fall back to v4 if 401 (key scope issue)
+  const v5url =
     `https://api.tomtom.com/traffic/services/5/incidentDetails` +
     `?key=${apiKey}` +
     `&bbox=${bbox}` +
-    `&fields={incidents{type,geometry{type},properties{iconCategory,magnitudeOfDelay,events{description,code}}}}` +
+    `&fields={incidents{type,properties{iconCategory,magnitudeOfDelay,events{description}}}}` +
     `&language=en-GB` +
-    `&categoryFilter=0,1,2,3,4,5,6,7,8,9,10,11,14` +
     `&timeValidityFilter=present`;
 
-  const res = await fetch(url, { signal });
+  let res = await fetch(v5url, { signal });
+
+  // v5 returned 401 — try v4 which uses a simpler request format
+  if (res.status === 401) {
+    console.warn("[tomtom] Incidents v5 returned 401 — trying v4");
+    const v4url =
+      `https://api.tomtom.com/traffic/services/4/incidentDetails/s3/${bbox}/10/-1` +
+      `?key=${apiKey}` +
+      `&projection=EPSG4326` +
+      `&expandCluster=true`;
+    res = await fetch(v4url, { signal });
+  }
+
   if (!res.ok) {
     console.warn(`[tomtom] Incidents API error ${res.status}`);
     return { incidents: [], hasRoadClosure: false };
   }
 
-  const data: TomTomIncidentsResponse = await res.json();
-  const raw = data.incidents ?? [];
+  // v4 and v5 have different response shapes — handle both
+  const data = await res.json() as Record<string, unknown>;
+
+  // v5 shape: { incidents: [...] }
+  // v4 shape: { tm: { poi: [...] } }
+  let rawIncidents: TomTomIncident[] = [];
+  if (Array.isArray((data as TomTomIncidentsResponse).incidents)) {
+    rawIncidents = (data as TomTomIncidentsResponse).incidents ?? [];
+  } else if (data.tm && typeof data.tm === "object") {
+    // v4: extract poi array and map to v5-like shape
+    const tm = data.tm as Record<string, unknown>;
+    const poi = Array.isArray(tm.poi) ? tm.poi as Array<Record<string, unknown>> : [];
+    rawIncidents = poi.map((p) => ({
+      type: "Feature",
+      properties: {
+        iconCategory:     typeof p.ic === "number" ? p.ic : 0,
+        magnitudeOfDelay: typeof p.dl === "number" ? Math.min(3, Math.ceil(p.dl / 30)) : 0,
+        events: [{ description: typeof p.d === "string" ? p.d : undefined }],
+      },
+    }));
+  }
+
+  const raw = rawIncidents;
 
   const incidents: string[] = [];
   let hasRoadClosure = false;
