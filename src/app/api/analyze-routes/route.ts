@@ -8,7 +8,6 @@ import { getRouteWeatherRisk } from "@/lib/weather-service";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { createDecisionHash } from "@/lib/hash";
 import { getTomTomTrafficData } from "@/lib/tomtom";
-import { geocodeCity } from "@/lib/osrm";
 
 /**
  * POST /api/analyze-routes
@@ -88,21 +87,25 @@ export async function POST(req: NextRequest) {
 
   // ── Step 2: Weather + TomTom Traffic (parallel) ───────────────────────────
   // Run corridor weather, route-point weather, and TomTom traffic in parallel.
-  const fastestCoords = osrmRoutes[0].coordinates;
+  const fastestRoute  = osrmRoutes[0];
+  const fastestCoords = fastestRoute.coordinates;
 
-  // Geocode origin/destination for TomTom bounding box (reuse cached coords)
-  const [originCoords, destCoords] = await Promise.all([
-    geocodeCity(origin),
-    geocodeCity(destination),
-  ]);
+  // Extract origin/destination coords from OSRM geometry — already geocoded,
+  // no need to call geocodeCity again (avoids Nominatim rate-limit issues).
+  const osrmOriginCoords = fastestCoords.length > 0
+    ? fastestCoords[0]                        // [lng, lat] of origin
+    : null;
+  const osrmDestCoords = fastestCoords.length > 1
+    ? fastestCoords[fastestCoords.length - 1] // [lng, lat] of destination
+    : null;
 
   const [corridorWeather, pointWeather, tomtomTraffic] = await Promise.all([
     getRouteWeather(origin, destination),
     fastestCoords.length > 1
       ? getRouteWeatherRisk(fastestCoords)
       : Promise.resolve({ averageRisk: 20, points: [] }),
-    originCoords && destCoords
-      ? getTomTomTrafficData(originCoords, destCoords)
+    osrmOriginCoords && osrmDestCoords
+      ? getTomTomTrafficData(osrmOriginCoords, osrmDestCoords)
       : Promise.resolve({ trafficScore: -1, incidents: [], hasRoadClosure: false, isLive: false }),
   ]);
 
