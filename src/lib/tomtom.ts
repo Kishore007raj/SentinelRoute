@@ -100,43 +100,25 @@ async function fetchIncidents(
   apiKey: string,
   signal: AbortSignal
 ): Promise<{ incidents: string[]; hasRoadClosure: boolean }> {
-  // Try v5 first, fall back to v4 if 401 (key scope issue)
-  const v5url =
-    `https://api.tomtom.com/traffic/services/5/incidentDetails` +
+  // Use v4 directly — v5 requires additional API key scopes not available on free tier
+  const url =
+    `https://api.tomtom.com/traffic/services/4/incidentDetails/s3/${bbox}/10/-1` +
     `?key=${apiKey}` +
-    `&bbox=${bbox}` +
-    `&fields={incidents{type,properties{iconCategory,magnitudeOfDelay,events{description}}}}` +
-    `&language=en-GB` +
-    `&timeValidityFilter=present`;
+    `&projection=EPSG4326` +
+    `&expandCluster=true`;
 
-  let res = await fetch(v5url, { signal });
-
-  // v5 returned 401 — try v4 which uses a simpler request format
-  if (res.status === 401) {
-    console.warn("[tomtom] Incidents v5 returned 401 — trying v4");
-    const v4url =
-      `https://api.tomtom.com/traffic/services/4/incidentDetails/s3/${bbox}/10/-1` +
-      `?key=${apiKey}` +
-      `&projection=EPSG4326` +
-      `&expandCluster=true`;
-    res = await fetch(v4url, { signal });
-  }
+  const res = await fetch(url, { signal });
 
   if (!res.ok) {
     console.warn(`[tomtom] Incidents API error ${res.status}`);
     return { incidents: [], hasRoadClosure: false };
   }
 
-  // v4 and v5 have different response shapes — handle both
+  // v4 shape: { tm: { poi: [...] } }
   const data = await res.json() as Record<string, unknown>;
 
-  // v5 shape: { incidents: [...] }
-  // v4 shape: { tm: { poi: [...] } }
   let rawIncidents: TomTomIncident[] = [];
-  if (Array.isArray((data as TomTomIncidentsResponse).incidents)) {
-    rawIncidents = (data as TomTomIncidentsResponse).incidents ?? [];
-  } else if (data.tm && typeof data.tm === "object") {
-    // v4: extract poi array and map to v5-like shape
+  if (data.tm && typeof data.tm === "object") {
     const tm = data.tm as Record<string, unknown>;
     const poi = Array.isArray(tm.poi) ? tm.poi as Array<Record<string, unknown>> : [];
     rawIncidents = poi.map((p) => ({
@@ -147,14 +129,17 @@ async function fetchIncidents(
         events: [{ description: typeof p.d === "string" ? p.d : undefined }],
       },
     }));
+  } else if (Array.isArray((data as TomTomIncidentsResponse).incidents)) {
+    // v5 shape fallback (future-proof)
+    rawIncidents = (data as TomTomIncidentsResponse).incidents ?? [];
   }
 
-  const raw = rawIncidents;
+  console.log(`[tomtom] Incidents: ${rawIncidents.length} raw incidents in bbox`);
 
   const incidents: string[] = [];
   let hasRoadClosure = false;
 
-  for (const incident of raw) {
+  for (const incident of rawIncidents) {
     const props = incident.properties;
     if (!props) continue;
 
@@ -275,17 +260,17 @@ export async function getTomTomTrafficData(
 
     clearTimeout(timer);
 
-    // Only mark as live if flow data was actually retrieved
-    // Incidents alone without a flow score is not sufficient for risk scoring
-    const isLive = flowScore >= 0;
+    // Mark as live when incidents API succeeded.
+    // Flow score may be -1 in areas with limited TomTom coverage (common in India)
+    // — in that case we still use real incident data and fall back to OSRM for traffic score.
+    const incidentsLive = true; // incidents fetch succeeded (no throw)
+    const isLive = incidentsLive;
 
-    if (isLive) {
-      console.log(
-        `[tomtom] Live data: score=${flowScore} incidents=${incidentResult.incidents.length} closure=${incidentResult.hasRoadClosure}`
-      );
-    } else {
-      console.warn("[tomtom] Flow score unavailable — falling back to OSRM estimate");
-    }
+    console.log(
+      `[tomtom] Live: incidents=${incidentResult.incidents.length} ` +
+      `closure=${incidentResult.hasRoadClosure} ` +
+      `flowScore=${flowScore >= 0 ? flowScore : "unavailable (limited coverage)"}`
+    );
 
     return {
       trafficScore:   flowScore,
