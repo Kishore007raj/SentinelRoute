@@ -221,7 +221,7 @@ async function fetchFlowScore(
 
   const res = await fetch(url, { signal });
   if (!res.ok) {
-    console.warn(`[tomtom] Flow API error ${res.status}`);
+    console.warn(`[tomtom] Flow API error ${res.status} for point (${midLat.toFixed(3)},${midLon.toFixed(3)})`);
     return -1;
   }
 
@@ -275,11 +275,23 @@ export async function getTomTomTrafficData(
 
     clearTimeout(timer);
 
+    // Only mark as live if flow data was actually retrieved
+    // Incidents alone without a flow score is not sufficient for risk scoring
+    const isLive = flowScore >= 0;
+
+    if (isLive) {
+      console.log(
+        `[tomtom] Live data: score=${flowScore} incidents=${incidentResult.incidents.length} closure=${incidentResult.hasRoadClosure}`
+      );
+    } else {
+      console.warn("[tomtom] Flow score unavailable — falling back to OSRM estimate");
+    }
+
     return {
       trafficScore:   flowScore,
       incidents:      incidentResult.incidents,
       hasRoadClosure: incidentResult.hasRoadClosure,
-      isLive:         true,
+      isLive,
     };
   } catch (err: unknown) {
     clearTimeout(timer);
