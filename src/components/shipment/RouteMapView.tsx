@@ -124,11 +124,15 @@ export function RouteMapView({
       ? [(originCoords[0] + destCoords[0]) / 2, (originCoords[1] + destCoords[1]) / 2]
       : originCoords ?? destCoords ?? [20.5937, 78.9629];
 
-  // Build polyline from city coords (OSRM geometry not stored on Route type)
+  // Build polyline: use real OSRM geometry when available, fall back to straight line
   const polylinePoints: [number, number][] =
-    originCoords && destCoords ? [originCoords, destCoords] : [];
+    route.geometry && route.geometry.length > 1
+      ? route.geometry
+      : originCoords && destCoords
+        ? [originCoords, destCoords]
+        : [];
 
-  const isLiveData = dataSource === "osrm+openweather";
+  const isLiveData = dataSource === "osrm+openweather" || dataSource === "osrm+openweather+tomtom";
   const isFallback = dataSource === "static-fallback";
 
   if (!isClient) {
@@ -151,7 +155,10 @@ export function RouteMapView({
           {isLiveData ? (
             <div className="flex items-center gap-2">
               <Wifi className="w-3.5 h-3.5 shrink-0" />
-              <span>Live data — OSRM routing + OpenWeather active</span>
+              <span>
+                Live data — OSRM routing + OpenWeather
+                {dataSource === "osrm+openweather+tomtom" ? " + TomTom Traffic" : ""}
+              </span>
             </div>
           ) : isFallback ? (
             <div className="space-y-1">

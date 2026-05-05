@@ -38,6 +38,11 @@ export interface Route {
   polyline?:     string;
   aiExplanation?: string;
   /**
+   * GeoJSON LineString coordinates [lat, lng][] from OSRM.
+   * Used to draw the actual road path on the map.
+   */
+  geometry?:     [number, number][];
+  /**
    * True when this route is a synthesized estimate (balanced/safest from OSRM,
    * or any route from the static fallback). False only for the live OSRM fastest route.
    */

@@ -201,6 +201,8 @@ export async function POST(req: NextRequest) {
         riskBreakdown: riskResult.riskBreakdown,
         alerts,
         isSimulated:  osrmRoute.label !== "fastest",
+        // Convert OSRM [lng, lat] coordinates to Leaflet [lat, lng] for map rendering
+        geometry:     osrmRoute.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]),
         decisionHash,
       };
     }
