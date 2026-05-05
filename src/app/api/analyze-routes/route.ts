@@ -7,6 +7,8 @@ import { computeRiskScore, selectRecommendedRoute } from "@/lib/risk";
 import { getRouteWeatherRisk } from "@/lib/weather-service";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { createDecisionHash } from "@/lib/hash";
+import { getTomTomTrafficData } from "@/lib/tomtom";
+import { geocodeCity } from "@/lib/osrm";
 
 /**
  * POST /api/analyze-routes
@@ -64,7 +66,13 @@ export async function POST(req: NextRequest) {
     const routesWithHash = routes.map((route) => ({
       ...route,
       decisionHash: createDecisionHash({
-        route,
+        route: {
+          id:            route.id,
+          label:         route.label,
+          distanceKm:    route.distanceKm,
+          etaMinutes:    route.etaMinutes,
+          riskBreakdown: route.riskBreakdown,
+        },
         riskScore:  route.riskScore,
         weather:    route.riskBreakdown.weather,
       }),
@@ -78,16 +86,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(response);
   }
 
-  // ── Step 2: Weather ────────────────────────────────────────────────────────
-  // Run corridor weather (origin+destination) and route-point weather in parallel.
-  // Route-point weather samples along the geometry for more granular scoring.
+  // ── Step 2: Weather + TomTom Traffic (parallel) ───────────────────────────
+  // Run corridor weather, route-point weather, and TomTom traffic in parallel.
   const fastestCoords = osrmRoutes[0].coordinates;
 
-  const [corridorWeather, pointWeather] = await Promise.all([
+  // Geocode origin/destination for TomTom bounding box (reuse cached coords)
+  const [originCoords, destCoords] = await Promise.all([
+    geocodeCity(origin),
+    geocodeCity(destination),
+  ]);
+
+  const [corridorWeather, pointWeather, tomtomTraffic] = await Promise.all([
     getRouteWeather(origin, destination),
     fastestCoords.length > 1
       ? getRouteWeatherRisk(fastestCoords)
       : Promise.resolve({ averageRisk: 20, points: [] }),
+    originCoords && destCoords
+      ? getTomTomTrafficData(originCoords, destCoords)
+      : Promise.resolve({ trafficScore: -1, incidents: [], hasRoadClosure: false, isLive: false }),
   ]);
 
   // Blend corridor score (70%) with point-sampled score (30%)
@@ -95,16 +111,35 @@ export async function POST(req: NextRequest) {
     corridorWeather.weatherScore * 0.7 + pointWeather.averageRisk * 0.3
   );
 
+  // Log TomTom result for observability
+  if (tomtomTraffic.isLive) {
+    console.log(
+      `[analyze-routes] TomTom live traffic: score=${tomtomTraffic.trafficScore} ` +
+      `incidents=${tomtomTraffic.incidents.length} closure=${tomtomTraffic.hasRoadClosure}`
+    );
+  }
+
   // ── Step 3 & 4: Risk scoring + Route construction ─────────────────────────
   const scoredRoutes = osrmRoutes.map((osrmRoute) => {
-    // Traffic score: OSRM has no live traffic, so we estimate from distance/duration ratio.
-    // Average speed on Indian highways: ~55 km/h. Below 35 = congested.
-    const avgSpeedKmh = osrmRoute.distanceKm / (osrmRoute.durationMins / 60);
-    const trafficScore =
-      avgSpeedKmh < 30 ? 75 :
-      avgSpeedKmh < 40 ? 50 :
-      avgSpeedKmh < 50 ? 30 :
-      15;
+    // Traffic score: use TomTom flow data when available.
+    // Fall back to OSRM speed estimate when TomTom is unavailable (isLive: false).
+    let trafficScore: number;
+    if (tomtomTraffic.isLive && tomtomTraffic.trafficScore >= 0) {
+      // Real congestion score from TomTom flow API
+      trafficScore = tomtomTraffic.trafficScore;
+      // Boost score for road closures — they represent maximum disruption
+      if (tomtomTraffic.hasRoadClosure) {
+        trafficScore = Math.min(100, trafficScore + 25);
+      }
+    } else {
+      // Fallback: estimate from OSRM average speed
+      const avgSpeedKmh = osrmRoute.distanceKm / (osrmRoute.durationMins / 60);
+      trafficScore =
+        avgSpeedKmh < 30 ? 75 :
+        avgSpeedKmh < 40 ? 50 :
+        avgSpeedKmh < 50 ? 30 :
+        15;
+    }
 
     const riskResult = computeRiskScore({
       trafficScore,
@@ -140,7 +175,8 @@ export async function POST(req: NextRequest) {
         trafficScore,
         weatherScore,
         corridorWeather.weatherAlert,
-        riskResult.predictiveAlert
+        riskResult.predictiveAlert,
+        tomtomTraffic.isLive ? tomtomTraffic.incidents : []
       );
 
       // Compute integrity hash over the immutable decision data
@@ -173,7 +209,7 @@ export async function POST(req: NextRequest) {
   const response: AnalyzeRoutesResponse = {
     routes,
     analyzedAt:   new Date().toISOString(),
-    source:       "osrm+openweather",
+    source:       tomtomTraffic.isLive ? "osrm+openweather+tomtom" : "osrm+openweather",
     weatherScore,
   };
 
@@ -215,9 +251,15 @@ function buildAlerts(
   trafficScore: number,
   weatherScore: number,
   weatherAlert: string | null,
-  predictiveAlert?: string
+  predictiveAlert?: string,
+  tomtomIncidents: string[] = []
 ): string[] {
   const alerts: string[] = [];
+
+  // TomTom incidents first — they are the most specific and actionable
+  for (const incident of tomtomIncidents) {
+    if (!alerts.includes(incident)) alerts.push(incident);
+  }
 
   if (weatherScore > 70 && weatherAlert) alerts.push(weatherAlert);
   else if (weatherScore > 40 && weatherAlert) alerts.push(weatherAlert);
