@@ -1,14 +1,14 @@
 /**
- * server.ts — Custom Next.js server with Socket.io
+ * server.ts - Custom Next.js server with Socket.io
  *
  * Run with: node --experimental-strip-types server.ts
  * Or compile first: npx tsc server.ts --outDir .next/server
  *
  * Socket.io events emitted to clients:
- *   shipment:updated  — { shipment: Shipment }
- *   shipment:created  — { shipment: Shipment }
- *   shipment:status   — { id, status, lastUpdate (UTC ISO) }
- *   server:time       — { utc: ISO string } — sent on connect for clock sync
+ *   shipment:updated  - { shipment: Shipment }
+ *   shipment:created  - { shipment: Shipment }
+ *   shipment:status   - { id, status, lastUpdate (UTC ISO) }
+ *   server:time       - { utc: ISO string } - sent on connect for clock sync
  *
  * All timestamps are UTC ISO strings. Clients display in their local timezone.
  */
@@ -59,7 +59,7 @@ app.prepare().then(() => {
     });
 
     socket.on("disconnect", (reason) => {
-      console.log(`[socket] Client disconnected: ${socket.id} — ${reason}`);
+      console.log(`[socket] Client disconnected: ${socket.id} - ${reason}`);
     });
   });
 

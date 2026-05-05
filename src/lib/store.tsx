@@ -251,6 +251,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const refreshShipments = useCallback(async () => { await fetchShipments(); }, [fetchShipments]);
 
+  // ── Polling fallback (Vercel / serverless — no WebSocket) ─────────────────
+  // When WebSocket is disabled, poll every 30s to keep data reasonably fresh.
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_ENABLE_WEBSOCKET === "true") return;
+    if (!user) return;
+    const interval = setInterval(() => { fetchShipments(); }, 30_000);
+    return () => clearInterval(interval);
+  }, [user, fetchShipments]);
+
   // ── Real-time socket updates ───────────────────────────────────────────────
   // Handlers are memoised so useSocket doesn't re-subscribe on every render
   const socketHandlers = useMemo(() => ({

@@ -66,13 +66,7 @@ export async function POST(req: NextRequest) {
     const routesWithHash = routes.map((route) => ({
       ...route,
       decisionHash: createDecisionHash({
-        route: {
-          id:            route.id,
-          label:         route.label,
-          distanceKm:    route.distanceKm,
-          etaMinutes:    route.etaMinutes,
-          riskBreakdown: route.riskBreakdown,
-        },
+        route,
         riskScore:  route.riskScore,
         weather:    route.riskBreakdown.weather,
       }),
