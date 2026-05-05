@@ -178,6 +178,9 @@ export async function POST(req: NextRequest) {
                          ? predictiveAlert
                          : undefined,
     riskBreakdown:     riskBreakdown ?? undefined,
+    geometry:          Array.isArray((raw as Record<string, unknown>).geometry)
+                         ? (raw as Record<string, unknown>).geometry as [number, number][]
+                         : undefined,
     createdAt:         now,
     updatedAt:         now,
   };

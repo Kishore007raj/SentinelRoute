@@ -321,6 +321,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         weatherScore:      route.riskBreakdown.weather,
         disruptionScore:   route.riskBreakdown.disruption,
         riskBreakdown:     route.riskBreakdown,
+        // Store geometry for map rendering on shipment detail page
+        geometry:          route.geometry ?? undefined,
       };
       // Only include predictiveAlert if it's a non-empty string
       const alert = route.alerts[0];

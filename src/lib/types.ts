@@ -76,6 +76,8 @@ export interface Shipment {
   predictiveAlert?:  string;
   /** Full breakdown stored at dispatch time — never reconstructed */
   riskBreakdown?:    RiskBreakdown;
+  /** OSRM road geometry [lat, lng][] stored at dispatch — used for map rendering */
+  geometry?:         [number, number][];
   userId?:           string;
   createdAt?:        string;
   updatedAt?:        string;

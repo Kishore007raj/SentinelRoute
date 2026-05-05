@@ -65,6 +65,7 @@ export default function ShipmentDetailPage({
     summary:       "",
     alerts:        shipment.predictiveAlert ? [shipment.predictiveAlert] : [],
     riskBreakdown: breakdown,
+    geometry:      shipment.geometry ?? undefined,
   };
 
   const statusBadgeClass =

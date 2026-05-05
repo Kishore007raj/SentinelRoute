@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Route, AnalyzeRoutesRequest, AnalyzeRoutesResponse } from "@/lib/types";
 import { getRiskLabel } from "@/lib/utils";
-import { getOsrmRoutes } from "@/lib/osrm";
+import { getOsrmRoutes, geocodeCity } from "@/lib/osrm";
 import { getRouteWeather } from "@/lib/weather";
 import { computeRiskScore, selectRecommendedRoute } from "@/lib/risk";
 import { getRouteWeatherRisk } from "@/lib/weather-service";
@@ -86,18 +86,20 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Step 2: Weather + TomTom Traffic (parallel) ───────────────────────────
-  // Run corridor weather, route-point weather, and TomTom traffic in parallel.
   const fastestRoute  = osrmRoutes[0];
   const fastestCoords = fastestRoute.coordinates;
 
-  // Extract origin/destination coords from OSRM geometry — already geocoded,
-  // no need to call geocodeCity again (avoids Nominatim rate-limit issues).
-  const osrmOriginCoords = fastestCoords.length > 0
-    ? fastestCoords[0]                        // [lng, lat] of origin
-    : null;
-  const osrmDestCoords = fastestCoords.length > 1
-    ? fastestCoords[fastestCoords.length - 1] // [lng, lat] of destination
-    : null;
+  // Get corridor endpoints for TomTom bounding box.
+  // Prefer OSRM geometry (already geocoded). Fall back to geocodeCity if
+  // OSRM returned fewer than 2 points (rare but possible on short corridors).
+  let osrmOriginCoords: [number, number] | null = fastestCoords.length > 0 ? fastestCoords[0] : null;
+  let osrmDestCoords:   [number, number] | null = fastestCoords.length > 1 ? fastestCoords[fastestCoords.length - 1] : null;
+
+  if (!osrmOriginCoords || !osrmDestCoords) {
+    const [gc1, gc2] = await Promise.all([geocodeCity(origin), geocodeCity(destination)]);
+    if (!osrmOriginCoords) osrmOriginCoords = gc1;
+    if (!osrmDestCoords)   osrmDestCoords   = gc2;
+  }
 
   const [corridorWeather, pointWeather, tomtomTraffic] = await Promise.all([
     getRouteWeather(origin, destination),
