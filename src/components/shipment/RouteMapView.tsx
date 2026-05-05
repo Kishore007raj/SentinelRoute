@@ -186,13 +186,13 @@ export function RouteMapView({
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           />
-          {polylinePoints.length === 2 && (
+          {polylinePoints.length >= 2 && (
             <>
               <Polyline positions={polylinePoints} color="#5eadd4" weight={4} opacity={0.85} />
               <Marker position={polylinePoints[0]}>
                 <Popup>Origin: {origin}</Popup>
               </Marker>
-              <Marker position={polylinePoints[1]}>
+              <Marker position={polylinePoints[polylinePoints.length - 1]}>
                 <Popup>Destination: {destination}</Popup>
               </Marker>
             </>

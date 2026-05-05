@@ -3,9 +3,16 @@
  *
  * If Gemini fails or times out, returns a deterministic fallback
  * immediately — never blocks the UI.
+ *
+ * Rate-limit backoff: after a 429, we skip Gemini calls for 60 seconds
+ * to avoid hammering the API and filling logs with warnings.
  */
 
 const TIMEOUT_MS = 10_000;
+
+// In-process cooldown after a 429 — avoids log spam and wasted quota
+let rateLimitedUntil = 0;
+const RATE_LIMIT_COOLDOWN_MS = 60_000; // 60 seconds
 
 /**
  * Calls Gemini with a hard 10-second timeout.
@@ -14,6 +21,11 @@ const TIMEOUT_MS = 10_000;
 export async function generateExplanation(prompt: string): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
+
+  // Skip the call entirely if we're still in the post-429 cooldown window
+  if (Date.now() < rateLimitedUntil) {
+    return null;
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -35,7 +47,11 @@ export async function generateExplanation(prompt: string): Promise<string | null
     clearTimeout(timer);
 
     if (response.status === 429) {
-      console.warn("[gemini] Rate limited — returning null");
+      // Respect Retry-After header if present, otherwise default to 60s
+      const retryAfter = response.headers.get("Retry-After");
+      const cooldownMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : RATE_LIMIT_COOLDOWN_MS;
+      rateLimitedUntil = Date.now() + cooldownMs;
+      console.warn(`[gemini] Rate limited — cooling down for ${cooldownMs / 1000}s`);
       return null;
     }
 

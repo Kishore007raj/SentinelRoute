@@ -33,6 +33,12 @@ const FALLBACK: TomTomTrafficResult = {
   isLive:         false,
 };
 
+// In-process cooldown after a 401 — the key won't become valid mid-session,
+// so skip all TomTom calls until the next deployment rather than logging
+// a 401 on every single request.
+let invalidKeyUntil = 0;
+const INVALID_KEY_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+
 // ─── TomTom incident category → human-readable label ─────────────────────────
 // iconCategory values: https://developer.tomtom.com/traffic-api/documentation/traffic-incidents/incident-details
 
@@ -99,7 +105,7 @@ async function fetchIncidents(
   bbox: string,
   apiKey: string,
   signal: AbortSignal
-): Promise<{ incidents: string[]; hasRoadClosure: boolean }> {
+): Promise<{ incidents: string[]; hasRoadClosure: boolean; unauthorized?: boolean }> {
   // Use v4 directly — v5 requires additional API key scopes not available on free tier
   const url =
     `https://api.tomtom.com/traffic/services/4/incidentDetails/s3/${bbox}/10/-1` +
@@ -108,6 +114,10 @@ async function fetchIncidents(
     `&expandCluster=true`;
 
   const res = await fetch(url, { signal });
+
+  if (res.status === 401) {
+    return { incidents: [], hasRoadClosure: false, unauthorized: true };
+  }
 
   if (!res.ok) {
     console.warn(`[tomtom] Incidents API error ${res.status}`);
@@ -193,7 +203,7 @@ async function fetchFlowScore(
   destCoords:   [number, number],
   apiKey: string,
   signal: AbortSignal
-): Promise<number> {
+): Promise<{ score: number; unauthorized?: boolean }> {
   // Sample at the midpoint of the corridor
   const midLat = (originCoords[1] + destCoords[1]) / 2;
   const midLon = (originCoords[0] + destCoords[0]) / 2;
@@ -205,15 +215,20 @@ async function fetchFlowScore(
     `&unit=KMPH`;
 
   const res = await fetch(url, { signal });
+
+  if (res.status === 401) {
+    return { score: -1, unauthorized: true };
+  }
+
   if (!res.ok) {
     console.warn(`[tomtom] Flow API error ${res.status} for point (${midLat.toFixed(3)},${midLon.toFixed(3)})`);
-    return -1;
+    return { score: -1 };
   }
 
   const data: TomTomFlowResponse = await res.json();
   const flow = data.flowSegmentData;
   if (!flow?.currentSpeed || !flow?.freeFlowSpeed || flow.freeFlowSpeed === 0) {
-    return -1;
+    return { score: -1 };
   }
 
   const ratio = flow.currentSpeed / flow.freeFlowSpeed;
@@ -223,7 +238,7 @@ async function fetchFlowScore(
     `[tomtom] Flow at (${midLat.toFixed(3)},${midLon.toFixed(3)}): ` +
     `${flow.currentSpeed}/${flow.freeFlowSpeed} km/h → score ${score}`
   );
-  return score;
+  return { score };
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
@@ -247,24 +262,37 @@ export async function getTomTomTrafficData(
     return FALLBACK;
   }
 
+  // Skip all calls if the key was already rejected — it won't fix itself mid-session
+  if (Date.now() < invalidKeyUntil) {
+    return FALLBACK;
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10_000);
 
   try {
     const bbox = buildBbox(originCoords, destCoords);
 
-    const [incidentResult, flowScore] = await Promise.all([
+    const [incidentResult, flowResult] = await Promise.all([
       fetchIncidents(bbox, apiKey, controller.signal),
       fetchFlowScore(originCoords, destCoords, apiKey, controller.signal),
     ]);
 
     clearTimeout(timer);
 
+    // If either call got a 401, the key is invalid — log once and cool down
+    if (incidentResult.unauthorized || flowResult.unauthorized) {
+      invalidKeyUntil = Date.now() + INVALID_KEY_COOLDOWN_MS;
+      console.error("[tomtom] API key rejected (401) — disabling TomTom for this session. Set TRAFFIC_API_KEY in Vercel environment variables.");
+      return FALLBACK;
+    }
+
+    const flowScore = flowResult.score;
+
     // Mark as live when incidents API succeeded.
     // Flow score may be -1 in areas with limited TomTom coverage (common in India)
     // — in that case we still use real incident data and fall back to OSRM for traffic score.
-    const incidentsLive = true; // incidents fetch succeeded (no throw)
-    const isLive = incidentsLive;
+    const isLive = true; // incidents fetch succeeded (no throw, no 401)
 
     console.log(
       `[tomtom] Live: incidents=${incidentResult.incidents.length} ` +
