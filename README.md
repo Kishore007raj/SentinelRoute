@@ -2,7 +2,7 @@
 
 # SentinelRoute
 
-**AI-Powered Logistics Intelligence for Resilient Supply Chains**
+**Logistics Intelligence for Resilient Supply Chains**
 
 *From shipment creation to dynamic rerouting and explainable dispatch decisions — all in one platform.*
 
