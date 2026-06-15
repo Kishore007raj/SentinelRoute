@@ -1,5 +1,5 @@
 /**
- * firebase.ts — Firebase app and Auth initialisation.
+ * firebase.ts — Firebase app, Auth and Storage initialisation.
  *
  * Reads NEXT_PUBLIC_ env vars directly from process.env.
  * Safe to import on both client and server — initialization is
@@ -10,11 +10,13 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
 let app: FirebaseApp;
 let auth: Auth;
+let storage: FirebaseStorage;
 
 if (apiKey) {
   const firebaseConfig = {
@@ -26,12 +28,14 @@ if (apiKey) {
     appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   };
 
-  app  = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-  auth = getAuth(app);
+  app     = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  auth    = getAuth(app);
+  storage = getStorage(app);
 } else {
   // Stub values during SSR when env vars aren't available
-  app  = {} as FirebaseApp;
-  auth = {} as Auth;
+  app     = {} as FirebaseApp;
+  auth    = {} as Auth;
+  storage = {} as FirebaseStorage;
 
   if (typeof window !== "undefined") {
     console.warn(
@@ -41,5 +45,5 @@ if (apiKey) {
   }
 }
 
-export { auth };
+export { auth, storage };
 export default app;

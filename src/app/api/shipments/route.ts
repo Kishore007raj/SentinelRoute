@@ -6,6 +6,7 @@ import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { encryptObjectFields, decryptObjectFields } from "@/lib/encryption";
 import { emitToUser } from "@/lib/socket-server";
 import { utcNow } from "@/lib/time";
+import type { UserRecord } from "@/lib/types";
 
 /**
  * GET /api/shipments
@@ -40,9 +41,17 @@ export async function GET(req: NextRequest) {
 
   try {
     const db = await getDb();
+
+    // Resolve companyId for tenant isolation (falls back to userId-only for legacy records)
+    const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
+    const companyId  = userRecord?.companyId;
+
+    // Build query: if user has a company, scope by companyId; else fallback to userId
+    const query = companyId ? { companyId } : { userId };
+
     const docs = await db
       .collection("shipments")
-      .find({ userId })           // ← always scoped to authenticated user
+      .find(query)           // ← always scoped to company or user
       .sort({ createdAt: -1 })
       .toArray();
 
@@ -188,6 +197,36 @@ export async function POST(req: NextRequest) {
   try {
     const db = await getDb();
 
+    // Resolve companyId for tenant isolation
+    const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
+    const companyId  = userRecord?.companyId;
+
+    // Task 5: enforce ownership fields — both required on every new shipment
+    // companyId comes from the authenticated user's company, never from request body
+    // createdByUserId is the authenticated user's uid
+    if (!companyId) {
+      console.warn("[POST /api/shipments] No companyId on userRecord — shipment blocked");
+      return NextResponse.json(
+        { error: "No company associated with this account. Complete company registration first." },
+        { status: 403 }
+      );
+    }
+
+    // Task 6: prevent suspended companies from creating shipments
+    const company = await db.collection("companies").findOne({ companyId });
+    if (company?.status === "suspended") {
+      return NextResponse.json(
+        { error: "Company account is suspended. Shipments cannot be created." },
+        { status: 403 }
+      );
+    }
+    if (company?.status === "pending" || company?.status === "rejected") {
+      return NextResponse.json(
+        { error: `Company is ${company.status as string}. Shipments require an approved company.` },
+        { status: 403 }
+      );
+    }
+
     // Strip undefined values — MongoDB rejects documents containing undefined fields
     const cleanBreakdown = shipment.riskBreakdown
       ? Object.fromEntries(Object.entries(shipment.riskBreakdown).filter(([, v]) => v !== undefined))
@@ -202,8 +241,14 @@ export async function POST(req: NextRequest) {
     // before persisting — non-sensitive operational fields are stored as-is
     const encryptedDocument = encryptObjectFields(rawDocument, ["notes", "contactDetails", "specialInstructions"]);
 
-    // Always scope to authenticated userId — never trust userId from request body
-    await db.collection("shipments").insertOne({ ...encryptedDocument, userId });
+    // Always scope to authenticated userId + companyId — never trust from request body
+    // Task 5: createdByUserId and companyId are mandatory on every shipment record
+    await db.collection("shipments").insertOne({
+      ...encryptedDocument,
+      userId,
+      companyId,          // always set — enforced above
+      createdByUserId: userId, // ownership field
+    });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("[POST /api/shipments] DB insert error:", detail);

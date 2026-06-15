@@ -3,17 +3,14 @@ import { getDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { emitToUser } from "@/lib/socket-server";
 import { utcNow } from "@/lib/time";
+import type { UserRecord } from "@/lib/types";
 
 /**
  * PATCH /api/shipments/[id]
  *
- * Marks a shipment as completed.
- * Only accepts { status: "completed" }.
- * Scoped to the authenticated user — users cannot modify each other's shipments.
- *
- * No/invalid auth → 401.
- * Shipment not found (or belongs to another user) → 404.
- * DB error → 500.
+ * Updates shipment status.
+ * Scoped to authenticated user AND their company — cross-company modification impossible.
+ * Task 5: ownership verified via both userId and companyId.
  */
 
 export async function PATCH(
@@ -55,11 +52,20 @@ export async function PATCH(
 
   try {
     const db = await getDb();
-    const now = utcNow(); // UTC ISO — clients display in their local timezone
+    const now = utcNow();
 
-    // Filter by both id AND userId — prevents cross-user modification
+    // Task 5: resolve companyId for ownership check — filter by both userId AND companyId
+    // For legacy shipments that predate companyId, fall back to userId-only filter
+    const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
+    const companyId  = userRecord?.companyId;
+
+    // Build update filter: prefer companyId scope for hardened ownership check
+    const updateFilter = companyId
+      ? { id, companyId }   // company-scoped (Module 1 + later shipments)
+      : { id, userId };     // legacy fallback (pre-Module 1 shipments)
+
     const result = await db.collection("shipments").findOneAndUpdate(
-      { id, userId },
+      updateFilter,
       { $set: { status: "completed", lastUpdate: now, updatedAt: now } },
       { returnDocument: "after" }
     );

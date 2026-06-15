@@ -3,14 +3,22 @@
  * (app)/layout.tsx — Protected app shell.
  *
  * Checks Firebase auth state via useUser().
+ * Then checks company verification state via useCompany().
+ *
  * - Loading → full-screen spinner
  * - Not authenticated → redirect to /auth/signin
- * - Authenticated → render sidebar + header + content
+ * - Authenticated, super_admin → allow access
+ * - Authenticated, no company → redirect to /company/register
+ * - Authenticated, company pending → redirect to /company/pending
+ * - Authenticated, company rejected → redirect to /company/rejected
+ * - Authenticated, company suspended → redirect to /company/pending
+ * - Authenticated, company approved → render sidebar + header + content
  */
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/lib/auth-context";
+import { useCompany } from "@/lib/company-context";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -18,17 +26,30 @@ import { PageTransition } from "@/components/layout/PageTransition";
 import { motion } from "framer-motion";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useUser();
+  const { user, loading: authLoading } = useUser();
+  const { status: companyStatus, isSuperAdmin } = useCompany();
   const router = useRouter();
 
+  const isLoading = authLoading || companyStatus === "loading";
+
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/auth/signin");
-    }
-  }, [user, loading, router]);
+    if (isLoading) return;
+
+    // Not authenticated → sign in
+    if (!user) { router.replace("/auth/signin"); return; }
+
+    // Super admins bypass all company checks
+    if (isSuperAdmin) return;
+
+    // Company checks
+    if (companyStatus === "none")      { router.replace("/company/register"); return; }
+    if (companyStatus === "pending")   { router.replace("/company/pending");  return; }
+    if (companyStatus === "rejected")  { router.replace("/company/rejected"); return; }
+    if (companyStatus === "suspended") { router.replace("/company/pending");  return; }
+  }, [user, isLoading, companyStatus, isSuperAdmin, router]);
 
   // ── Loading state ────────────────────────────────────────────────────────
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -43,10 +64,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // ── Not authenticated — render nothing while redirect fires ──────────────
+  // ── Not ready — render nothing while redirect fires ──────────────────────
   if (!user) return null;
+  if (!isSuperAdmin && companyStatus !== "approved") return null;
 
-  // ── Authenticated — render app shell ────────────────────────────────────
+  // ── Authenticated + approved — render app shell ──────────────────────────
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />

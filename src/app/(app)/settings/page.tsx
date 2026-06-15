@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Building, Bell, Shield, Truck, Lock, Save } from "lucide-react";
+import { Building, Bell, Shield, Truck, Lock, Save, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,15 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/lib/settings-context";
+import { useCompany } from "@/lib/company-context";
 import type { UserSettings } from "@/lib/types";
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 const sections = [
-  { id: "notifications", label: "Notifications",        icon: Bell   },
-  { id: "thresholds",    label: "Risk Thresholds",       icon: Shield },
-  { id: "dispatch",      label: "Dispatch Defaults",     icon: Truck  },
-  { id: "security",      label: "Account Security",      icon: Lock   },
+  { id: "company",       label: "Company Profile",  icon: Building2 },
+  { id: "notifications", label: "Notifications",    icon: Bell   },
+  { id: "thresholds",    label: "Risk Thresholds",  icon: Shield },
+  { id: "dispatch",      label: "Dispatch Defaults", icon: Truck  },
+  { id: "security",      label: "Account Security", icon: Lock   },
 ];
 
 function SettingRow({ label, description, children }: {
@@ -40,6 +42,7 @@ function SettingRow({ label, description, children }: {
 
 export default function SettingsPage() {
   const { settings, loading, save } = useSettings();
+  const { company } = useCompany();
   const [saving, setSaving] = useState(false);
 
   // Local draft — mirrors settings, allows editing before save
@@ -127,7 +130,7 @@ export default function SettingsPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="notifications">
+      <Tabs defaultValue="company">
         <TabsList className="h-11 bg-muted/20 gap-1 p-1 flex-wrap">
           {sections.map((s) => {
             const Icon = s.icon;
@@ -139,6 +142,57 @@ export default function SettingsPage() {
             );
           })}
         </TabsList>
+
+        {/* ── Company Profile ── */}
+        <TabsContent value="company" className="mt-8">
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-card border border-border p-8 space-y-0 divide-y divide-border/40">
+            {company ? (
+              <>
+                <div className="pb-6">
+                  <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Company Profile</p>
+                  <p className="text-sm text-muted-foreground">Read-only. Only a Super Admin can modify company details.</p>
+                </div>
+                {[
+                  { label: "Company Name",  value: company.companyName },
+                  { label: "Company Type",  value: company.companyType },
+                  { label: "GST Number",    value: company.gstNumber },
+                  { label: "PAN Number",    value: company.panNumber },
+                  { label: "Address",       value: company.address },
+                  { label: "Website",       value: company.website || "—" },
+                  { label: "Fleet Size",    value: String(company.fleetSize) + " vehicles" },
+                  { label: "Status",        value: company.status },
+                  { label: "Trust Score",   value: String(company.trustScore) },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex items-center justify-between gap-4 py-4">
+                    <p className="text-sm font-medium text-foreground">{label}</p>
+                    <p className="text-sm text-muted-foreground text-right">{value}</p>
+                  </div>
+                ))}
+                <div className="pt-4 space-y-2">
+                  <p className="text-sm font-medium text-foreground">Operating States</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {company.operatingStates.map((s) => (
+                      <span key={s} className="text-[11px] bg-muted/20 border border-border px-2 py-0.5 rounded text-muted-foreground">{s}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="pt-4 space-y-2">
+                  <p className="text-sm font-medium text-foreground">Cargo Categories</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {company.cargoCategories.map((c) => (
+                      <span key={c} className="text-[11px] bg-muted/20 border border-border px-2 py-0.5 rounded text-muted-foreground">{c}</span>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No company profile found.
+              </div>
+            )}
+          </motion.div>
+        </TabsContent>
 
         {/* ── Notifications ── */}
         <TabsContent value="notifications" className="mt-8">
