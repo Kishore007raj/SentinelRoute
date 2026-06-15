@@ -14,6 +14,12 @@ import Link from "next/link";
 import { useUser } from "@/lib/auth-context";
 import type { Company, CompanyStatus } from "@/lib/types";
 
+// Augment Company with the extra fields returned by /api/admin/companies
+type AdminCompany = Company & {
+  companyEmail?: string;
+  adminUserEmail?: string;
+};
+
 type TabId = CompanyStatus | "all";
 
 const TABS: { id: TabId; label: string }[] = [
@@ -30,7 +36,7 @@ const STATUS_STYLES: Record<CompanyStatus, string> = {
   suspended: "bg-orange-400/10 text-orange-400 border-orange-400/20",
 };
 
-function CompanyCard({ company }: { company: Company }) {
+function CompanyCard({ company }: { company: AdminCompany }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -84,6 +90,18 @@ function CompanyCard({ company }: { company: Company }) {
         </div>
       </div>
 
+      {/* Email quick view */}
+      <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+        <div>
+          <span className="text-muted-foreground/60">Company Email: </span>
+          <span>{company.companyEmail ?? "—"}</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground/60">Admin Email: </span>
+          <span>{company.adminUserEmail ?? "—"}</span>
+        </div>
+      </div>
+
       {/* Action */}
       <Link href={`/admin/company/${company.companyId}`}>
         <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1.5 mt-1">
@@ -97,7 +115,7 @@ function CompanyCard({ company }: { company: Company }) {
 
 export default function AdminCompaniesPage() {
   const { user } = useUser();
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const [companies, setCompanies] = useState<AdminCompany[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>("pending");
 

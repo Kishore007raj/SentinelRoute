@@ -3,7 +3,8 @@
  * /company/documents
  *
  * Upload required verification documents.
- * Uses Firebase Storage for file hosting, then records URLs in MongoDB.
+ * Files are read as Base64 on the client and stored directly in MongoDB
+ * via POST /api/company/documents — no Firebase Storage is used.
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -18,8 +19,6 @@ import { toast } from "sonner";
 import { useUser } from "@/lib/auth-context";
 import { useCompany } from "@/lib/company-context";
 import type { DocumentType, CompanyDocument } from "@/lib/types";
-import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "@/lib/firebase";
 
 // ─── Document metadata ────────────────────────────────────────────────────────
 
@@ -37,12 +36,10 @@ function DocumentRow({
   docMeta,
   existing,
   onUploaded,
-  companyId,
 }: {
   docMeta: typeof REQUIRED_DOCS[number];
   existing?: CompanyDocument;
   onUploaded: (doc: CompanyDocument) => void;
-  companyId: string;
 }) {
   const { user } = useUser();
   const [uploading, setUploading] = useState(false);
@@ -61,18 +58,27 @@ function DocumentRow({
 
     setUploading(true);
     try {
-      // Upload to Firebase Storage
-      const path = `company-documents/${companyId}/${docMeta.type}-${Date.now()}-${file.name}`;
-      const fileRef = storageRef(storage, path);
-      await uploadBytes(fileRef, file);
-      const fileUrl = await getDownloadURL(fileRef);
+      // Read file as Base64 using FileReader
+      const base64Full = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
+      const fileData = base64Full.split(",")[1]; // strip "data:mime;base64," prefix
 
       // Save to MongoDB via API
       const token = await user.getIdToken();
       const res = await fetch("/api/company/documents", {
         method:  "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({ type: docMeta.type, fileUrl }),
+        body:    JSON.stringify({
+          type:     docMeta.type,
+          fileData,
+          fileName: file.name,
+          mimeType: file.type,
+          fileSize: file.size,
+        }),
       });
 
       if (!res.ok) {
@@ -300,7 +306,6 @@ export default function CompanyDocumentsPage() {
             docMeta={doc}
             existing={documents.find((d) => d.type === doc.type)}
             onUploaded={handleDocUploaded}
-            companyId={company.companyId}
           />
         ))}
       </motion.div>

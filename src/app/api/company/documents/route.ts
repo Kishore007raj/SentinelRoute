@@ -18,7 +18,7 @@ const VALID_TYPES: DocumentType[] = [
  *
  * POST /api/company/documents
  * Upserts a document record (insert or replace by type).
- * Body: { type: DocumentType, fileUrl: string }
+ * Body: { type: DocumentType, fileData: string, fileName: string, mimeType: string, fileSize: number }
  */
 
 export async function GET(req: NextRequest) {
@@ -43,6 +43,7 @@ export async function GET(req: NextRequest) {
       .find({ companyId: userRecord.companyId })
       .toArray();
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const cleaned = docs.map(({ _id, ...d }: CompanyDocument & { _id: unknown }) => d);
     return NextResponse.json({ documents: cleaned });
   } catch (err) {
@@ -68,13 +69,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { type, fileUrl } = body as { type?: DocumentType; fileUrl?: string };
+  const { type, fileData, fileName, mimeType, fileSize } = body as {
+    type?:     DocumentType;
+    fileData?: string;
+    fileName?: string;
+    mimeType?: string;
+    fileSize?: number;
+  };
+
+  const VALID_MIMES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 
   if (!type || !VALID_TYPES.includes(type)) {
     return NextResponse.json({ error: "Invalid or missing document type" }, { status: 400 });
   }
-  if (!fileUrl || typeof fileUrl !== "string") {
-    return NextResponse.json({ error: "Missing fileUrl" }, { status: 400 });
+  if (!fileData || typeof fileData !== "string") {
+    return NextResponse.json({ error: "Missing fileData" }, { status: 400 });
+  }
+  if (!fileName || typeof fileName !== "string") {
+    return NextResponse.json({ error: "Missing fileName" }, { status: 400 });
+  }
+  if (!mimeType || !VALID_MIMES.includes(mimeType)) {
+    return NextResponse.json({ error: "Invalid or missing mimeType" }, { status: 400 });
+  }
+  if (!fileSize || typeof fileSize !== "number" || !Number.isInteger(fileSize) || fileSize <= 0 || fileSize > 10_485_760) {
+    return NextResponse.json({ error: "Invalid fileSize" }, { status: 400 });
   }
 
   try {
@@ -101,7 +119,10 @@ export async function POST(req: NextRequest) {
           documentId,
           companyId: userRecord.companyId,
           type,
-          fileUrl,
+          fileName,
+          mimeType,
+          fileSize,
+          fileData,
           uploadedAt: now,
           verified:   false,
         },
@@ -114,8 +135,8 @@ export async function POST(req: NextRequest) {
       type,
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { _id, ...cleaned } = doc as CompanyDocument & { _id: unknown };
-    void _id;
 
     // Task 3: canonical audit event
     await createAuditEvent({

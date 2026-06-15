@@ -39,7 +39,25 @@ export async function GET(req: NextRequest) {
       .sort({ createdAt: -1 })
       .toArray();
 
-    const cleaned = companies.map(({ _id, ...c }: Company & { _id: unknown }) => c);
+    // Collect unique companyIds to look up admin emails in a single query
+    const companyIds = [...new Set(companies.map((c) => c.companyId))];
+
+    const adminUsers = await db
+      .collection<UserRecord>("users")
+      .find({ companyId: { $in: companyIds }, role: "company_admin" })
+      .toArray();
+
+    // Map<companyId, email> — first company_admin found wins if there are multiples
+    const adminEmailMap = new Map<string, string>(
+      adminUsers.map((u) => [u.companyId, u.email])
+    );
+
+    const cleaned = companies.map(({ _id, ...c }: Company & { _id: unknown }) => ({
+      ...c,
+      companyEmail: c.email,
+      adminUserEmail: adminEmailMap.get(c.companyId) ?? null,
+    }));
+
     return NextResponse.json({ companies: cleaned, total: cleaned.length });
   } catch (err) {
     console.error("[GET /api/admin/companies]", err);

@@ -239,7 +239,10 @@ export interface CompanyDocument {
   documentId:  string;
   companyId:   string;
   type:        DocumentType;
-  fileUrl:     string;
+  fileName:    string;   // original filename
+  mimeType:    string;   // e.g. "application/pdf"
+  fileSize:    number;   // size in bytes
+  fileData:    string;   // Base64-encoded file content
   uploadedAt:  string;
   verified:    boolean;
 }

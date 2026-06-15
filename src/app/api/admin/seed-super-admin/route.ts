@@ -6,33 +6,30 @@ import type { UserRecord } from "@/lib/types";
 /**
  * POST /api/admin/seed-super-admin
  *
- * One-time endpoint: creates a super_admin UserRecord for the authenticated user.
- * Protected by SUPER_ADMIN_SEED_SECRET env var.
- *
- * This is the bootstrap mechanism: the first super admin is created via this endpoint,
- * then they can manage companies via the admin panel.
+ * Seeds all three known super admin accounts. Idempotent — safe to call multiple times.
+ * Protected by SUPER_ADMIN_SEED_SECRET env var AND requires a valid Firebase ID token.
  *
  * Body: { secret: string }
+ *
+ * Returns: { created: number, upgraded: number, alreadyAdmin: number, emails: string[] }
  */
-export async function POST(req: NextRequest) {
-  let userId: string;
-  let userEmail: string | undefined;
 
+const SUPER_ADMIN_EMAILS = [
+  "karthiknair1610@gmail.com",
+  "hariprasadprkm@gmail.com",
+  "kishore2110raj@gmail.com",
+];
+
+export async function POST(req: NextRequest) {
+  // ── Authentication check (unchanged) ─────────────────────────────────────
   try {
-    const verified = await verifyFirebaseToken(req);
-    userId = verified.uid;
-    const authHeader = req.headers.get("authorization") ?? "";
-    const token = authHeader.slice(7).trim();
-    try {
-      const parts = token.split(".");
-      const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString());
-      userEmail = payload.email as string | undefined;
-    } catch { /* non-fatal */ }
+    await verifyFirebaseToken(req);
   } catch (err) {
     if (err instanceof Response) return err;
     return NextResponse.json({ error: "Authentication service unavailable" }, { status: 503 });
   }
 
+  // ── Parse body ────────────────────────────────────────────────────────────
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -40,6 +37,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  // ── Secret guard (unchanged) ──────────────────────────────────────────────
   const seedSecret = process.env.SUPER_ADMIN_SEED_SECRET;
   if (!seedSecret) {
     return NextResponse.json(
@@ -52,43 +50,56 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid secret" }, { status: 403 });
   }
 
+  // ── Seed all three known super admins ─────────────────────────────────────
   try {
     const db = await getDb();
+    const now = new Date().toISOString();
 
-    // Idempotent — if already super admin, return existing
-    const existing = await db.collection<UserRecord>("users").findOne({ userId });
-    if (existing) {
-      if (existing.role === "super_admin") {
-        const { _id, ...ur } = existing as UserRecord & { _id: unknown };
-        void _id;
-        return NextResponse.json({ userRecord: ur, message: "Already super admin" });
+    let created = 0;
+    let upgraded = 0;
+    let alreadyAdmin = 0;
+
+    for (const email of SUPER_ADMIN_EMAILS) {
+      const existing = await db.collection<UserRecord>("users").findOne({ email });
+
+      if (existing) {
+        if (existing.role === "super_admin") {
+          alreadyAdmin++;
+        } else {
+          // Upgrade existing user to super_admin
+          await db.collection("users").updateOne(
+            { email },
+            { $set: { role: "super_admin" } }
+          );
+          upgraded++;
+        }
+      } else {
+        // Insert new UserRecord for this email
+        const newUser: UserRecord = {
+          userId:    email,
+          companyId: "platform",
+          name:      email,
+          email,
+          role:      "super_admin",
+          active:    true,
+          createdAt: now,
+        };
+        await db.collection("users").insertOne(newUser);
+        created++;
       }
-      // Upgrade existing user to super admin
-      await db.collection("users").updateOne(
-        { userId },
-        { $set: { role: "super_admin" } }
-      );
-      const updated = await db.collection<UserRecord>("users").findOne({ userId });
-      const { _id, ...ur } = updated as UserRecord & { _id: unknown };
-      void _id;
-      return NextResponse.json({ userRecord: ur, message: "Upgraded to super admin" });
     }
 
-    const now = new Date().toISOString();
-    const userRecord: UserRecord = {
-      userId,
-      companyId: "platform",
-      name:      userEmail ?? userId,
-      email:     userEmail ?? "",
-      role:      "super_admin",
-      active:    true,
-      createdAt: now,
-    };
-
-    await db.collection("users").insertOne(userRecord);
-    return NextResponse.json({ userRecord, message: "Super admin created" }, { status: 201 });
+    return NextResponse.json(
+      {
+        created,
+        upgraded,
+        alreadyAdmin,
+        emails: SUPER_ADMIN_EMAILS,
+      },
+      { status: 200 }
+    );
   } catch (err) {
     console.error("[POST /api/admin/seed-super-admin]", err);
-    return NextResponse.json({ error: "Failed to create super admin" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to seed super admins" }, { status: 500 });
   }
 }
