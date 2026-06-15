@@ -8,7 +8,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  Building2, MapPin, Truck, FileText, ExternalLink,
+  Building2, MapPin, Truck, FileText,
   CheckCircle2, XCircle, MessageSquare, Loader2,
   ChevronLeft,
 } from "lucide-react";
@@ -212,14 +212,9 @@ export default function AdminCompanyReviewPage() {
                       <p className="text-[11px] text-muted-foreground">
                         {new Date(doc.uploadedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                       </p>
-                      <a
-                        href={doc.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-[11px] text-primary hover:underline"
-                      >
-                        <ExternalLink className="w-3 h-3" /> View Document
-                      </a>
+                      <p className="text-[11px] text-muted-foreground/70 truncate" title={doc.fileName}>
+                        {doc.fileName}
+                      </p>
                     </div>
                   ) : (
                     <p className="text-[11px] text-muted-foreground/50">Not uploaded</p>
