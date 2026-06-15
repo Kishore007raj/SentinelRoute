@@ -1,8 +1,9 @@
 "use client";
 import { motion } from "framer-motion";
-import { PlusSquare, AlertTriangle, ArrowRight, CheckCircle } from "lucide-react";
+import { PlusSquare, AlertTriangle, ArrowRight, CheckCircle, Building2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
+import { useCompany } from "@/lib/company-context";
 import { cn, getRiskColor, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import Link from "next/link";
 import type { Shipment } from "@/lib/types";
@@ -95,6 +96,7 @@ function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: numbe
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { state, activeShipments, completedShipments, atRiskShipments } = useStore();
+  const { company } = useCompany();
   const { shipments, loading } = state;
 
   const totalShipments   = shipments.length;
@@ -128,6 +130,39 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto w-full space-y-10">
+
+      {/* Company info banner */}
+      {company && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card border border-border rounded-xl px-6 py-4 flex flex-wrap items-center gap-5"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <Building2 className="w-4 h-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate">{company.companyName}</p>
+              <p className="text-xs text-muted-foreground">{company.companyType}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-4 ml-auto text-xs text-muted-foreground">
+            <div>
+              <span className="uppercase tracking-widest text-[10px]">Company ID </span>
+              <span className="font-mono text-foreground">{company.companyId.slice(0, 16)}…</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-emerald-400 font-medium capitalize">{company.status}</span>
+            </div>
+            <div>
+              <span className="uppercase tracking-widest text-[10px]">Trust Score </span>
+              <span className="font-semibold text-foreground">{company.trustScore}</span>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Top summary */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-8 border-b border-border">

@@ -12,6 +12,8 @@ import {
   ChevronRight,
   X,
   Brain,
+  Building2,
+  Shield,
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,6 +30,7 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/lib/auth-context";
+import { useCompany } from "@/lib/company-context";
 
 const navItems = [
   { label: "Dashboard",          href: "/dashboard",          icon: LayoutDashboard },
@@ -36,6 +39,7 @@ const navItems = [
   { label: "Your Orders",        href: "/your-orders",        icon: ClipboardList },
   { label: "Route Intelligence", href: "/route-intelligence", icon: Brain },
   { label: "Analytics",          href: "/analytics",          icon: BarChart3 },
+  { label: "Company Profile",    href: "/settings?tab=company", icon: Building2 },
   { label: "Settings",           href: "/settings",           icon: Settings },
 ];
 
@@ -43,6 +47,7 @@ const navItems = [
 function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
   const { user } = useUser();
+  const { isSuperAdmin, company } = useCompany();
 
   if (!open) return null;
 
@@ -76,9 +81,9 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest px-3 mb-3">Navigation</p>
           <div className="space-y-1">
             {navItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              const isActive = pathname === item.href || pathname.startsWith(item.href.split("?")[0] + "/");
               return (
-                <Link key={item.href} href={item.href} onClick={onClose}>
+                <Link key={item.href + item.label} href={item.href} onClick={onClose}>
                   <div className={cn(
                     "flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg",
                     isActive
@@ -92,6 +97,20 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </Link>
               );
             })}
+            {isSuperAdmin && (
+              <Link href="/admin/companies" onClick={onClose}>
+                <div className={cn(
+                  "flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg mt-2",
+                  pathname.startsWith("/admin")
+                    ? "bg-amber-400/10 text-amber-400 border border-amber-400/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                )}>
+                  <Shield className="w-4 h-4 shrink-0" />
+                  Admin Panel
+                  {pathname.startsWith("/admin") && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
+                </div>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -126,6 +145,7 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
 export function AppSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
+  const { isSuperAdmin, company } = useCompany();
 
   const displayName = user?.displayName ?? user?.email ?? "User";
   const initials = displayName
@@ -153,9 +173,9 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {navItems.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                const isActive = pathname === item.href.split("?")[0] || pathname.startsWith(item.href.split("?")[0] + "/");
                 return (
-                  <SidebarMenuItem key={item.href}>
+                  <SidebarMenuItem key={item.href + item.label}>
                     <SidebarMenuButton
                       render={<Link href={item.href} />}
                       isActive={isActive}
@@ -176,12 +196,39 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+              {isSuperAdmin && (
+                <SidebarMenuItem key="admin">
+                  <SidebarMenuButton
+                    render={<Link href="/admin/companies" />}
+                    isActive={pathname.startsWith("/admin")}
+                    tooltip="Admin Panel"
+                    className={cn(
+                      "relative rounded-lg transition-all duration-150 py-3 mt-2",
+                      pathname.startsWith("/admin")
+                        ? "bg-amber-400/10 text-amber-400 border border-amber-400/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    )}
+                  >
+                    <Shield className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-medium">Admin Panel</span>
+                    {pathname.startsWith("/admin") && (
+                      <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />
+                    )}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="px-3 py-4 border-t border-border">
+        {company && (
+          <div className="px-2 py-2 mb-1 border border-border/40 rounded-lg bg-muted/10">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-0.5">Company</p>
+            <p className="text-xs font-semibold text-foreground truncate">{company.companyName}</p>
+          </div>
+        )}
         <div className="flex items-center gap-3 px-2 py-2">
           <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
             <span className="text-xs font-bold text-primary">{initials}</span>

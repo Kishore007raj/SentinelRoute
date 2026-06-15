@@ -26,15 +26,20 @@ import { auth } from "@/lib/firebase";
 import { useUser } from "@/lib/auth-context";
 
 const routeLabels: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/shipments": "Shipments",
-  "/create-shipment": "Create Shipment",
-  "/your-orders": "Your Orders",
+  "/dashboard":          "Dashboard",
+  "/shipments":          "Shipments",
+  "/create-shipment":    "Create Shipment",
+  "/your-orders":        "Your Orders",
   "/route-intelligence": "Route Intelligence",
-  "/analytics": "Analytics",
-  "/settings": "Settings",
-  "/routes": "Route Comparison",
-  "/demo": "Demo",
+  "/analytics":          "Analytics",
+  "/settings":           "Settings",
+  "/routes":             "Route Comparison",
+  "/demo":               "Demo",
+  "/company/register":   "Company Registration",
+  "/company/documents":  "Document Upload",
+  "/company/pending":    "Verification Pending",
+  "/company/rejected":   "Application Status",
+  "/admin/companies":    "Admin — Companies",
 };
 
 export function AppHeader() {

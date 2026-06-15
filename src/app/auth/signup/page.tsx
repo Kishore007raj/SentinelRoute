@@ -159,7 +159,9 @@ export default function SignUpPage() {
       await signInWithPopup(auth, provider);
       const token = await auth.currentUser!.getIdToken();
       setSessionCookie(token);
-      router.push("/dashboard");
+      // Redirect to company registration — not dashboard
+      // CompanyProvider will detect no company and route accordingly
+      router.push("/company/register");
     } catch (err: unknown) {
       setGoogleLoading(false);
       const code = (err as { code?: string }).code ?? "";
@@ -184,7 +186,9 @@ export default function SignUpPage() {
       });
       const token = await credential.user.getIdToken();
       setSessionCookie(token);
-      router.push("/dashboard");
+      // Redirect to company registration — company details from signup step 1
+      // are preliminary; full registration is on /company/register
+      router.push("/company/register");
     } catch (err: unknown) {
       setLoading(false);
       const code = (err as { code?: string }).code ?? "";
