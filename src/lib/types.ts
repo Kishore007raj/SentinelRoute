@@ -186,11 +186,12 @@ export interface KPI {
 export type CompanyStatus = "pending" | "approved" | "rejected" | "suspended";
 export type UserRole =
   | "company_admin"
+  | "super_admin"
+  | "company_manager"
   | "operations_manager"
   | "fleet_manager"
   | "dispatcher"
-  | "driver"
-  | "super_admin";
+  | "driver";
 
 export type DocumentType =
   | "gst"
@@ -291,57 +292,104 @@ export type AuditEventType =
   | "shipment_delayed"
   | "shipment_incident";
 
-// ─── Module 2 placeholder types (Task 7) ─────────────────────────────────────
-// These are type definitions ONLY. No pages or APIs are created for these yet.
+// ─── Module 2 — Workforce Management types ───────────────────────────────────
 
 export interface Driver {
-  driverId:     string;
-  companyId:    string;
-  userId:       string;
-  name:         string;
-  licenseNumber: string;
-  phone:        string;
-  active:       boolean;
-  createdAt:    string;
+  // ─── Identity ─────────────────────────────────────────────────────────────
+  driverId:                string;      // "drv-<timestamp>-<random4>"
+  companyId:               string;      // tenant key — indexed
+  employeeId:              string;      // company-assigned employee number
+  fullName:                string;
+  phone:                   string;
+  email:                   string;
+
+  // ─── Licence ──────────────────────────────────────────────────────────────
+  licenseNumber:           string;
+  licenseExpiry:           string;      // ISO date string "YYYY-MM-DD"
+
+  // ─── Personal ─────────────────────────────────────────────────────────────
+  aadhaarNumber:           string;      // encrypted at rest (AES-256)
+  bloodGroup:              string;
+  languagePreferences:     string[];
+  address:                 string;
+
+  // ─── Status ───────────────────────────────────────────────────────────────
+  status:                  "active" | "inactive" | "suspended";
+  assignedVehicleId:       string | null;
+
+  // ─── Module 3/4/5 Future Fields ───────────────────────────────────────────
+  shipmentIds:             string[];    // default [] — Module 3 linkage
+  communicationChannelId:  string | null; // default null — Module 3 comm layer
+  preferredLanguage:       string;      // default "en" — Multilingual module
+
+  // ─── Timestamps ───────────────────────────────────────────────────────────
+  createdAt:               string;      // UTC ISO
+  updatedAt:               string;      // UTC ISO
 }
 
 export interface Vehicle {
-  vehicleId:      string;
-  companyId:      string;
-  registrationNo: string;
-  vehicleType:    string;
-  capacity:       string;
-  active:         boolean;
-  assignedDriver?: string;
-  createdAt:      string;
+  // ─── Identity ─────────────────────────────────────────────────────────────
+  vehicleId:               string;      // "veh-<timestamp>-<random4>"
+  companyId:               string;      // indexed
+
+  // ─── Registration ─────────────────────────────────────────────────────────
+  vehicleNumber:           string;      // e.g. "MH12AB1234"
+  vehicleType:             string;      // e.g. "Container Truck"
+  capacity:                string;      // e.g. "10 tonnes"
+  fuelType:                string;
+
+  // ─── Documents ────────────────────────────────────────────────────────────
+  insuranceNumber:         string;
+  insuranceExpiry:         string;      // ISO date
+  fitnessExpiry:           string;      // ISO date
+  permitExpiry:            string;      // ISO date
+
+  // ─── Status ───────────────────────────────────────────────────────────────
+  status:                  "available" | "assigned" | "maintenance" | "inactive";
+  currentDriverId:         string | null;
+
+  // ─── Module 3/4 Future Fields ─────────────────────────────────────────────
+  shipmentIds:             string[];    // default [] — Module 3 linkage
+  trackingDeviceId:        string | null; // default null — Module 4 Mappls
+
+  // ─── Timestamps ───────────────────────────────────────────────────────────
+  createdAt:               string;
+  updatedAt:               string;
 }
 
-export interface FleetManager {
-  managerId:  string;
-  companyId:  string;
-  userId:     string;
-  name:       string;
-  email:      string;
-  active:     boolean;
-  createdAt:  string;
+export interface CompanyUser {
+  companyId:   string;
+  userId:      string;
+  role:        UserRole;
+  active:      boolean;
+  createdAt:   string;
+  updatedAt:   string;
 }
 
-export interface Dispatcher {
-  dispatcherId: string;
-  companyId:    string;
-  userId:       string;
-  name:         string;
-  email:        string;
-  active:       boolean;
-  createdAt:    string;
-}
+export type WorkforceEventType =
+  | "driver_created"
+  | "driver_updated"
+  | "driver_suspended"
+  | "driver_activated"
+  | "vehicle_added"
+  | "vehicle_updated"
+  | "vehicle_assigned"
+  | "vehicle_unassigned"
+  | "vehicle_maintenance"
+  | "vehicle_activated"
+  | "user_invited"
+  | "user_disabled"
+  | "user_activated"
+  | "user_role_changed"
+  | "super_admin_read";
 
-export interface OperationsManager {
-  operationsManagerId: string;
-  companyId:           string;
-  userId:              string;
-  name:                string;
-  email:               string;
-  active:              boolean;
-  createdAt:           string;
+export interface WorkforceAudit {
+  auditId:     string;       // "waudit-<timestamp>-<random5>"
+  companyId:   string;
+  eventType:   WorkforceEventType;
+  actorId:     string;
+  targetId:    string;
+  targetType:  "driver" | "vehicle" | "user";
+  details:     Record<string, unknown>;
+  timestamp:   string;       // UTC ISO — immutable, never updated
 }

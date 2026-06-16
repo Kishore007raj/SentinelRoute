@@ -14,6 +14,10 @@ import {
   Brain,
   Building2,
   Shield,
+  Users,
+  UserCheck,
+  Truck,
+  UserCog,
 } from "lucide-react";
 import {
   Sidebar,
@@ -31,6 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useUser } from "@/lib/auth-context";
 import { useCompany } from "@/lib/company-context";
+import type { UserRole } from "@/lib/types";
 
 const navItems = [
   { label: "Dashboard",          href: "/dashboard",          icon: LayoutDashboard },
@@ -47,7 +52,7 @@ const navItems = [
 function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
   const { user } = useUser();
-  const { isSuperAdmin, company } = useCompany();
+  const { isSuperAdmin, userRecord } = useCompany();
 
   if (!open) return null;
 
@@ -111,6 +116,63 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </div>
               </Link>
             )}
+            {/* ─── Workforce nav (Module 2) ────────────────────────────────── */}
+            {(() => {
+              const workforceNavRoles: UserRole[] = [
+                "company_manager", "company_admin", "fleet_manager",
+                "operations_manager", "dispatcher", "super_admin",
+              ];
+              const workforceItems = [
+                { label: "Workforce",  href: "/workforce",          icon: Users },
+                { label: "Drivers",    href: "/workforce/drivers",  icon: UserCheck },
+                { label: "Vehicles",   href: "/workforce/vehicles", icon: Truck },
+              ];
+              const canSeeUsers =
+                userRecord?.role === "company_manager" ||
+                userRecord?.role === "company_admin" ||
+                isSuperAdmin;
+              const showWorkforce =
+                workforceNavRoles.includes(userRecord?.role as UserRole) || isSuperAdmin;
+              if (!showWorkforce) return null;
+              return (
+                <div className="mt-4">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest px-3 mb-2">Workforce</p>
+                  <div className="space-y-1">
+                    {workforceItems.map((item) => {
+                      const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                      return (
+                        <Link key={item.href} href={item.href} onClick={onClose}>
+                          <div className={cn(
+                            "flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg",
+                            isActive
+                              ? "bg-primary/10 text-primary border border-primary/20"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                          )}>
+                            <item.icon className="w-4 h-4 shrink-0" />
+                            {item.label}
+                            {isActive && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
+                          </div>
+                        </Link>
+                      );
+                    })}
+                    {canSeeUsers && (
+                      <Link href="/workforce/users" onClick={onClose}>
+                        <div className={cn(
+                          "flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg",
+                          pathname.startsWith("/workforce/users")
+                            ? "bg-primary/10 text-primary border border-primary/20"
+                            : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                        )}>
+                          <UserCog className="w-4 h-4 shrink-0" />
+                          Users
+                          {pathname.startsWith("/workforce/users") && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
+                        </div>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -145,7 +207,7 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
 export function AppSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
-  const { isSuperAdmin, company } = useCompany();
+  const { isSuperAdmin, company, userRecord } = useCompany();
 
   const displayName = user?.displayName ?? user?.email ?? "User";
   const initials = displayName
@@ -220,6 +282,76 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* ─── Workforce nav (Module 2) ───────────────────────────────────── */}
+        {(() => {
+          const workforceNavRoles: UserRole[] = [
+            "company_manager", "company_admin", "fleet_manager",
+            "operations_manager", "dispatcher", "super_admin",
+          ];
+          const workforceItems = [
+            { label: "Workforce",  href: "/workforce",          icon: Users },
+            { label: "Drivers",    href: "/workforce/drivers",  icon: UserCheck },
+            { label: "Vehicles",   href: "/workforce/vehicles", icon: Truck },
+          ];
+          const canSeeUsers =
+            userRecord?.role === "company_manager" ||
+            userRecord?.role === "company_admin" ||
+            isSuperAdmin;
+          const showWorkforce =
+            workforceNavRoles.includes(userRecord?.role as UserRole) || isSuperAdmin;
+          if (!showWorkforce) return null;
+          return (
+            <SidebarGroup>
+              <SidebarGroupLabel className="label-meta px-3 mb-2">Workforce</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  {workforceItems.map((item) => {
+                    const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          render={<Link href={item.href} />}
+                          isActive={isActive}
+                          tooltip={item.label}
+                          className={cn(
+                            "relative rounded-lg transition-all duration-150 py-3",
+                            isActive
+                              ? "bg-primary/10 text-primary border border-primary/20"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                          )}
+                        >
+                          <item.icon className="w-4 h-4 shrink-0" />
+                          <span className="text-sm font-medium">{item.label}</span>
+                          {isActive && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                  {canSeeUsers && (
+                    <SidebarMenuItem key="/workforce/users">
+                      <SidebarMenuButton
+                        render={<Link href="/workforce/users" />}
+                        isActive={pathname === "/workforce/users" || pathname.startsWith("/workforce/users/")}
+                        tooltip="Users"
+                        className={cn(
+                          "relative rounded-lg transition-all duration-150 py-3",
+                          pathname.startsWith("/workforce/users")
+                            ? "bg-primary/10 text-primary border border-primary/20"
+                            : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                        )}
+                      >
+                        <UserCog className="w-4 h-4 shrink-0" />
+                        <span className="text-sm font-medium">Users</span>
+                        {pathname.startsWith("/workforce/users") && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })()}
       </SidebarContent>
 
       <SidebarFooter className="px-3 py-4 border-t border-border">

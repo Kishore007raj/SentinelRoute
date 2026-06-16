@@ -201,3 +201,192 @@ export function handleAuthError(err: unknown): NextResponse {
   console.error("[auth-helpers] Unexpected error:", err);
   return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 }
+
+// ─── Workforce Role Matrix ─────────────────────────────────────────────────
+
+/**
+ * Roles allowed to perform READ operations on workforce data.
+ * driver is intentionally absent — drivers use a separate guard.
+ */
+export const WORKFORCE_READ_ROLES: UserRole[] = [
+  "company_manager", "company_admin", "fleet_manager",
+  "operations_manager", "dispatcher", "super_admin",
+];
+
+/**
+ * Roles allowed to perform WRITE (POST/PATCH/DELETE) operations on
+ * driver and vehicle records.
+ */
+export const WORKFORCE_WRITE_ROLES: UserRole[] = [
+  "company_manager", "company_admin", "fleet_manager",
+];
+
+/**
+ * Roles allowed to manage company users (invite, disable, role-change).
+ */
+export const USER_MGMT_ROLES: UserRole[] = [
+  "company_manager", "company_admin",
+];
+
+/**
+ * Roles allowed to access the workforce dashboard.
+ */
+export const DASHBOARD_ROLES: UserRole[] = [
+  "company_manager", "company_admin", "fleet_manager",
+  "operations_manager", "super_admin",
+];
+
+// ─── requireWorkforceRead ─────────────────────────────────────────────────
+
+/**
+ * Requires auth + approved company + a role in WORKFORCE_READ_ROLES.
+ * super_admin bypasses company check (reads across companies) and may
+ * optionally provide ?companyId= to scope results to a specific company.
+ * Returns { userId, userRecord, company, companyId }.
+ */
+export async function requireWorkforceRead(
+  req: NextRequest
+): Promise<CompanyAuthResult & { companyId: string }> {
+  let userId: string;
+  try {
+    const verified = await verifyFirebaseToken(req);
+    userId = verified.uid;
+  } catch (err) {
+    if (err instanceof Response) throw err;
+    throw unauthorized("Authentication service unavailable");
+  }
+
+  const db = await getDb();
+
+  const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
+  if (!userRecord) throw notFound("User record not found. Please complete company registration.");
+
+  if (!WORKFORCE_READ_ROLES.includes(userRecord.role)) {
+    throw forbidden("Insufficient permissions to read workforce data.");
+  }
+
+  // super_admin bypasses company check — reads across companies
+  if (userRecord.role === "super_admin") {
+    const queryCompanyId = req.nextUrl.searchParams.get("companyId") ?? "";
+    // For super_admin, company object is a placeholder; consumers must use companyId directly
+    const company = queryCompanyId
+      ? await db.collection<Company>("companies").findOne({ companyId: queryCompanyId }) ?? {} as Company
+      : {} as Company;
+
+    return { userId, userRecord, company, companyId: queryCompanyId };
+  }
+
+  if (!userRecord.companyId) throw notFound("No company associated with this account.");
+
+  const company = await db.collection<Company>("companies").findOne({ companyId: userRecord.companyId });
+  if (!company) throw notFound("Company record not found.");
+
+  if (company.status === "suspended") {
+    throw forbidden("Company account is suspended. Contact support.");
+  }
+
+  if (company.status !== "approved") {
+    throw forbidden(
+      `Company is ${company.status}. Operational access requires an approved company.`
+    );
+  }
+
+  return { userId, userRecord, company, companyId: userRecord.companyId };
+}
+
+// ─── requireWorkforceWrite ────────────────────────────────────────────────
+
+/**
+ * Requires auth + approved company + a role in WORKFORCE_WRITE_ROLES.
+ * super_admin always receives HTTP 403 — no write access to company data.
+ * Returns { userId, userRecord, company, companyId }.
+ */
+export async function requireWorkforceWrite(
+  req: NextRequest
+): Promise<CompanyAuthResult & { companyId: string }> {
+  let userId: string;
+  try {
+    const verified = await verifyFirebaseToken(req);
+    userId = verified.uid;
+  } catch (err) {
+    if (err instanceof Response) throw err;
+    throw unauthorized("Authentication service unavailable");
+  }
+
+  const db = await getDb();
+
+  const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
+  if (!userRecord) throw notFound("User record not found. Please complete company registration.");
+
+  // super_admin is explicitly blocked from all write operations
+  if (userRecord.role === "super_admin") {
+    throw forbidden("Super Admin may not modify company workforce data.");
+  }
+
+  if (!WORKFORCE_WRITE_ROLES.includes(userRecord.role)) {
+    throw forbidden("Insufficient permissions to write workforce data.");
+  }
+
+  if (!userRecord.companyId) throw notFound("No company associated with this account.");
+
+  const company = await db.collection<Company>("companies").findOne({ companyId: userRecord.companyId });
+  if (!company) throw notFound("Company record not found.");
+
+  if (company.status === "suspended") {
+    throw forbidden("Company account is suspended. Contact support.");
+  }
+
+  if (company.status !== "approved") {
+    throw forbidden(
+      `Company is ${company.status}. Operational access requires an approved company.`
+    );
+  }
+
+  return { userId, userRecord, company, companyId: userRecord.companyId };
+}
+
+// ─── requireUserMgmt ──────────────────────────────────────────────────────
+
+/**
+ * Requires auth + approved company + company_manager or company_admin role.
+ * Used exclusively on /api/workforce/users routes.
+ * Returns { userId, userRecord, company, companyId }.
+ */
+export async function requireUserMgmt(
+  req: NextRequest
+): Promise<CompanyAuthResult & { companyId: string }> {
+  let userId: string;
+  try {
+    const verified = await verifyFirebaseToken(req);
+    userId = verified.uid;
+  } catch (err) {
+    if (err instanceof Response) throw err;
+    throw unauthorized("Authentication service unavailable");
+  }
+
+  const db = await getDb();
+
+  const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
+  if (!userRecord) throw notFound("User record not found. Please complete company registration.");
+
+  if (!USER_MGMT_ROLES.includes(userRecord.role)) {
+    throw forbidden("Company Manager access required.");
+  }
+
+  if (!userRecord.companyId) throw notFound("No company associated with this account.");
+
+  const company = await db.collection<Company>("companies").findOne({ companyId: userRecord.companyId });
+  if (!company) throw notFound("Company record not found.");
+
+  if (company.status === "suspended") {
+    throw forbidden("Company account is suspended. Contact support.");
+  }
+
+  if (company.status !== "approved") {
+    throw forbidden(
+      `Company is ${company.status}. Operational access requires an approved company.`
+    );
+  }
+
+  return { userId, userRecord, company, companyId: userRecord.companyId };
+}
