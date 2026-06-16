@@ -223,6 +223,7 @@ export interface Company {
   createdAt:           string;
   approvedAt?:         string;
   approvedBy?:         string;
+  submittedAt?:        string;  // set when documents are submitted for review
 }
 
 export interface UserRecord {
