@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { verifyFirebaseToken, adminAuth } from "@/lib/firebase-admin";
 import type { Company, UserRecord } from "@/lib/types";
 
 /**
@@ -8,6 +8,12 @@ import type { Company, UserRecord } from "@/lib/types";
  *
  * Returns the authenticated user's UserRecord + linked Company.
  * 404 when no UserRecord exists (new user — must register).
+ *
+ * Lookup order:
+ *   1. By userId (Firebase UID) — primary key
+ *   2. By email resolved from Firebase Admin SDK — handles legacy seed records
+ *      that stored email as userId, or accounts that haven't been re-seeded yet
+ *   If found by email but userId doesn't match, the record is corrected in-place.
  */
 export async function GET(req: NextRequest) {
   let userId: string;
@@ -23,9 +29,36 @@ export async function GET(req: NextRequest) {
   try {
     const db = await getDb();
 
-    const userRecord = await db
+    // ── Primary lookup: by Firebase UID ──────────────────────────────────────
+    let userRecord = await db
       .collection<UserRecord>("users")
       .findOne({ userId });
+
+    // ── Fallback: resolve email from Firebase and look up by email ────────────
+    // Handles legacy records where userId was stored as email (old seed bug)
+    if (!userRecord && adminAuth) {
+      try {
+        const fbUser = await adminAuth.getUser(userId);
+        if (fbUser.email) {
+          const recordByEmail = await db
+            .collection<UserRecord>("users")
+            .findOne({ email: fbUser.email });
+
+          if (recordByEmail) {
+            // Correct the userId in-place so future lookups work by UID
+            await db
+              .collection("users")
+              .updateOne(
+                { email: fbUser.email },
+                { $set: { userId } }
+              );
+            userRecord = { ...recordByEmail, userId };
+          }
+        }
+      } catch {
+        // Non-fatal — if Firebase Admin lookup fails, fall through to 404
+      }
+    }
 
     if (!userRecord) {
       return NextResponse.json({ error: "User record not found" }, { status: 404 });
