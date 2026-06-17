@@ -7,10 +7,8 @@
  * super_admin → accepts optional ?companyId= query param; without it returns
  * aggregate stats across all companies (no companyId filter applied).
  *
- * Index initialisation: ensureWorkforceIndexes (from src/lib/workforce-indexes.ts)
- * is called fire-and-forget inside the GET handler on every request, but the
- * function itself is guarded by a module-level flag so it only runs once per
- * cold start.
+ * Index initialisation: ensureWorkforceIndexes runs once per process from
+ * getDb() in mongodb.ts — not called here.
  *
  * Response 200:
  *   totalDrivers, activeDrivers, totalVehicles, availableVehicles,
@@ -19,7 +17,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { ensureWorkforceIndexes } from "@/lib/workforce-indexes";
 import {
   requireWorkforceRead,
   handleAuthError,
@@ -77,8 +74,6 @@ export async function GET(req: NextRequest) {
   // ── 5. Run all 9 live MongoDB aggregation queries in parallel ─────────────
   try {
     const db = await getDb();
-
-    await ensureWorkforceIndexes(db);
 
     const drivers  = db.collection("drivers");
     const vehicles = db.collection("vehicles");

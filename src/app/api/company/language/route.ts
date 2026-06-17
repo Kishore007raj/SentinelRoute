@@ -122,6 +122,29 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
+    // Task 5: validate language consistency constraints
+    // Resolve the final state after this patch (merge with current settings)
+    const currentSettings = await db
+      .collection("company_settings")
+      .findOne({ companyId: userRecord.companyId });
+
+    const finalPreferred  = preferred  ?? currentSettings?.language         ?? "en";
+    const finalSupported  = supported  ?? currentSettings?.supportedLanguages ?? ["en"];
+    const finalFallback   = fallback   ?? currentSettings?.fallbackLanguage  ?? "en";
+
+    if (!finalSupported.includes(finalPreferred)) {
+      return NextResponse.json(
+        { error: `preferredLanguage "${finalPreferred}" must be included in supportedLanguages [${finalSupported.join(", ")}]` },
+        { status: 400 }
+      );
+    }
+    if (!finalSupported.includes(finalFallback)) {
+      return NextResponse.json(
+        { error: `fallbackLanguage "${finalFallback}" must be included in supportedLanguages [${finalSupported.join(", ")}]` },
+        { status: 400 }
+      );
+    }
+
     // Persist via company-settings helper
     const updated = await updateCompanySettings(
       db,

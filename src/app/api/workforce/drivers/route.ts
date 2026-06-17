@@ -3,33 +3,24 @@ import crypto from "crypto";
 import { getDb } from "@/lib/mongodb";
 import { requireWorkforceRead, requireWorkforceWrite, handleAuthError } from "@/lib/auth-helpers";
 import { createWorkforceAuditEvent } from "@/lib/workforce-audit";
+import { AADHAAR_ENCRYPTION_KEY } from "@/lib/env";
 import type { Driver } from "@/lib/types";
 
 /**
  * GET /api/workforce/drivers
- * Returns all drivers for the authenticated user's company.
- * super_admin must provide ?companyId= or receives 400.
- * aadhaarNumber is omitted from the list response entirely.
- * Sorted by createdAt descending.
- *
  * POST /api/workforce/drivers
- * Creates a new driver for the authenticated user's company.
- * Requires: fullName, phone, licenseNumber, licenseExpiry.
- * aadhaarNumber is encrypted with AES-256 before storage.
- * Returns 201 { driver }.
  */
 
 // ─── AES-256 Encryption ───────────────────────────────────────────────────────
 
-const ENCRYPTION_KEY = process.env.AADHAAR_ENCRYPTION_KEY || "default-32-byte-key-for-dev-only!";
 const IV_LENGTH = 16;
 
 function encryptAadhaar(text: string): string {
-  if (!text) return "";
+  if (!text || !AADHAAR_ENCRYPTION_KEY) return "";
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(
     "aes-256-cbc",
-    Buffer.from(ENCRYPTION_KEY.slice(0, 32)),
+    Buffer.from(AADHAAR_ENCRYPTION_KEY.slice(0, 32)),
     iv
   );
   let encrypted = cipher.update(text);
@@ -76,6 +67,19 @@ export async function GET(req: NextRequest) {
       const { _id, aadhaarNumber, ...rest } = doc;
       return rest as Omit<Driver, "aadhaarNumber">;
     });
+
+    // Task 7: audit super_admin cross-company reads (fire-and-forget)
+    if (userRecord.role === "super_admin") {
+      createWorkforceAuditEvent({
+        db,
+        companyId,
+        eventType:  "super_admin_read",
+        actorId:    userRecord.userId,
+        targetId:   companyId,
+        targetType: "driver",
+        details:    { action: "list_drivers", endpoint: "/api/workforce/drivers" },
+      }).catch(() => {/* audit failures never crash the caller */});
+    }
 
     return NextResponse.json({ drivers, total: drivers.length });
   } catch (err) {
@@ -169,9 +173,9 @@ export async function POST(req: NextRequest) {
       console.error("[POST /api/workforce/drivers] Audit error (ignored):", err)
     );
 
-    // Return driver without _id; aadhaarNumber is included for the 201 response
-    // (caller receives the created record in full, minus Mongo internals)
-    return NextResponse.json({ driver }, { status: 201 });
+    // Task 3: never return encrypted Aadhaar value — mask in create response
+    const { aadhaarNumber: _aadhaar, ...driverSafe } = driver;
+    return NextResponse.json({ driver: { ...driverSafe, aadhaarNumber: "****" } }, { status: 201 });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("[POST /api/workforce/drivers] DB insert error:", detail);

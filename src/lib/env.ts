@@ -47,6 +47,19 @@ export const OPENWEATHER_API_KEY = requireEnv("OPENWEATHER_API_KEY");
 /** Google Gemini API key — server-side only */
 export const GEMINI_API_KEY = requireEnv("GEMINI_API_KEY");
 
+// ─── Aadhaar encryption key (Task 2) ─────────────────────────────────────────
+
+/**
+ * AADHAAR_ENCRYPTION_KEY — 32-byte key for AES-256 Aadhaar encryption.
+ *
+ * Development: warns if missing, returns "" (encryption skipped).
+ * Production:  throws immediately — no fallback allowed.
+ *
+ * No default value exists. A publicly known fallback would render
+ * all stored Aadhaar data unencrypted in practice.
+ */
+export const AADHAAR_ENCRYPTION_KEY = requireEnv("AADHAAR_ENCRYPTION_KEY");
+
 // ─── Env summary (dev only) ───────────────────────────────────────────────────
 
 /**
@@ -66,6 +79,7 @@ export function logEnvStatus(): void {
     "NEXT_PUBLIC_FIREBASE_APP_ID",
     "OPENWEATHER_API_KEY",
     "GEMINI_API_KEY",
+    "AADHAAR_ENCRYPTION_KEY",
   ];
 
   console.log("\n[SentinelRoute] Environment check:");

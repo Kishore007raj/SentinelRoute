@@ -1,14 +1,3 @@
-/**
- * GET  /api/workforce/users — list company_users scoped to companyId
- * POST /api/workforce/users — invite a new user to the company
- *
- * Auth:
- *   GET  — requireWorkforceRead (handles super_admin + USER_MGMT_ROLES);
- *           super_admin requires ?companyId= or returns 400.
- *           Non-super_admin callers are checked against USER_MGMT_ROLES.
- *   POST — requireUserMgmt (company_manager / company_admin only).
- */
-
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "firebase-admin/auth";
 import { getDb } from "@/lib/mongodb";
@@ -20,6 +9,22 @@ import {
 } from "@/lib/auth-helpers";
 import { createWorkforceAuditEvent } from "@/lib/workforce-audit";
 import type { CompanyUser, UserRole } from "@/lib/types";
+
+// ─── Canonical role allowlist (Task 4) ───────────────────────────────────────
+
+const VALID_USER_ROLES: readonly UserRole[] = [
+  "super_admin",
+  "company_admin",
+  "company_manager",
+  "fleet_manager",
+  "operations_manager",
+  "dispatcher",
+  "driver",
+] as const;
+
+function isValidRole(r: string): r is UserRole {
+  return (VALID_USER_ROLES as readonly string[]).includes(r);
+}
 
 // ─── GET /api/workforce/users ─────────────────────────────────────────────────
 
@@ -64,6 +69,20 @@ export async function GET(req: NextRequest) {
 
     // Strip MongoDB internal _id before returning
     const cleaned = users.map(({ _id, ...rest }) => rest);
+
+    // Task 7: audit super_admin cross-company reads (fire-and-forget)
+    if (isSuperAdmin) {
+      const db2 = await getDb();
+      createWorkforceAuditEvent({
+        db: db2,
+        companyId,
+        eventType:  "super_admin_read",
+        actorId:    userId,
+        targetId:   companyId,
+        targetType: "user",
+        details:    { action: "list_users", endpoint: "/api/workforce/users" },
+      }).catch(() => {/* audit failures never crash the caller */});
+    }
 
     return NextResponse.json({ users: cleaned, total: cleaned.length });
   } catch (err) {
@@ -110,6 +129,13 @@ export async function POST(req: NextRequest) {
   if (!role || typeof role !== "string" || !role.trim()) {
     return NextResponse.json(
       { error: "Missing required field: role" },
+      { status: 400 }
+    );
+  }
+  // Task 4: reject any role value not in the canonical list
+  if (!isValidRole(role.trim())) {
+    return NextResponse.json(
+      { error: `Invalid role: "${role}". Accepted roles: ${VALID_USER_ROLES.join(", ")}` },
       { status: 400 }
     );
   }

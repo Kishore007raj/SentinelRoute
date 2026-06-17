@@ -7,8 +7,8 @@
  *     that would indicate a programming error and is the correct behaviour.
  *
  * Called once per process from ensureWorkforceIndexes(), guarded by a boolean flag.
- * Never blocks a request — called fire-and-forget from the dashboard route on first
- * request. Index creation failure is logged but never crashes the server.
+ * Triggered automatically via getDb() in mongodb.ts — runs once per cold start,
+ * never blocks a request. Index creation failure is logged but never crashes the server.
  *
  * Collections covered:
  *   drivers, vehicles, company_users, workforce_audits
@@ -70,6 +70,11 @@ async function ensureDriversIndexes(db: Db): Promise<void> {
       { driverId: 1 },
       { unique: true, name: "drivers_driverId_unique", background: true }
     ),
+    // Task 8: compound for GET /api/workforce/drivers/[id] filter {driverId, companyId}
+    col.createIndex(
+      { driverId: 1, companyId: 1 },
+      { name: "drivers_driverId_companyId", background: true }
+    ),
     // Dashboard upcoming expirations query filters by licenseExpiry
     col.createIndex(
       { companyId: 1, licenseExpiry: 1 },
@@ -97,6 +102,11 @@ async function ensureVehiclesIndexes(db: Db): Promise<void> {
     col.createIndex(
       { vehicleId: 1 },
       { unique: true, name: "vehicles_vehicleId_unique", background: true }
+    ),
+    // Task 8: compound for GET /api/workforce/vehicles/[id] filter {vehicleId, companyId}
+    col.createIndex(
+      { vehicleId: 1, companyId: 1 },
+      { name: "vehicles_vehicleId_companyId", background: true }
     ),
     // Dashboard upcoming expirations — insurance
     col.createIndex(
@@ -158,6 +168,11 @@ async function ensureWorkforceAuditsIndexes(db: Db): Promise<void> {
     col.createIndex(
       { auditId: 1 },
       { unique: true, name: "workforce_audits_auditId_unique", background: true }
+    ),
+    // Task 8: filter by event type for future audit filtering features
+    col.createIndex(
+      { eventType: 1 },
+      { name: "workforce_audits_eventType", background: true }
     ),
   ]);
 }

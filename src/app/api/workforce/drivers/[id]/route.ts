@@ -8,48 +8,28 @@ import {
   handleAuthError,
 } from "@/lib/auth-helpers";
 import { createWorkforceAuditEvent } from "@/lib/workforce-audit";
+import { AADHAAR_ENCRYPTION_KEY } from "@/lib/env";
 import type { Driver, UserRole } from "@/lib/types";
 
-/**
- * GET /api/workforce/drivers/[id]
- * Returns a single driver record for the authenticated user's company.
- * - 404 if not found (hides existence from cross-company callers)
- * - Aadhaar masking: replaced with "****" unless role is company_manager,
- *   company_admin, or fleet_manager
- *
- * PATCH /api/workforce/drivers/[id]
- * Partial update of a driver record.
- * - status: "suspended"   → atomic session: clear vehicle assignment + audit driver_suspended
- * - status: "active"      → audit driver_activated
- * - other fields          → audit driver_updated
- *
- * DELETE /api/workforce/drivers/[id]
- * Soft-delete: sets status to "inactive" + updatedAt.
- * Audit: driver_suspended (maps to inactive per design).
- * Returns 200 { driver }.
- */
-
-// ─── AES-256 Decryption ────────────────────────────────────────────────────────
-
-const ENCRYPTION_KEY = process.env.AADHAAR_ENCRYPTION_KEY || "default-32-byte-key-for-dev-only!";
+// ─── AES-256 Decryption ───────────────────────────────────────────────────────
 
 function decryptAadhaar(encrypted: string): string {
-  if (!encrypted || !encrypted.includes(":")) return encrypted;
+  if (!encrypted || !encrypted.includes(":") || !AADHAAR_ENCRYPTION_KEY) return "****";
   try {
     const [ivHex, encryptedHex] = encrypted.split(":");
     const iv = Buffer.from(ivHex, "hex");
     const encryptedText = Buffer.from(encryptedHex, "hex");
     const decipher = crypto.createDecipheriv(
       "aes-256-cbc",
-      Buffer.from(ENCRYPTION_KEY.slice(0, 32)),
+      Buffer.from(AADHAAR_ENCRYPTION_KEY.slice(0, 32)),
       iv
     );
     let decrypted = decipher.update(encryptedText);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     return decrypted.toString();
   } catch {
-    // If decryption fails (e.g., value was never encrypted), return as-is
-    return encrypted;
+    // Decryption failure — mask rather than expose raw encrypted bytes
+    return "****";
   }
 }
 

@@ -1,13 +1,6 @@
 /**
- * GET   /api/workforce/users/[id] — fetch a single company_user by userId
- * PATCH /api/workforce/users/[id] — update active status or role
- *
- * Auth:
- *   GET  — requireWorkforceRead; then check role is in USER_MGMT_ROLES or super_admin.
- *           Returns 403 "Company Manager access required." for other roles.
- *   PATCH — requireUserMgmt (company_manager / company_admin only).
- *
- * The [id] param is the target user's userId (Firebase UID).
+ * GET   /api/workforce/users/[id]
+ * PATCH /api/workforce/users/[id]
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -20,6 +13,22 @@ import {
 } from "@/lib/auth-helpers";
 import { createWorkforceAuditEvent } from "@/lib/workforce-audit";
 import type { CompanyUser, UserRole } from "@/lib/types";
+
+// ─── Canonical role allowlist (Task 4) ───────────────────────────────────────
+
+const VALID_USER_ROLES: readonly UserRole[] = [
+  "super_admin",
+  "company_admin",
+  "company_manager",
+  "fleet_manager",
+  "operations_manager",
+  "dispatcher",
+  "driver",
+] as const;
+
+function isValidRole(r: string): r is UserRole {
+  return (VALID_USER_ROLES as readonly string[]).includes(r);
+}
 
 // ─── GET /api/workforce/users/[id] ───────────────────────────────────────────
 
@@ -159,8 +168,14 @@ export async function PATCH(
       eventType = "user_activated";
     } else {
       // role change path — active was undefined so role must be present
+      if (!role || !isValidRole(role)) {
+        return NextResponse.json(
+          { error: `Invalid role: "${role}". Accepted roles: ${VALID_USER_ROLES.join(", ")}` },
+          { status: 400 }
+        );
+      }
       const previousRole = existing.role;
-      const newRole = (role as UserRole);
+      const newRole = role as UserRole;
       updates.role = newRole;
       eventType = "user_role_changed";
       auditDetails = { previousRole, newRole };

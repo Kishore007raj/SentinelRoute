@@ -398,6 +398,7 @@ export type WorkforceEventType =
   | "vehicle_unassigned"
   | "vehicle_maintenance"
   | "vehicle_activated"
+  | "vehicle_deactivated"
   | "user_invited"
   | "user_disabled"
   | "user_activated"

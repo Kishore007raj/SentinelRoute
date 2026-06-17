@@ -340,7 +340,7 @@ export async function DELETE(
 
     createWorkforceAuditEvent({
       db, companyId,
-      eventType:  "vehicle_activated", // design note: maps to "inactive" soft-delete
+      eventType:  "vehicle_deactivated",
       actorId:    userId,
       targetId:   id,
       targetType: "vehicle",
