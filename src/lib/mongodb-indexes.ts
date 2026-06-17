@@ -195,5 +195,10 @@ async function ensureCompanySettingsIndexes(db: Db): Promise<void> {
       { companyId: 1 },
       { unique: true, name: "company_settings_companyId_unique", background: true }
     ),
+    // Language-based lookups for multilingual routing
+    col.createIndex(
+      { language: 1 },
+      { name: "company_settings_language", background: true }
+    ),
   ]);
 }
