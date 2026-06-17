@@ -16,11 +16,12 @@ import type { Driver } from "@/lib/types";
 const IV_LENGTH = 16;
 
 function encryptAadhaar(text: string): string {
-  if (!text || !AADHAAR_ENCRYPTION_KEY) return "";
+  const key = AADHAAR_ENCRYPTION_KEY();
+  if (!text || !key) return "";
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(
     "aes-256-cbc",
-    Buffer.from(AADHAAR_ENCRYPTION_KEY.slice(0, 32)),
+    Buffer.from(key.slice(0, 32)),
     iv
   );
   let encrypted = cipher.update(text);

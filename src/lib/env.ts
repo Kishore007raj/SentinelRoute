@@ -1,24 +1,30 @@
 /**
  * env.ts — Validated environment variable accessor.
  *
- * All variables are validated at import time.
- * Missing required variables throw immediately so the app fails fast
- * rather than silently using undefined values at runtime.
+ * NEXT_PUBLIC_ variables are validated at import time (they are inlined
+ * at build time by Next.js and must be present).
  *
- * NEXT_PUBLIC_ variables are safe to use on the client.
- * All others are server-only.
+ * Server-only secrets (AADHAAR_ENCRYPTION_KEY, OPENWEATHER_API_KEY,
+ * GEMINI_API_KEY) are validated lazily — only when first accessed at
+ * request time, never during the Next.js build phase.
+ *
+ * This prevents "Missing required environment variable" errors during
+ * `next build` when secrets are intentionally absent from the build
+ * environment and only injected at runtime by the hosting platform.
  */
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Build-time helper (NEXT_PUBLIC_ vars only) ───────────────────────────────
 
-function requireEnv(key: string): string {
+/**
+ * Validates a NEXT_PUBLIC_ variable at import time.
+ * These are inlined by the bundler and MUST be present at build time.
+ */
+function requireBuildEnv(key: string): string {
   const value = process.env[key];
   if (!value || value.trim() === "") {
-    // Warn in development so the app still starts while keys are being filled in.
-    // In production, throw immediately.
     if (process.env.NODE_ENV === "production") {
       throw new Error(
-        `[env] Missing required environment variable: "${key}"\n` +
+        `[env] Missing required build-time variable: "${key}"\n` +
         `Add it to your deployment environment and redeploy.`
       );
     }
@@ -28,44 +34,86 @@ function requireEnv(key: string): string {
   return value.trim();
 }
 
-// ─── Firebase (client-safe, NEXT_PUBLIC_) ─────────────────────────────────────
-
-export const firebaseConfig = {
-  apiKey:            requireEnv("NEXT_PUBLIC_FIREBASE_API_KEY"),
-  authDomain:        requireEnv("NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN"),
-  projectId:         requireEnv("NEXT_PUBLIC_FIREBASE_PROJECT_ID"),
-  storageBucket:     requireEnv("NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET"),
-  messagingSenderId: requireEnv("NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID"),
-  appId:             requireEnv("NEXT_PUBLIC_FIREBASE_APP_ID"),
-} as const;
-
-// ─── Server-only API keys ─────────────────────────────────────────────────────
-
-/** OpenWeather API key — server-side only */
-export const OPENWEATHER_API_KEY = requireEnv("OPENWEATHER_API_KEY");
-
-/** Google Gemini API key — server-side only */
-export const GEMINI_API_KEY = requireEnv("GEMINI_API_KEY");
-
-// ─── Aadhaar encryption key (Task 2) ─────────────────────────────────────────
+// ─── Runtime helper (server-only secrets) ────────────────────────────────────
 
 /**
- * AADHAAR_ENCRYPTION_KEY — 32-byte key for AES-256 Aadhaar encryption.
+ * Returns a lazy accessor for a server-only environment variable.
+ * The variable is NOT read at module evaluation time — only when the
+ * returned function is called during a request.
  *
- * Development: warns if missing, returns "" (encryption skipped).
- * Production:  throws immediately — no fallback allowed.
+ * In production: throws immediately if the variable is absent or empty.
+ * In development: warns and returns "" so the dev server starts without
+ *                 all secrets configured.
  *
- * No default value exists. A publicly known fallback would render
- * all stored Aadhaar data unencrypted in practice.
+ * Usage:
+ *   const getAadhaarKey = lazyEnv("AADHAAR_ENCRYPTION_KEY");
+ *   // later, inside a request handler:
+ *   const key = getAadhaarKey();
  */
-export const AADHAAR_ENCRYPTION_KEY = requireEnv("AADHAAR_ENCRYPTION_KEY");
+function lazyEnv(key: string): () => string {
+  return (): string => {
+    const value = process.env[key];
+    if (!value || value.trim() === "") {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error(
+          `[env] Missing required environment variable: "${key}"\n` +
+          `Add it to your deployment environment and redeploy.`
+        );
+      }
+      console.warn(`[env] ⚠️  Missing environment variable: "${key}" — fill in .env.local`);
+      return "";
+    }
+    return value.trim();
+  };
+}
+
+// ─── Firebase (client-safe, NEXT_PUBLIC_) ─────────────────────────────────────
+// These are inlined at build time — must be present during `next build`.
+
+export const firebaseConfig = {
+  apiKey:            requireBuildEnv("NEXT_PUBLIC_FIREBASE_API_KEY"),
+  authDomain:        requireBuildEnv("NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN"),
+  projectId:         requireBuildEnv("NEXT_PUBLIC_FIREBASE_PROJECT_ID"),
+  storageBucket:     requireBuildEnv("NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET"),
+  messagingSenderId: requireBuildEnv("NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID"),
+  appId:             requireBuildEnv("NEXT_PUBLIC_FIREBASE_APP_ID"),
+} as const;
+
+// ─── Server-only API keys (lazy — validated at request time) ──────────────────
+
+/**
+ * OpenWeather API key — server-side only.
+ * Call OPENWEATHER_API_KEY() inside a request handler, never at top level.
+ */
+export const OPENWEATHER_API_KEY = lazyEnv("OPENWEATHER_API_KEY");
+
+/**
+ * Google Gemini API key — server-side only.
+ * Call GEMINI_API_KEY() inside a request handler, never at top level.
+ */
+export const GEMINI_API_KEY = lazyEnv("GEMINI_API_KEY");
+
+// ─── Aadhaar encryption key ───────────────────────────────────────────────────
+
+/**
+ * AADHAAR_ENCRYPTION_KEY — 32-byte key for AES-256-CBC Aadhaar encryption.
+ *
+ * Lazy accessor: throws at request time in production if missing.
+ * Never throws at build time or module import time.
+ *
+ * No default value. No publicly known fallback.
+ * Call AADHAAR_ENCRYPTION_KEY() inside encrypt/decrypt functions only.
+ *
+ * Development: warns if missing, returns "" (encryption skipped gracefully).
+ * Production:  throws — missing key is a fatal runtime error, not a build error.
+ */
+export const AADHAAR_ENCRYPTION_KEY = lazyEnv("AADHAAR_ENCRYPTION_KEY");
 
 // ─── Env summary (dev only) ───────────────────────────────────────────────────
 
 /**
- * Call this once at app startup (e.g. in layout.tsx server component)
- * to confirm all env vars loaded correctly.
- * Logs are suppressed in production.
+ * Logs the presence/absence of all environment variables.
+ * Only runs in development — suppressed in production.
  */
 export function logEnvStatus(): void {
   if (process.env.NODE_ENV === "production") return;

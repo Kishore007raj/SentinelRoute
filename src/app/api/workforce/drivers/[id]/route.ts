@@ -14,14 +14,15 @@ import type { Driver, UserRole } from "@/lib/types";
 // ─── AES-256 Decryption ───────────────────────────────────────────────────────
 
 function decryptAadhaar(encrypted: string): string {
-  if (!encrypted || !encrypted.includes(":") || !AADHAAR_ENCRYPTION_KEY) return "****";
+  const key = AADHAAR_ENCRYPTION_KEY();
+  if (!encrypted || !encrypted.includes(":") || !key) return "****";
   try {
     const [ivHex, encryptedHex] = encrypted.split(":");
     const iv = Buffer.from(ivHex, "hex");
     const encryptedText = Buffer.from(encryptedHex, "hex");
     const decipher = crypto.createDecipheriv(
       "aes-256-cbc",
-      Buffer.from(AADHAAR_ENCRYPTION_KEY.slice(0, 32)),
+      Buffer.from(key.slice(0, 32)),
       iv
     );
     let decrypted = decipher.update(encryptedText);
