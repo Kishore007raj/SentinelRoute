@@ -19,6 +19,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/lib/auth-context";
 import { useCompany } from "@/lib/company-context";
+import { useI18nCompany } from "@/hooks/use-i18n-company";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -29,6 +30,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useUser();
   const { status: companyStatus, isSuperAdmin } = useCompany();
   const router = useRouter();
+
+  // Sync UI locale from company / user language preference
+  useI18nCompany();
 
   const isLoading = authLoading || companyStatus === "loading";
 

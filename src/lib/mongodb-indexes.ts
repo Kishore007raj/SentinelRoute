@@ -93,6 +93,11 @@ async function ensureUsersIndexes(db: Db): Promise<void> {
       { companyId: 1, role: 1 },
       { name: "users_companyId_role", background: true }
     ),
+    // Multilingual: resolve preferred language for notifications
+    col.createIndex(
+      { preferredLanguage: 1 },
+      { name: "users_preferredLanguage", background: true }
+    ),
   ]);
 }
 
