@@ -78,12 +78,16 @@ export async function POST(req: NextRequest) {
       operatingStates: Array.isArray(body.operatingStates) ? (body.operatingStates as string[]) : [],
       cargoCategories: Array.isArray(body.cargoCategories) ? (body.cargoCategories as string[]) : [],
       status:          "pending",
-      // Task 1: trust metrics — initialized to defaults
+      // Trust metrics — initialized to defaults
       trustScore:         100,
       completedShipments: 0,
       delayedShipments:   0,
       incidentCount:      0,
       auditFlags:         0,
+      // Multilingual defaults
+      preferredLanguage:  "en",
+      supportedLanguages: ["en"],
+      fallbackLanguage:   "en",
       createdAt:       now,
     };
 

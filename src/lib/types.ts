@@ -154,6 +154,9 @@ export interface UserSettings {
   // Dispatch defaults
   defaultVehicleType:      string;
   dispatchConfirmWindow:   number;
+  // Multilingual
+  /** Notification and UI language for this user. Default: "en" */
+  language:                string;
   updatedAt:               string;
 }
 
@@ -170,6 +173,7 @@ export const DEFAULT_SETTINGS: Omit<UserSettings, "userId" | "updatedAt"> = {
   preferredRouteType:      "balanced",
   defaultVehicleType:      "Container Truck",
   dispatchConfirmWindow:   30,
+  language:                "en",
 };
 
 // ─── KPI ─────────────────────────────────────────────────────────────────────
@@ -186,11 +190,12 @@ export interface KPI {
 export type CompanyStatus = "pending" | "approved" | "rejected" | "suspended";
 export type UserRole =
   | "company_admin"
+  | "super_admin"
+  | "company_manager"
   | "operations_manager"
   | "fleet_manager"
   | "dispatcher"
-  | "driver"
-  | "super_admin";
+  | "driver";
 
 export type DocumentType =
   | "gst"
@@ -213,26 +218,36 @@ export interface Company {
   operatingStates:     string[];
   cargoCategories:     string[];
   status:              CompanyStatus;
-  // ─── Trust metrics (Task 1) — updated by shipment audits; never manually set ──
-  trustScore:          number;   // default 100 (starts full, degrades on incidents)
-  completedShipments:  number;   // default 0
-  delayedShipments:    number;   // default 0
-  incidentCount:       number;   // default 0
-  auditFlags:          number;   // default 0
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─── Trust metrics ────────────────────────────────────────────────────────
+  trustScore:          number;
+  completedShipments:  number;
+  delayedShipments:    number;
+  incidentCount:       number;
+  auditFlags:          number;
+  // ─── Multilingual (Multilingual Foundation) ───────────────────────────────
+  /** Default language for the company workspace. Default: "en" */
+  preferredLanguage:   string;
+  /** Languages allowed for company users. Default: ["en"] */
+  supportedLanguages:  string[];
+  /** Fallback language when preferred is unavailable. Default: "en" */
+  fallbackLanguage:    string;
+  // ─────────────────────────────────────────────────────────────────────────
   createdAt:           string;
   approvedAt?:         string;
   approvedBy?:         string;
+  submittedAt?:        string;
 }
 
 export interface UserRecord {
-  userId:    string;
-  companyId: string;
-  name:      string;
-  email:     string;
-  role:      UserRole;
-  active:    boolean;
-  createdAt: string;
+  userId:            string;
+  companyId:         string;
+  name:              string;
+  email:             string;
+  role:              UserRole;
+  active:            boolean;
+  /** User's preferred display language. Falls back to company preferredLanguage. */
+  preferredLanguage?: string;
+  createdAt:         string;
 }
 
 export interface CompanyDocument {
@@ -259,17 +274,23 @@ export interface CompanyAudit {
 // ─── Company Settings (Task 2 — Module 1 Finalization) ────────────────────────
 
 export interface CompanySettings {
-  companyId:           string;
-  language:            string;   // default "en"
-  timezone:            string;   // default "Asia/Kolkata"
-  riskThreshold:       number;   // default 60
-  autoApprovalEnabled: boolean;  // default false
-  createdAt:           string;
-  updatedAt:           string;
+  companyId:            string;
+  // ─── Multilingual ──────────────────────────────────────────────────────────
+  language:             string;    // default "en" — company workspace default language
+  supportedLanguages:   string[];  // languages enabled for this company's users
+  fallbackLanguage:     string;    // default "en"
+  // ─── Operations ────────────────────────────────────────────────────────────
+  timezone:             string;    // default "Asia/Kolkata"
+  riskThreshold:        number;    // default 60
+  autoApprovalEnabled:  boolean;   // default false
+  createdAt:            string;
+  updatedAt:            string;
 }
 
 export const DEFAULT_COMPANY_SETTINGS: Omit<CompanySettings, "companyId" | "createdAt" | "updatedAt"> = {
   language:            "en",
+  supportedLanguages:  ["en"],
+  fallbackLanguage:    "en",
   timezone:            "Asia/Kolkata",
   riskThreshold:       60,
   autoApprovalEnabled: false,
@@ -290,57 +311,107 @@ export type AuditEventType =
   | "shipment_delayed"
   | "shipment_incident";
 
-// ─── Module 2 placeholder types (Task 7) ─────────────────────────────────────
-// These are type definitions ONLY. No pages or APIs are created for these yet.
+// ─── Module 2 — Workforce Management types ───────────────────────────────────
 
 export interface Driver {
-  driverId:     string;
-  companyId:    string;
-  userId:       string;
-  name:         string;
-  licenseNumber: string;
-  phone:        string;
-  active:       boolean;
-  createdAt:    string;
+  // ─── Identity ─────────────────────────────────────────────────────────────
+  driverId:                string;      // "drv-<timestamp>-<random4>"
+  companyId:               string;      // tenant key — indexed
+  employeeId:              string;      // company-assigned employee number
+  fullName:                string;
+  phone:                   string;
+  email:                   string;
+
+  // ─── Licence ──────────────────────────────────────────────────────────────
+  licenseNumber:           string;
+  licenseExpiry:           string;      // ISO date string "YYYY-MM-DD"
+
+  // ─── Personal ─────────────────────────────────────────────────────────────
+  aadhaarNumber:           string;      // encrypted at rest (AES-256)
+  bloodGroup:              string;
+  address:                 string;
+
+  // ─── Status ───────────────────────────────────────────────────────────────
+  status:                  "active" | "inactive" | "suspended";
+  assignedVehicleId:       string | null;
+
+  // ─── Module 3/4/5 Future Fields ───────────────────────────────────────────
+  shipmentIds:             string[];    // default [] — Module 3 linkage
+  communicationChannelId:  string | null; // default null — Module 3 comm layer
+  /** Driver's primary display/communication language. Default: "en" */
+  preferredLanguage:       string;
+  /** Additional languages the driver understands. Default: [] */
+  languagePreferences:     string[];
+
+  // ─── Timestamps ───────────────────────────────────────────────────────────
+  createdAt:               string;      // UTC ISO
+  updatedAt:               string;      // UTC ISO
 }
 
 export interface Vehicle {
-  vehicleId:      string;
-  companyId:      string;
-  registrationNo: string;
-  vehicleType:    string;
-  capacity:       string;
-  active:         boolean;
-  assignedDriver?: string;
-  createdAt:      string;
+  // ─── Identity ─────────────────────────────────────────────────────────────
+  vehicleId:               string;      // "veh-<timestamp>-<random4>"
+  companyId:               string;      // indexed
+
+  // ─── Registration ─────────────────────────────────────────────────────────
+  vehicleNumber:           string;      // e.g. "MH12AB1234"
+  vehicleType:             string;      // e.g. "Container Truck"
+  capacity:                string;      // e.g. "10 tonnes"
+  fuelType:                string;
+
+  // ─── Documents ────────────────────────────────────────────────────────────
+  insuranceNumber:         string;
+  insuranceExpiry:         string;      // ISO date
+  fitnessExpiry:           string;      // ISO date
+  permitExpiry:            string;      // ISO date
+
+  // ─── Status ───────────────────────────────────────────────────────────────
+  status:                  "available" | "assigned" | "maintenance" | "inactive";
+  currentDriverId:         string | null;
+
+  // ─── Module 3/4 Future Fields ─────────────────────────────────────────────
+  shipmentIds:             string[];    // default [] — Module 3 linkage
+  trackingDeviceId:        string | null; // default null — Module 4 Mappls
+
+  // ─── Timestamps ───────────────────────────────────────────────────────────
+  createdAt:               string;
+  updatedAt:               string;
 }
 
-export interface FleetManager {
-  managerId:  string;
-  companyId:  string;
-  userId:     string;
-  name:       string;
-  email:      string;
-  active:     boolean;
-  createdAt:  string;
+export interface CompanyUser {
+  companyId:   string;
+  userId:      string;
+  role:        UserRole;
+  active:      boolean;
+  createdAt:   string;
+  updatedAt:   string;
 }
 
-export interface Dispatcher {
-  dispatcherId: string;
-  companyId:    string;
-  userId:       string;
-  name:         string;
-  email:        string;
-  active:       boolean;
-  createdAt:    string;
-}
+export type WorkforceEventType =
+  | "driver_created"
+  | "driver_updated"
+  | "driver_suspended"
+  | "driver_activated"
+  | "vehicle_added"
+  | "vehicle_updated"
+  | "vehicle_assigned"
+  | "vehicle_unassigned"
+  | "vehicle_maintenance"
+  | "vehicle_activated"
+  | "vehicle_deactivated"
+  | "user_invited"
+  | "user_disabled"
+  | "user_activated"
+  | "user_role_changed"
+  | "super_admin_read";
 
-export interface OperationsManager {
-  operationsManagerId: string;
-  companyId:           string;
-  userId:              string;
-  name:                string;
-  email:               string;
-  active:              boolean;
-  createdAt:           string;
+export interface WorkforceAudit {
+  auditId:     string;       // "waudit-<timestamp>-<random5>"
+  companyId:   string;
+  eventType:   WorkforceEventType;
+  actorId:     string;
+  targetId:    string;
+  targetType:  "driver" | "vehicle" | "user";
+  details:     Record<string, unknown>;
+  timestamp:   string;       // UTC ISO — immutable, never updated
 }

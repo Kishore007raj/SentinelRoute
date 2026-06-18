@@ -102,10 +102,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
-    // Task 6: block suspended companies from uploading documents
+    // Task 6: block suspended and rejected companies from uploading documents
     const company = await db.collection<Company>("companies").findOne({ companyId: userRecord.companyId });
     if (company?.status === "suspended") {
       return NextResponse.json({ error: "Company account is suspended." }, { status: 403 });
+    }
+    if (company?.status === "rejected") {
+      return NextResponse.json({ error: "Company application was rejected. Contact support to reapply." }, { status: 403 });
     }
 
     const now = new Date().toISOString();

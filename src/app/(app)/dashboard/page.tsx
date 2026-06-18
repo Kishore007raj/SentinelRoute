@@ -1,4 +1,6 @@
 "use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { PlusSquare, AlertTriangle, ArrowRight, CheckCircle, Building2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -96,8 +98,16 @@ function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: numbe
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { state, activeShipments, completedShipments, atRiskShipments } = useStore();
-  const { company } = useCompany();
+  const { company, isSuperAdmin } = useCompany();
   const { shipments, loading } = state;
+  const router = useRouter();
+
+  // Super admins have no company — redirect them to the admin panel
+  useEffect(() => {
+    if (isSuperAdmin) {
+      router.replace("/admin/companies");
+    }
+  }, [isSuperAdmin, router]);
 
   const totalShipments   = shipments.length;
   const avgRisk          = totalShipments > 0

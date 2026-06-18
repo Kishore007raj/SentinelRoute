@@ -28,6 +28,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
+    // Block suspended and rejected companies from re-submitting
+    const companyDoc = await db.collection("companies").findOne({ companyId: userRecord.companyId });
+    if (companyDoc?.status === "suspended") {
+      return NextResponse.json({ error: "Company account is suspended." }, { status: 403 });
+    }
+    if (companyDoc?.status === "rejected") {
+      return NextResponse.json({ error: "Company application was rejected. Contact support to reapply." }, { status: 403 });
+    }
+
     const now = new Date().toISOString();
 
     // Check documents — require all 5

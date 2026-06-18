@@ -7,6 +7,7 @@ import { StoreProvider } from "@/lib/store";
 import { UserProvider } from "@/lib/auth-context";
 import { SettingsProvider } from "@/lib/settings-context";
 import { CompanyProvider } from "@/lib/company-context";
+import { I18nProvider } from "@/lib/i18n";
 import { logEnvStatus } from "@/lib/env";
 
 // Runs once on server cold-start — confirms all env vars are present
@@ -42,14 +43,16 @@ export default function RootLayout({
       <body suppressHydrationWarning className="min-h-screen bg-background text-foreground antialiased">
         <UserProvider>
           <CompanyProvider>
-            <StoreProvider>
-              <SettingsProvider>
-                <TooltipProvider delay={300}>
-                  {children}
-                </TooltipProvider>
-                <Toaster position="bottom-right" theme="dark" richColors />
-              </SettingsProvider>
-            </StoreProvider>
+            <I18nProvider>
+              <StoreProvider>
+                <SettingsProvider>
+                  <TooltipProvider delay={300}>
+                    {children}
+                  </TooltipProvider>
+                  <Toaster position="bottom-right" theme="dark" richColors />
+                </SettingsProvider>
+              </StoreProvider>
+            </I18nProvider>
           </CompanyProvider>
         </UserProvider>
       </body>

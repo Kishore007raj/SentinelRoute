@@ -64,6 +64,7 @@
     "fast-check": "^4.8.0",
     "happy-dom": "^20.10.3",
     "jsdom": "^27.0.1",
+    "mongodb-memory-server": "^10.4.3",
     "tailwindcss": "^4",
     "tsx": "4.21.0",
     "typescript": "^5",

@@ -6,9 +6,12 @@
  * hot-reloads in dev and across invocations within the same process.
  *
  * DB name: sentinelroute
+ * Indexes: ensured on first getDb() call via mongodb-indexes.ts
  */
 
 import { MongoClient, type Db } from "mongodb";
+import { ensureIndexes } from "@/lib/mongodb-indexes";
+import { ensureWorkforceIndexes } from "@/lib/workforce-indexes";
 
 // ─── Env validation — fail fast ───────────────────────────────────────────────
 
@@ -48,10 +51,16 @@ const clientPromise: Promise<MongoClient> =
 /**
  * Returns the sentinelroute Db instance.
  * Reuses the cached MongoClient — never opens a second connection.
+ * Triggers index creation on first call (idempotent, fire-and-forget).
  */
 export async function getDb(): Promise<Db> {
   const client = await clientPromise;
-  return client.db(dbName);
+  const db = client.db(dbName);
+  // Fire-and-forget: both index sets guard themselves with boolean flags —
+  // each runs once per process, never blocks the caller, never throws.
+  ensureIndexes(db).catch(() => {/* already logged inside ensureIndexes */});
+  ensureWorkforceIndexes(db).catch(() => {/* already logged inside ensureWorkforceIndexes */});
+  return db;
 }
 
 // Legacy aliases kept for any existing callers
