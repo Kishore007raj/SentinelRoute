@@ -353,7 +353,6 @@ export interface Translation {
     mediumRisk:                  string;
     avgRiskFactors:              string;
     routeSelectionHistory:       string;
-    activeAlerts:                string;
     noActiveAlertsShort:         string;
     systemInsight:               string;
     basedOnShipments:            string;
@@ -372,5 +371,63 @@ export interface Translation {
     avgOperationalRisk:          string;
     avgDelayProbability:         string;
     avgEtaConfidence:            string;
+    avgDisruptionProbability:    string;
+    openIncidents:               string;
+    activeAlerts:                string;
+    stable:                      string;
+  };
+  riskCenter: {
+    downLastWeek: string;
+    acrossCorridors: string;
+    requireAttention: string;
+    conditionsNormal: string;
+    acknowledge: string;
+    resolve: string;
+    shipmentLabel: string;
+    acknowledged: string;
+    resolved: string;
+  };
+  incidentCenter: {
+    radius: string;
+    category: string;
+    time: string;
+    closeIncident: string;
+  };
+  routeIntelligencePage: {
+    trafficDensity: string;
+    weatherImpact: string;
+    disruptionProbability: string;
+    cargoSensitivity: string;
+    trafficDetail: string;
+    weatherDetail: string;
+    disruptionDetail: string;
+    cargoDetail: string;
+  };
+  heatmap: {
+    severity: string;
+    radius: string;
+  };
+  shipmentDetail: {
+    loadingShipment: string;
+    markAsCompleted: string;
+    backToShipments: string;
+    shipmentDetail: string;
+    decisionContext: string;
+    riskBreakdownUnavailable: string;
+    updated: string;
+    polling: string;
+    pollPrediction: string;
+    noRecentPredictionPolled: string;
+    overallConfidence: string;
+    delayRisk: string;
+    reasoning: string;
+    loadingTimeline: string;
+    noTimelineEvents: string;
+    riskTimeline: string;
+    source: string;
+    predictiveIntelligence: string;
+    safestContext: string;
+    fastestContext: string;
+    balancedContext: string;
   };
 }

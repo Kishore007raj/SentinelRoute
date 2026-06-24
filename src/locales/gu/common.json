@@ -313,6 +313,63 @@
     "highRiskShipments": "ઉચ્ચ જોખમ શિપમેન્ટ",
     "avgOperationalRisk": "સરેરાશ ઓપરેશનલ જોખમ",
     "avgDelayProbability": "સરેરાશ વિલંબ સંભાવના",
-    "avgEtaConfidence": "સરેરાશ ETA આત્મવિશ્વાસ"
+    "avgEtaConfidence": "સરેરાશ ETA આત્મવિશ્વાસ",
+    "avgDisruptionProbability": "સરેરાશ વિક્ષેપ સંભાવના",
+    "openIncidents": "ખુલ્લી ઘટનાઓ",
+    "stable": "સ્થિર"
+  },
+  "riskCenter": {
+    "downLastWeek": "↓ ગયા અઠવાડિયાથી 5% ઓછું",
+    "acrossCorridors": "8 કોરિડોરમાં",
+    "requireAttention": "તાત્કાલિક ધ્યાન આપવાની જરૂર છે",
+    "conditionsNormal": "પરિસ્થિતિ સામાન્ય છે",
+    "acknowledge": "સ્વીકારો",
+    "resolve": "ઉકેલો",
+    "shipmentLabel": "શિપમેન્ટ:",
+    "acknowledged": "સ્વીકૃત",
+    "resolved": "ઉકેલાયેલ"
+  },
+  "incidentCenter": {
+    "radius": "ત્રિજ્યા",
+    "category": "કેટેગરી",
+    "time": "સમય",
+    "closeIncident": "ઘટના બંધ કરો"
+  },
+  "routeIntelligencePage": {
+    "trafficDensity": "ટ્રાફિક ઘનતા",
+    "weatherImpact": "હવામાન અસર",
+    "disruptionProbability": "વિક્ષેપ સંભાવના",
+    "cargoSensitivity": "કાર્ગો સંવેદનશીલતા",
+    "trafficDetail": "{n} શિપમેન્ટમાં સરેરાશ ટ્રાફિક જોખમ.",
+    "weatherDetail": "તમારા સક્રિય કોરિડોરમાં સરેરાશ હવામાન જોખમ.",
+    "disruptionDetail": "મોકલેલા રૂટો પર સરેરાશ વિક્ષેપ સ્કોર.",
+    "cargoDetail": "તમારા શિપમેન્ટ પ્રકારોમાં સરેરાશ કાર્ગો સંવેદનશીલતા."
+  },
+  "heatmap": {
+    "severity": "તીવ્રતા",
+    "radius": "ત્રિજ્યા"
+  },
+  "shipmentDetail": {
+    "loadingShipment": "શિપમેન્ટ લોડ થઈ રહ્યું છે...",
+    "markAsCompleted": "પૂર્ણ તરીકે ચિહ્નિત કરો",
+    "backToShipments": "શિપમેન્ટ પર પાછા જાઓ",
+    "shipmentDetail": "શિપમેન્ટ વિગત",
+    "decisionContext": "નિર્ણય સંદર્ભ",
+    "riskBreakdownUnavailable": "આ શિપમેન્ટ માટે જોખમ વિગત ઉપલબ્ધ નથી.",
+    "updated": "અપડેટ કરેલ",
+    "polling": "પોલિંગ...",
+    "pollPrediction": "આગાહી મેળવો",
+    "noRecentPredictionPolled": "કોઈ તાજેતરની આગાહી નથી. એન્જિન શરૂ કરવા માટે 'આગાહી મેળવો' પર ક્લિક કરો.",
+    "overallConfidence": "સમગ્ર આત્મવિશ્વાસ",
+    "delayRisk": "વિલંબ જોખમ",
+    "reasoning": "તર્ક",
+    "loadingTimeline": "સમયરેખા લોડ થઈ રહી છે...",
+    "noTimelineEvents": "હજુ સુધી કોઈ સમયરેખા ઘટનાઓ રેકોર્ડ થઈ નથી.",
+    "riskTimeline": "જોખમ સમયરેખા",
+    "source": "સ્ત્રોત",
+    "predictiveIntelligence": "ભવિષ્યવાણી ઇન્ટેલિજન્સ",
+    "safestContext": "{cargo} કાર્ગો માટે સૌથી સુરક્ષિત માર્ગ પસંદ કરવામાં આવ્યો (જોખમ: {risk}). વિક્ષેપની શક્યતા ઘટાડવા અને કાર્ગો સુરક્ષા માટે વધુ ઇટીએ સ્વીકારવામાં આવી.",
+    "fastestContext": "સૌથી ઝડપી માર્ગ પસંદ કરવામાં આવ્યો (જોખમ: {risk}). ઝડપને પ્રાથમિકતા આપવામાં આવી — મુસાફરી દરમિયાન ટ્રાફિક અને હવામાન ચેતવણીઓનું ધ્યાન રાખો.",
+    "balancedContext": "સંતુલિત માર્ગ પસંદ કરવામાં આવ્યો (જોખમ: {risk}). {cargo} કાર્ગો માટે સમય અને વિક્ષેપ વચ્ચે શ્રેષ્ઠ તાલમેલ."
   }
 }

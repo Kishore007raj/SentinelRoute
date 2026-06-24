@@ -3,10 +3,14 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, MapPin, Calendar, Activity, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export default function IncidentsPage() {
+  const { t } = useI18n();
   const [incidents, setIncidents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("all");
 
   useEffect(() => {
     async function fetchIncidents() {
@@ -25,37 +29,59 @@ export default function IncidentsPage() {
     fetchIncidents();
   }, []);
 
+  const filteredIncidents = incidents.filter((incident) => {
+    const matchesSearch = 
+      incident.title?.toLowerCase().includes(search.toLowerCase()) || 
+      incident.description?.toLowerCase().includes(search.toLowerCase()) ||
+      incident.category?.toLowerCase().includes(search.toLowerCase());
+    
+    const matchesSeverity = severityFilter === "all" || incident.severity === severityFilter;
+    return matchesSearch && matchesSeverity;
+  });
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Incident Center</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t('intelligence.incidentCenter')}</h1>
         <p className="text-muted-foreground">
-          Live tracking of all incidents affecting your logistics operations.
+          {t('intelligence.incidentCenterSubtitle')}
         </p>
       </div>
 
       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between">
+        <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between flex-wrap gap-4">
           <div className="flex gap-2">
-            <input type="text" placeholder="Search incidents..." className="px-3 py-1.5 text-sm rounded-md border border-input bg-background" />
-            <select className="px-3 py-1.5 text-sm rounded-md border border-input bg-background">
-              <option>All Severities</option>
-              <option>Critical</option>
-              <option>High</option>
-              <option>Medium</option>
-              <option>Low</option>
+            <input 
+              type="text" 
+              placeholder={t('intelligence.searchIncidents') || "Search incidents..."} 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="px-3 py-1.5 text-sm rounded-md border border-input bg-background" 
+            />
+            <select 
+              value={severityFilter}
+              onChange={(e) => setSeverityFilter(e.target.value)}
+              className="px-3 py-1.5 text-sm rounded-md border border-input bg-background"
+            >
+              <option value="all">{t('intelligence.allSeverities')}</option>
+              <option value="critical">{t('logistics.critical')}</option>
+              <option value="high">{t('logistics.high')}</option>
+              <option value="medium">{t('logistics.medium')}</option>
+              <option value="low">{t('logistics.low')}</option>
             </select>
           </div>
-          <span className="text-sm font-medium text-muted-foreground">{incidents.length} Active Incidents</span>
+          <span className="text-sm font-medium text-muted-foreground">
+            {filteredIncidents.length} {t('intelligence.activeIncidents')}
+          </span>
         </div>
         
         {loading ? (
-          <div className="p-12 text-center text-muted-foreground animate-pulse">Loading incidents...</div>
-        ) : incidents.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">No active incidents found.</div>
+          <div className="p-12 text-center text-muted-foreground animate-pulse">{t('intelligence.loadingIncidents')}</div>
+        ) : filteredIncidents.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground">{t('intelligence.noActiveIncidents')}</div>
         ) : (
           <div className="divide-y divide-border">
-            {incidents.map((incident) => (
+            {filteredIncidents.map((incident) => (
               <div key={incident.incidentId} className="p-5 flex flex-col md:flex-row gap-4 md:items-center hover:bg-muted/10 transition-colors">
                 <div className="flex-shrink-0">
                   <div className={cn(
@@ -79,7 +105,10 @@ export default function IncidentsPage() {
                       incident.severity === "medium" ? "bg-amber-500/20 text-amber-600" :
                       "bg-blue-500/20 text-blue-600"
                     )}>
-                      {incident.severity}
+                      {incident.severity === 'critical' ? t('logistics.critical') :
+                       incident.severity === 'high' ? t('logistics.high') :
+                       incident.severity === 'medium' ? t('logistics.medium') :
+                       t('logistics.low')}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground max-w-2xl">{incident.description}</p>
@@ -87,7 +116,7 @@ export default function IncidentsPage() {
                   <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5" />
-                      {incident.latitude.toFixed(2)}, {incident.longitude.toFixed(2)} ({incident.affectedRadiusKm}km radius)
+                      {incident.latitude.toFixed(4)}, {incident.longitude.toFixed(4)} ({incident.affectedRadiusKm}km {t('incidentCenter.radius')})
                     </div>
                     <div className="flex items-center gap-1">
                       <Activity className="w-3.5 h-3.5" />
@@ -101,11 +130,11 @@ export default function IncidentsPage() {
                 </div>
 
                 <div className="flex-shrink-0 text-right space-y-1 bg-muted/30 p-3 rounded-lg md:w-48">
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Impact Score</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wider">{t('intelligence.impactScore')}</p>
                   <p className="text-2xl font-bold">{incident.impactScore}/100</p>
                   <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground mt-1">
                     <Info className="w-3 h-3" />
-                    {incident.confidence}% Confidence
+                    {incident.confidence}% {t('intelligence.confidence')}
                   </div>
                 </div>
               </div>

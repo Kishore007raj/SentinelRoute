@@ -295,7 +295,7 @@
     "mediumRisk": "நடுத்தர ஆபத்து",
     "avgRiskFactors": "சராசரி ஆபத்து காரணிகள்",
     "routeSelectionHistory": "பாதை தேர்வு வரலாறு",
-    "activeAlerts": "செயலில் உள்ள எச்சரிக்கைகள்",
+    "activeAlerts": "செயலில் உள்ள விழிப்பூட்டல்கள்",
     "noActiveAlertsShort": "செயலில் உள்ள எச்சரிக்கைகள் இல்லை",
     "systemInsight": "சிஸ்டம் நுண்ணறிவு",
     "basedOnShipments": "உங்கள் {n} சரக்கு(கள்) அடிப்படையில்:",
@@ -313,6 +313,63 @@
     "highRiskShipments": "உயர் ஆபத்து சரக்குகள்",
     "avgOperationalRisk": "சராசரி செயல்பாட்டு ஆபத்து",
     "avgDelayProbability": "சராசரி தாமத நிகழ்தகவு",
-    "avgEtaConfidence": "சராசரி ETA நம்பகத்தன்மை"
+    "avgEtaConfidence": "சராசரி ETA நம்பகத்தன்மை",
+    "avgDisruptionProbability": "சராசரி இடையூறு நிகழ்தகவு",
+    "openIncidents": "திறந்த சம்பவங்கள்",
+    "stable": "நிலையானது"
+  },
+  "riskCenter": {
+    "downLastWeek": "↓ கடந்த வாரத்தை விட 5% குறைவு",
+    "acrossCorridors": "8 করিடார்கள் முழுவதும்",
+    "requireAttention": "உடனடி கவனம் தேவை",
+    "conditionsNormal": "நிலைமைகள் இயல்பானவை",
+    "acknowledge": "ஏற்கவும்",
+    "resolve": "தீர்வு காண்க",
+    "shipmentLabel": "ஏற்றுமதி:",
+    "acknowledged": "ஏற்கப்பட்டது",
+    "resolved": "தீர்க்கப்பட்டது"
+  },
+  "incidentCenter": {
+    "radius": "ஆரம்",
+    "category": "வகை",
+    "time": "நேரம்",
+    "closeIncident": "சம்பவத்தை முடிவுக்குக் கொண்டுவருக"
+  },
+  "routeIntelligencePage": {
+    "trafficDensity": "போக்குவரத்து அடர்த்தி",
+    "weatherImpact": "வானிலை தாக்கம்",
+    "disruptionProbability": "இடையூறு நிகழ்தகவு",
+    "cargoSensitivity": "சரக்கு உணர்திறன்",
+    "trafficDetail": "{n} ஏற்றுமதிகளில் சராசரி போக்குவரத்து ஆபத்து.",
+    "weatherDetail": "உங்கள் செயலில் உள்ள করিடாரில் சராசரி வானிலை ஆபத்து.",
+    "disruptionDetail": "அனுப்பப்பட்ட வழிகளில் சராசரி இடையூறு மதிப்பெண்.",
+    "cargoDetail": "உங்கள் ஏற்றுமதி வகைகளில் சராசரி சரக்கு உணர்திறன்."
+  },
+  "heatmap": {
+    "severity": "தீவிரம்",
+    "radius": "ஆரம்"
+  },
+  "shipmentDetail": {
+    "loadingShipment": "சரக்கு ஏற்றப்படுகிறது...",
+    "markAsCompleted": "முடிவடைந்ததாகக் குறிக்கவும்",
+    "backToShipments": "ஏற்றுமதிகளுக்குத் திரும்பு",
+    "shipmentDetail": "ஏற்றுமதி விவரம்",
+    "decisionContext": "முடிவு சூழல்",
+    "riskBreakdownUnavailable": "இந்த ஏற்றுமதிக்கு ஆபத்து பகுப்பாய்வு கிடைக்கவில்லை.",
+    "updated": "புதுப்பிக்கப்பட்டது",
+    "polling": "வாக்கெடுப்பு...",
+    "pollPrediction": "கணிப்பை வாக்கெடுப்பு",
+    "noRecentPredictionPolled": "சமீபத்திய கணிப்பு எதுவும் இல்லை. இயந்திரத்தைத் தூண்ட 'கணிப்பை வாக்கெடுப்பு' என்பதைக் கிளிக் செய்க.",
+    "overallConfidence": "ஒட்டுமொத்த நம்பிக்கை",
+    "delayRisk": "தாமத ஆபத்து",
+    "reasoning": "காரணம்",
+    "loadingTimeline": "காலவரிசை ஏற்றப்படுகிறது...",
+    "noTimelineEvents": "காலவரிசை நிகழ்வுகள் எதுவும் இன்னும் பதிவு செய்யப்படவில்லை.",
+    "riskTimeline": "ஆபத்து காலவரிசை",
+    "source": "ஆதாரம்",
+    "predictiveIntelligence": "முன்கணிப்பு நுண்ணறிவு",
+    "safestContext": "{cargo} சரக்குகளுக்கு பாதுகாப்பான வழி தேர்ந்தெடுக்கப்பட்டது (ஆபத்து: {risk}). இடையூறு ஏற்படுவதற்கான வாய்ப்பைக் குறைக்கவும் சரக்குகளின் பாதுகாப்பிற்கு முன்னுரிமை அளிக்கவும் நீண்ட நேரம் ஏற்கப்பட்டது.",
+    "fastestContext": "வேகமான வழி தேர்ந்தெடுக்கப்பட்டது (ஆபத்து: {risk}). வேகத்திற்கு முன்னுரிமை அளிக்கப்பட்டது — பயணத்தின் போது போக்குவரத்து நெரிசல் மற்றும் வானிலை எச்சரிக்கைகளைக் கண்காணிக்கவும்.",
+    "balancedContext": "சமநிலையான வழி தேர்ந்தெடுக்கப்பட்டது (ஆபத்து: {risk}). {cargo} சரக்குகளுக்கு நேரம் மற்றும் இடையூறு ஆபத்துக்கு இடையிலான உகந்த சமரசம்."
   }
 }

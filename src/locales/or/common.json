@@ -295,7 +295,7 @@
     "mediumRisk": "ମଧ୍ୟମ ଜୋଖିମ",
     "avgRiskFactors": "ହରଡ ଜୋଖିମ କାରଣ",
     "routeSelectionHistory": "ମାର୍ଗ ଚୟନ ଇତିହାସ",
-    "activeAlerts": "ସକ୍ରିୟ ସତର୍କତା",
+    "activeAlerts": "ସକ୍ରିୟ ଆଲର୍ଟ",
     "noActiveAlertsShort": "ସକ୍ରିୟ ସତର୍କତା ନାହିଁ",
     "systemInsight": "ସିଷ୍ଟମ ଅନ୍ତର୍ଦ୍ରୃଷ୍ଟି",
     "basedOnShipments": "ଆପଣଙ୍କ {n} ମାଲ ପଠାଣ ଆଧାରରେ:",
@@ -313,6 +313,63 @@
     "highRiskShipments": "ଉଚ୍ଚ ଜୋଖିମ ମାଲ ପଠାଣ",
     "avgOperationalRisk": "ହରଡ ଅପରେସନ ଜୋଖିମ",
     "avgDelayProbability": "ହରଡ ବିଳମ୍ବ ସମ୍ଭାବନା",
-    "avgEtaConfidence": "ହରଡ ETA ବିଶ୍ୱାସ"
+    "avgEtaConfidence": "ହରଡ ETA ବିଶ୍ୱାସ",
+    "avgDisruptionProbability": "ହାରାହାରି ବ୍ୟାଘାତ ସମ୍ଭାବନା",
+    "openIncidents": "ଖୋଲା ଘଟଣାଗୁଡ଼ିକ",
+    "stable": "ସ୍ଥିର"
+  },
+  "riskCenter": {
+    "downLastWeek": "↓ ବିଗତ ସପ୍ତାହରୁ 5% ହ୍ରାସ",
+    "acrossCorridors": "8 ଟି କରିଡରରେ",
+    "requireAttention": "ତୁରନ୍ତ ଧ୍ୟାନ ଆବଶ୍ୟକ",
+    "conditionsNormal": "ପରିସ୍ଥିତି ସାଧାରଣ",
+    "acknowledge": "ସ୍ୱୀକାର କରନ୍ତୁ",
+    "resolve": "ସମାଧାନ କରନ୍ତୁ",
+    "shipmentLabel": "ପଠାଣ:",
+    "acknowledged": "ସ୍ୱୀକୃତ",
+    "resolved": "ସମାଧିତ"
+  },
+  "incidentCenter": {
+    "radius": "ବ୍ୟାସାର୍ଦ୍ଧ",
+    "category": "ଶ୍ରେଣୀ",
+    "time": "ସମୟ",
+    "closeIncident": "ଘଟଣା ବନ୍ଦ କରନ୍ତୁ"
+  },
+  "routeIntelligencePage": {
+    "trafficDensity": "ଟ୍ରାଫିକ ସାନ୍ଦ୍ରତା",
+    "weatherImpact": "ପାଣିପାଗ ପ୍ରଭାବ",
+    "disruptionProbability": "ବ୍ୟାଘାତ ସମ୍ଭାବନା",
+    "cargoSensitivity": "କାର୍ଗୋ ସମ୍ବେଦନଶୀଳତା",
+    "trafficDetail": "{n} ପଠାଣରେ ହାରାହାରି ଟ୍ରାଫିକ ବିପଦ।",
+    "weatherDetail": "ଆପଣଙ୍କ ସକ୍ରିୟ କରିଡରରେ ହାରାହାରି ପାଣିପाଗ ବିପଦ।",
+    "disruptionDetail": "ପଠାଯାଇଥିବା ମାର୍ଗରେ ହାରାହାରି ବ୍ୟାଘାତ ସ୍କୋର।",
+    "cargoDetail": "ଆପଣଙ୍କ ପଠାଣ ପ୍ରକାରରେ ହାରାହାରି କାର୍ଗୋ ସମ୍ବେଦନଶୀଳତା।"
+  },
+  "heatmap": {
+    "severity": "ତୀବ୍ରତା",
+    "radius": "ବ୍ୟାସାର୍ଦ୍ଧ"
+  },
+  "shipmentDetail": {
+    "loadingShipment": "ପଠାଣ ଲୋଡ୍ ହେଉଛି...",
+    "markAsCompleted": "ସମ୍ପୂର୍ଣ୍ଣ ଚିହ୍ନିତ କରନ୍ତୁ",
+    "backToShipments": "ପଠାଣକୁ ଫେରନ୍ତୁ",
+    "shipmentDetail": "ପଠାଣ ବିବରଣୀ",
+    "decisionContext": "ନିର୍ଣ୍ଣୟ ପ୍ରସଙ୍ଗ",
+    "riskBreakdownUnavailable": "ଏହି ପଠାଣ ପାଇଁ ବିପଦ ବିଶ୍ଳେଷଣ ଅନୁପଲବ୍ଧ।",
+    "updated": "ଅପଡେଟ୍ ହୋଇଛି",
+    "polling": "ପୋଲିଂ...",
+    "pollPrediction": "ପୂର୍ବାନୁମାନ ପୋଲ୍ କରନ୍ତୁ",
+    "noRecentPredictionPolled": "କୌଣସି ପୂର୍ବାନୁମାନ ନାହିଁ। ଇଞ୍ଜିନ ଚାଲୁ କରିବା ପାଇଁ 'ପୂର୍ବାନୁମାନ ପୋଲ୍ କରନ୍ତୁ' କ୍ଲିକ୍ କରନ୍ତୁ।",
+    "overallConfidence": "ସାମଗ୍ରିକ ବିଶ୍ୱାସ",
+    "delayRisk": "ବିଳମ୍ବ ବିପଦ",
+    "reasoning": "କାରଣ",
+    "loadingTimeline": "ସମୟରେଖା ଲୋଡ୍ ହେଉଛି...",
+    "noTimelineEvents": "ଏପର୍ଯ୍ୟନ୍ତ କୌଣସି ସମୟରେଖା ଘଟଣା ଲିପିବଦ୍ଧ ହୋଇନାହିଁ।",
+    "riskTimeline": "ବିପଦ ସମୟରେଖା",
+    "source": "ଉତ୍ସ",
+    "predictiveIntelligence": "ପୂର୍ବାନୁମାନ ବୁଦ୍ଧିମତା",
+    "safestContext": "{cargo} କାର୍ଗୋ ପାଇଁ ସବୁଠାରୁ ସୁରକ୍ଷିତ ମାର୍ଗ ଚୟନ କରାଗଲା (ବିପଦ: {risk})। ବ୍ୟାଘାତ ହ୍ରାସ କରିବାକୁ ଏବଂ କାର୍ଗୋ ସୁରକ୍ଷା ପାଇଁ ଅଧିକ ସମୟ ସ୍ୱୀକାର କରାଗଲା।",
+    "fastestContext": "ସବୁଠାରୁ ଦ୍ରୁତ ମାର୍ଗ ଚୟନ କରାଗଲା (ବିପଦ: {risk})। ଦ୍ରୁତତାକୁ ପ୍ରାଥମିକତା ଦିଆଗଲା — ଯାତ୍ରା ସମୟରେ ଗହଳି ଏବଂ ପାଣିପାଗ ସତର୍କତା ଉପରେ ନଜର ରଖନ୍ତୁ।",
+    "balancedContext": "ସନ୍ତୁଳିତ ମାର୍ଗ ଚୟନ କରାଗଲା (ବିପଦ: {risk})। {cargo} କାର୍ଗୋ ପାଇଁ ସମୟ ଏବଂ ବ୍ୟାଘାତ ମଧ୍ୟରେ ସଠିକ ସନ୍ତୁଳନ।"
   }
 }

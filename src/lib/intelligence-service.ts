@@ -71,8 +71,17 @@ export async function getActiveIncidents(companyId?: string): Promise<Incident[]
   // Base query: global incidents (companyId null/missing) or company specific
   const query = companyId ? { $or: [{ companyId: null }, { companyId: { $exists: false } }, { companyId }] } : {};
   
-  const dbIncidents = await db.collection("incidents").find(query).toArray();
+  const [dbIncidents, eventIncidents] = await Promise.all([
+    db.collection("incidents").find(query).toArray(),
+    db.collection("incident_events").find(query).toArray(),
+  ]);
+
   const mappedDbIncidents = dbIncidents.map(doc => {
+    const { _id, ...rest } = doc;
+    return rest as unknown as Incident;
+  });
+
+  const mappedEventIncidents = eventIncidents.map(doc => {
     const { _id, ...rest } = doc;
     return rest as unknown as Incident;
   });
@@ -83,10 +92,17 @@ export async function getActiveIncidents(companyId?: string): Promise<Incident[]
     simulatedIncidents.push(...generateDeterministicIncidentsForCity(city));
   }
 
-  // Combine DB and simulated, prioritizing DB
+  // Combine DB stored, event incidents and simulated, prioritizing DB stored, then events, then simulated
   const dbIds = new Set(mappedDbIncidents.map(i => i.incidentId));
   const finalIncidents = [...mappedDbIncidents];
   
+  for (const ev of mappedEventIncidents) {
+    if (!dbIds.has(ev.incidentId)) {
+      finalIncidents.push(ev);
+      dbIds.add(ev.incidentId);
+    }
+  }
+
   for (const sim of simulatedIncidents) {
     if (!dbIds.has(sim.incidentId)) {
       finalIncidents.push(sim);

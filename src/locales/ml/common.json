@@ -295,7 +295,7 @@
     "mediumRisk": "ഇടത്തരം അപകടം",
     "avgRiskFactors": "ശരാശരി റിസ്ക് ഘടകങ്ങൾ",
     "routeSelectionHistory": "പാത തിരഞ്ഞെടുപ്പ് ചരിത്രം",
-    "activeAlerts": "സജീവ മുന്നറിയിപ്പുകൾ",
+    "activeAlerts": "സജീവമായ അലേർട്ടുകൾ",
     "noActiveAlertsShort": "സജീവ മുന്നറിയിപ്പുകൾ ഇല്ല",
     "systemInsight": "സിസ്റ്റം ഉൾക്കാഴ്ച",
     "basedOnShipments": "നിങ്ങളുടെ {n} ചരക്ക്(കൾ) അടിസ്ഥാനമാക്കി:",
@@ -313,6 +313,63 @@
     "highRiskShipments": "ഉയർന്ന അപകട ചരക്ക് അയക്കലുകൾ",
     "avgOperationalRisk": "ശരാശരി ഓപ്പറേഷൻ അപകടം",
     "avgDelayProbability": "ശരാശരി കാലതാമസ സാധ്യത",
-    "avgEtaConfidence": "ശരാശരി ETA ആത്മവിശ്വാസം"
+    "avgEtaConfidence": "ശരാശരി ETA ആത്മവിശ്വാസം",
+    "avgDisruptionProbability": "ശരാശരി തടസ്സപ്പെടാനുള്ള സാധ്യത",
+    "openIncidents": "തുറന്ന സംഭവങ്ങൾ",
+    "stable": "സ്ഥിരമായ"
+  },
+  "riskCenter": {
+    "downLastWeek": "↓ കഴിഞ്ഞ ആഴ്ചയേക്കാൾ 5% കുറവ്",
+    "acrossCorridors": "8 ഇടനാഴികളിലായി",
+    "requireAttention": "ഉടൻ ശ്രദ്ധ ആവശ്യമാണ്",
+    "conditionsNormal": "സാഹചര്യങ്ങൾ സാധാരണമാണ്",
+    "acknowledge": "അംഗീകരിക്കുക",
+    "resolve": "പരിഹരിക്കുക",
+    "shipmentLabel": "ഷിപ്പ്മെന്റ്:",
+    "acknowledged": "അംഗീകരിച്ചു",
+    "resolved": "പരിഹരിച്ചു"
+  },
+  "incidentCenter": {
+    "radius": "ആരം",
+    "category": "വിഭാഗം",
+    "time": "സമയം",
+    "closeIncident": "സംഭവം അവസാനിപ്പിക്കുക"
+  },
+  "routeIntelligencePage": {
+    "trafficDensity": "ട്രാഫിക് സാന്ദ്രത",
+    "weatherImpact": "കാലാവസ്ഥാ ആഘാതം",
+    "disruptionProbability": "തടസ്സപ്പെടാനുള്ള സാധ്യത",
+    "cargoSensitivity": "ചരക്ക് സംവേദനക്ഷമത",
+    "trafficDetail": "{n} ഷിപ്പ്മെന്റുകളിലെ ശരാശരി ട്രാഫിക് റിസ്ക്.",
+    "weatherDetail": "നിങ്ങളുടെ സജീവ ഇടനാഴികളിലെ ശരാശരി കാലാവസ്ഥാ റിസ്ക്.",
+    "disruptionDetail": "അയച്ച റൂട്ടുകളിലെ ശരാശരി തടസ്സ സ്കോർ.",
+    "cargoDetail": "നിങ്ങളുടെ ഷിപ്പ്മെന്റ് തരങ്ങളിലെ ശരാശരി ചരക്ക് സംവേദനക്ഷമത."
+  },
+  "heatmap": {
+    "severity": "തീവ്രത",
+    "radius": "ആരം"
+  },
+  "shipmentDetail": {
+    "loadingShipment": "ഷിപ്പ്മെന്റ് ലോഡ് ചെയ്യുന്നു...",
+    "markAsCompleted": "പൂർത്തിയായതായി അടയാളപ്പെടുത്തുക",
+    "backToShipments": "ഷിപ്പ്മെന്റുകളിലേക്ക് മടങ്ങുക",
+    "shipmentDetail": "ഷിപ്പ്മെന്റ് വിവരങ്ങൾ",
+    "decisionContext": "തീരുമാന പശ്ചാത്തലം",
+    "riskBreakdownUnavailable": "ഈ ഷിപ്പ്മെന്റിന് റിസ്ക് വിശകലനം ലഭ്യമല്ല.",
+    "updated": "അപ്ഡേറ്റ് ചെയ്തു",
+    "polling": "പോളിംഗ്...",
+    "pollPrediction": "പ്രവചനം പോൾ ചെയ്യുക",
+    "noRecentPredictionPolled": "സമീപകാല പ്രവചനങ്ങളൊന്നുമില്ല. എഞ്ചിൻ പ്രവർത്തനക്ഷമമാക്കാൻ 'പ്രവചനം പോൾ ചെയ്യുക' ക്ലിക്ക് ചെയ്യുക.",
+    "overallConfidence": "മൊത്തത്തിലുള്ള ആത്മവിശ്വാസം",
+    "delayRisk": "വൈകാനുള്ള റിസ്ക്",
+    "reasoning": "കാരണം",
+    "loadingTimeline": "ടൈംലൈൻ ലോഡ് ചെയ്യുന്നു...",
+    "noTimelineEvents": "ടൈംലൈൻ ഇവന്റുകളൊന്നും ഇതുവരെ രേഖപ്പെടുത്തിയിട്ടില്ല.",
+    "riskTimeline": "റിസ്ക് ടൈംലൈൻ",
+    "source": "ഉറവിടം",
+    "predictiveIntelligence": "പ്രവചന ഇന്റലിജൻസ്",
+    "safestContext": "{cargo} ചരക്കുകൾക്കായി ഏറ്റവും സുരക്ഷിതമായ റൂട്ട് തിരഞ്ഞെടുത്തു (റിസ്ക്: {risk}). തടസ്സങ്ങൾ കുറയ്ക്കുന്നതിനും ചരക്കുകളുടെ സുരക്ഷയ്ക്കും വേണ്ടി കൂടുതൽ സമയം എടുത്തു.",
+    "fastestContext": "ഏറ്റവും വേഗതയേറിയ റൂട്ട് തിരഞ്ഞെടുത്തു (റിസ്ക്: {risk}). വേഗതയ്ക്ക് മുൻഗണന നൽകി — യാത്രയ്ക്കിടയിൽ ഗതാഗതക്കുരുക്കും കാലാവസ്ഥാ അലേർട്ടുകളും നിരീക്ഷിക്കുക.",
+    "balancedContext": "സന്തുലിതമായ റൂട്ട് തിരഞ്ഞെടുത്തു (റിസ്ക്: {risk}). {cargo} ചരക്കുകൾക്കായി സമയവും തടസ്സ സാധ്യതയും തമ്മിലുള്ള ഒപ്റ്റിമൽ ബാലൻസ്."
   }
 }

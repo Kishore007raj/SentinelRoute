@@ -313,6 +313,63 @@
     "highRiskShipments": "High Risk Shipments",
     "avgOperationalRisk": "Avg Operational Risk",
     "avgDelayProbability": "Avg Delay Probability",
-    "avgEtaConfidence": "Avg ETA Confidence"
+    "avgEtaConfidence": "Avg ETA Confidence",
+    "avgDisruptionProbability": "Avg Disruption Probability",
+    "openIncidents": "Open Incidents",
+    "stable": "Stable"
+  },
+  "riskCenter": {
+    "downLastWeek": "↓ 5% from last week",
+    "acrossCorridors": "Across 8 corridors",
+    "requireAttention": "Require immediate attention",
+    "conditionsNormal": "Conditions normal",
+    "acknowledge": "Acknowledge",
+    "resolve": "Resolve",
+    "shipmentLabel": "Shipment:",
+    "acknowledged": "Acknowledged",
+    "resolved": "Resolved"
+  },
+  "incidentCenter": {
+    "radius": "radius",
+    "category": "Category",
+    "time": "Time",
+    "closeIncident": "Close Incident"
+  },
+  "routeIntelligencePage": {
+    "trafficDensity": "Traffic Density",
+    "weatherImpact": "Weather Impact",
+    "disruptionProbability": "Disruption Probability",
+    "cargoSensitivity": "Cargo Sensitivity",
+    "trafficDetail": "Average traffic risk across {n} shipments.",
+    "weatherDetail": "Average weather risk across your active corridors.",
+    "disruptionDetail": "Average disruption score across dispatched routes.",
+    "cargoDetail": "Average cargo sensitivity across your shipment types."
+  },
+  "heatmap": {
+    "severity": "Severity",
+    "radius": "Radius"
+  },
+  "shipmentDetail": {
+    "loadingShipment": "Loading shipment...",
+    "markAsCompleted": "Mark as Completed",
+    "backToShipments": "Back to Shipments",
+    "shipmentDetail": "Shipment detail",
+    "decisionContext": "Decision context",
+    "riskBreakdownUnavailable": "Risk breakdown unavailable for this shipment.",
+    "updated": "Updated",
+    "polling": "Polling...",
+    "pollPrediction": "Poll Prediction",
+    "noRecentPredictionPolled": "No recent prediction polled. Click \"Poll Prediction\" to trigger the engine.",
+    "overallConfidence": "Overall Confidence",
+    "delayRisk": "Delay Risk",
+    "reasoning": "Reasoning",
+    "loadingTimeline": "Loading timeline...",
+    "noTimelineEvents": "No timeline events recorded yet.",
+    "riskTimeline": "Risk Timeline",
+    "source": "Source",
+    "predictiveIntelligence": "Predictive Intelligence",
+    "safestContext": "Safest route selected for {cargo} cargo (risk: {risk}). Longer ETA accepted to minimise disruption probability and protect cargo integrity.",
+    "fastestContext": "Fastest route selected (risk: {risk}). Speed was prioritised — monitor for congestion and weather alerts during transit.",
+    "balancedContext": "Balanced route selected (risk: {risk}). Optimal tradeoff between ETA and disruption risk for {cargo} cargo."
   }
 }

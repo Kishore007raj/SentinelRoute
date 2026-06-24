@@ -98,6 +98,7 @@ export async function calculateRoutePrediction(shipment: Shipment): Promise<Rout
     shipmentId:    shipment.id,
     companyId,
     timestamp:     new Date().toISOString(),
+    createdAt:     new Date().toISOString(),
     delayProbability,
     disruptionProbability,
     etaConfidence,
@@ -121,6 +122,34 @@ export async function calculateRoutePrediction(shipment: Shipment): Promise<Rout
 
   const db = await getDb();
   await db.collection("route_predictions").insertOne(prediction);
+
+  // Store risk calculation outputs
+  const riskCalc = {
+    calculationId: `rc-${prediction.predictionId}`,
+    companyId,
+    shipmentId:    shipment.id,
+    createdAt:     prediction.timestamp,
+    overallRiskScore: 100 - prediction.overallOperationalConfidence,
+    delayProbability: prediction.delayProbability,
+    disruptionProbability: prediction.disruptionProbability,
+    weatherRisk:   prediction.weatherConfidence !== undefined ? 100 - prediction.weatherConfidence : 0,
+    trafficRisk:   prediction.trafficStability !== undefined ? 100 - prediction.trafficStability : 0,
+    festivalRiskScore: festivalContrib.festivalBonus,
+    festivalCongestionScore: festivalContrib.congestionScore,
+    festivalCongestionMultiplier: festivalContrib.activeFestivals.length > 0 
+      ? Math.max(...festivalContrib.activeFestivals.map(f => f.congestionMultiplier)) 
+      : 1.0,
+    newsDisruptionBonus: newsContrib.disruptionBonus,
+    newsDelayBonus: newsContrib.delayBonus,
+    metadata: {
+      contributingFactors: prediction.contributingFactors,
+      activeFestivals: festivalContrib.activeFestivals.map(f => ({ id: f.id, name: f.name })),
+      newsArticleCount: newsContrib.articleCount,
+    }
+  };
+  await db.collection("risk_calculations").insertOne(riskCalc).catch(err => {
+    console.error("[PredictionEngine] Failed to save risk calculation:", err);
+  });
 
   // ── Audit events (fire-and-forget) ────────────────────────────────────────
 
@@ -165,6 +194,50 @@ export async function calculateRoutePrediction(shipment: Shipment): Promise<Rout
     source:     "PredictionEngine",
     metadata:   { predictionId, corridorVolatility, trafficStability, incidentDensity },
   }).catch(() => {});
+
+  if (weatherIncidents.length > 0) {
+    createIntelligenceAudit({
+      companyId,
+      shipmentId: shipment.id,
+      eventType:  "weather_risk_added",
+      source:     "PredictionEngine",
+      metadata: {
+        predictionId,
+        weatherConfidence,
+        weatherIncidentsCount: weatherIncidents.length,
+      },
+    }).catch(() => {});
+  }
+
+  if (criticalIncidents.length > 0 || highIncidents.length > 0) {
+    createIntelligenceAudit({
+      companyId,
+      shipmentId: shipment.id,
+      eventType:  "traffic_risk_added",
+      source:     "PredictionEngine",
+      metadata: {
+        predictionId,
+        trafficStability,
+        incidentDensity,
+        criticalCount: criticalIncidents.length,
+        highCount: highIncidents.length,
+      },
+    }).catch(() => {});
+  }
+
+  if (overallOperationalConfidence < 50) {
+    createIntelligenceAudit({
+      companyId,
+      shipmentId: shipment.id,
+      eventType:  "reroute_suggested",
+      source:     "PredictionEngine",
+      metadata: {
+        predictionId,
+        overallOperationalConfidence,
+        suggestedRoute: "safest",
+      },
+    }).catch(() => {});
+  }
 
   return prediction;
 }

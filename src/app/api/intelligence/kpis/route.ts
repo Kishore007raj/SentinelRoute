@@ -22,11 +22,17 @@ import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 export async function GET(req: Request) {
   try {
     const { userRecord, company } = await requireCompany(req as any);
-    const companyId  = company.companyId;
     const isSuperAdmin = userRecord.role === "super_admin";
 
+    let companyId = company.companyId;
+    const url = new URL(req.url);
+    const targetCompanyId = url.searchParams.get("companyId");
+    if (isSuperAdmin && targetCompanyId) {
+      companyId = targetCompanyId;
+    }
+
     // super_admin audit (fire-and-forget)
-    if (isSuperAdmin) {
+    if (isSuperAdmin && targetCompanyId) {
       createIntelligenceAudit({
         companyId,
         userId:    userRecord.userId,

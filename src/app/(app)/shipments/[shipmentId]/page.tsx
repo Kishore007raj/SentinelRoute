@@ -6,6 +6,12 @@ import { ArrowLeft, MapPin, Clock, Truck, Package, CheckCircle } from "lucide-re
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import dynamic from "next/dynamic";
+import { useI18n } from "@/lib/i18n";
+
+import { useCompany } from "@/lib/company-context";
+import { useUser } from "@/lib/auth-context";
+import { useSearchParams } from "next/navigation";
+
 const RouteMapView = dynamic(() => import("@/components/shipment/RouteMapView").then((mod) => mod.RouteMapView), { ssr: false });
 import { getRiskColor, cn, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import { useStore } from "@/lib/store";
@@ -19,22 +25,61 @@ export default function ShipmentDetailPage({
 }: {
   params: Promise<{ shipmentId: string }>;
 }) {
+  const { t } = useI18n();
   const { shipmentId } = use(params);
+  const searchParams = useSearchParams();
+  const targetCompanyId = searchParams.get("companyId");
+  const { isSuperAdmin } = useCompany();
+  const { user } = useUser();
+  const isCrossCompany = isSuperAdmin && !!targetCompanyId;
+
   const { state, completeShipment } = useStore();
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
     const found = (state.shipments ?? []).find((item) => item.id === shipmentId);
-    if (found) { setShipment(found); setLoading(false); }
-    else if (!state.loading) { setLoading(false); }
-  }, [shipmentId, state.shipments, state.loading]);
+    if (found) {
+      setShipment(found);
+      setLoading(false);
+    } else if (isCrossCompany && user) {
+      setLoading(true);
+      user.getIdToken()
+        .then((token) => {
+          return fetch(`/api/shipments?companyId=${targetCompanyId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        })
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to fetch");
+          return res.json();
+        })
+        .then((data) => {
+          const crossFound = (data.shipments ?? []).find((item: any) => item.id === shipmentId);
+          if (crossFound) {
+            setShipment(crossFound);
+          } else {
+            setShipment(null);
+          }
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error("Failed to load cross-company shipment:", err);
+          setShipment(null);
+          setLoading(false);
+        });
+    } else if (!state.loading) {
+      setLoading(false);
+    }
+  }, [shipmentId, state.shipments, state.loading, isCrossCompany, targetCompanyId, user]);
 
   if (loading) {
     return (
       <div className="p-32 text-center flex flex-col items-center gap-4">
         <div className="w-8 h-8 border-2 border-border border-t-primary rounded-full animate-spin" />
-        <p className="text-sm text-muted-foreground uppercase tracking-widest">Loading shipment...</p>
+        <p className="text-sm text-muted-foreground uppercase tracking-widest">{t('shipmentDetail.loadingShipment')}</p>
       </div>
     );
   }
@@ -84,12 +129,12 @@ export default function ShipmentDetailPage({
     const cargo = shipment.cargoType;
 
     if (label === "safest") {
-      return `Safest route selected for ${cargo} cargo (risk: ${risk}). Longer ETA accepted to minimise disruption probability and protect cargo integrity.`;
+      return t('shipmentDetail.safestContext').replace('{cargo}', cargo).replace('{risk}', risk.toString());
     }
     if (label === "fastest") {
-      return `Fastest route selected (risk: ${risk}). Speed was prioritised — monitor for congestion and weather alerts during transit.`;
+      return t('shipmentDetail.fastestContext').replace('{risk}', risk.toString());
     }
-    return `Balanced route selected (risk: ${risk}). Optimal tradeoff between ETA and disruption risk for ${cargo} cargo.`;
+    return t('shipmentDetail.balancedContext').replace('{cargo}', cargo).replace('{risk}', risk.toString());
   })();
 
   return (
@@ -98,25 +143,25 @@ export default function ShipmentDetailPage({
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-5 pb-8 border-b border-border">
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">Shipment detail</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">{t('shipmentDetail.shipmentDetail')}</p>
           <h1 className="text-3xl font-bold text-foreground">{shipment.shipmentCode}</h1>
           <p className="text-sm text-muted-foreground">{shipment.origin} → {shipment.destination}</p>
         </div>
         <div className="flex items-center gap-3">
-          {(shipment.status === "active" || shipment.status === "at-risk") && (
+          {!isCrossCompany && (shipment.status === "active" || shipment.status === "at-risk") && (
             <button
               onClick={handleComplete}
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-all"
             >
               <CheckCircle className="w-4 h-4" />
-              Mark as Completed
+              {t('shipmentDetail.markAsCompleted')}
             </button>
           )}
           <Link
             href="/shipments"
             className="flex items-center gap-2 border border-border hover:border-border/80 px-4 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-all"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Shipments
+            <ArrowLeft className="w-3.5 h-3.5" /> {t('shipmentDetail.backToShipments')}
           </Link>
         </div>
       </div>
@@ -131,20 +176,25 @@ export default function ShipmentDetailPage({
                 {shipment.routeName}
               </Badge>
               <Badge className={cn("px-3 py-1 text-xs font-semibold border", statusBadgeClass)}>
-                {shipment.status.replace("-", " ")}
+                {shipment.status === 'completed' ? t('logistics.completed') : shipment.status === 'at-risk' ? t('logistics.atRisk') : t('logistics.active')}
               </Badge>
             </div>
 
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="space-y-1.5">
-                <p className="label-meta">ETA</p>
+                <p className="label-meta">{t('logistics.eta')}</p>
                 <p className="text-2xl font-bold text-foreground">{shipment.eta}</p>
               </div>
               <div className="space-y-1.5">
-                <p className="label-meta">Risk Score</p>
+                <p className="label-meta">{t('logistics.riskScore')}</p>
                 <p className={cn("text-2xl font-bold", getRiskColor(shipment.riskLevel))}>
                   {shipment.riskScore}
-                  <span className="text-sm font-normal text-muted-foreground ml-1.5 capitalize">/ {shipment.riskLevel}</span>
+                  <span className="text-sm font-normal text-muted-foreground ml-1.5 capitalize">
+                    / {shipment.riskLevel === 'critical' ? t('logistics.critical') :
+                       shipment.riskLevel === 'high' ? t('logistics.high') :
+                       shipment.riskLevel === 'medium' ? t('logistics.medium') :
+                       t('logistics.low')}
+                  </span>
                 </p>
               </div>
             </div>
@@ -158,7 +208,7 @@ export default function ShipmentDetailPage({
               </div>
               <div className="flex items-center gap-2.5">
                 <Clock className="w-4 h-4 shrink-0" />
-                <span>Updated {formatRelativeTime(shipment.lastUpdate)}</span>
+                <span>{t('shipmentDetail.updated')} {formatRelativeTime(shipment.lastUpdate)}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Package className="w-4 h-4 shrink-0" />
@@ -174,19 +224,19 @@ export default function ShipmentDetailPage({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <p className="label-meta">Distance</p>
+                <p className="label-meta">{t('logistics.distance')}</p>
                 <p className="text-sm font-semibold text-foreground">{shipment.distance}</p>
               </div>
               <div className="space-y-1">
-                <p className="label-meta">Confidence</p>
+                <p className="label-meta">{t('logistics.confidence')}</p>
                 <p className="text-sm font-semibold text-foreground">{shipment.confidencePercent}%</p>
               </div>
               <div className="space-y-1">
-                <p className="label-meta">Departure</p>
+                <p className="label-meta">{t('logistics.departure')}</p>
                 <p className="text-sm font-semibold text-foreground">{shipment.departureTime}</p>
               </div>
               <div className="space-y-1">
-                <p className="label-meta">Shipment Code</p>
+                <p className="label-meta">{t('logistics.shipmentCode')}</p>
                 <p className="text-sm font-mono font-semibold text-foreground">{shipment.shipmentCode}</p>
               </div>
             </div>
@@ -204,7 +254,7 @@ export default function ShipmentDetailPage({
 
           {/* Dynamic decision context */}
           <div className="panel p-7">
-            <p className="label-meta mb-4">Decision context</p>
+            <p className="label-meta mb-4">{t('shipmentDetail.decisionContext')}</p>
             <p className="text-sm text-muted-foreground leading-relaxed">{decisionContext}</p>
           </div>
 
@@ -218,7 +268,7 @@ export default function ShipmentDetailPage({
         <div>
           {!hasBreakdown && (
             <p className="text-xs text-muted-foreground/50 mb-3 px-1">
-              Risk breakdown unavailable for this shipment.
+              {t('shipmentDetail.riskBreakdownUnavailable')}
             </p>
           )}
           <RouteMapView

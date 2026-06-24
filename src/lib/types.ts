@@ -445,6 +445,7 @@ export interface RoutePrediction {
   shipmentId:                 string;
   companyId:                  string;
   timestamp:                  string;
+  createdAt?:                 string;
   delayProbability:           number; // 0-100
   disruptionProbability:      number; // 0-100
   etaConfidence:              number; // 0-100
@@ -543,4 +544,6 @@ export interface OperationalAlert {
   confidence:        number;
   timestamp:         string;
   recommendedAction: string;
+  status?:           string;
+  severity?:         string;
 }

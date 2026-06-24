@@ -313,6 +313,63 @@
     "highRiskShipments": "उच्च जोखीम मालवाहतूक",
     "avgOperationalRisk": "सरासरी परिचालन जोखीम",
     "avgDelayProbability": "सरासरी विलंब संभाव्यता",
-    "avgEtaConfidence": "सरासरी ETA आत्मविश्वास"
+    "avgEtaConfidence": "सरासरी ETA आत्मविश्वास",
+    "avgDisruptionProbability": "सरासरी व्यत्यय संभाव्यता",
+    "openIncidents": "उघड्या घटना",
+    "stable": "स्थिर"
+  },
+  "riskCenter": {
+    "downLastWeek": "↓ गेल्या आठवड्यापेक्षा 5% कमी",
+    "acrossCorridors": "8 कॉरिडोअरमध्ये",
+    "requireAttention": "त्वरित लक्ष देणे आवश्यक आहे",
+    "conditionsNormal": "परिस्थिती सामान्य आहे",
+    "acknowledge": "स्वीकारा",
+    "resolve": "निकाली काढा",
+    "shipmentLabel": "शिपमेंट:",
+    "acknowledged": "स्वीकारले",
+    "resolved": "निकाली काढले"
+  },
+  "incidentCenter": {
+    "radius": "त्रिज्या",
+    "category": "वर्ग",
+    "time": "वेळ",
+    "closeIncident": "घटना बंद करा"
+  },
+  "routeIntelligencePage": {
+    "trafficDensity": "वाहतूक घनता",
+    "weatherImpact": "हवामान प्रभाव",
+    "disruptionProbability": "व्यत्यय संभाव्यता",
+    "cargoSensitivity": "माल संवेदनशीलता",
+    "trafficDetail": "{n} शिपमेंटमधील सरासरी वाहतूक जोखीम.",
+    "weatherDetail": "आपल्या सक्रिय कॉरिडोअरमधील सरासरी हवामान जोखीम.",
+    "disruptionDetail": "पाठवलेल्या मार्गांवरील सरासरी व्यत्यय गुणसंख्या.",
+    "cargoDetail": "आपल्या शिपमेंट प्रकारांमधील सरासरी माल संवेदनशीलता."
+  },
+  "heatmap": {
+    "severity": "तीव्रता",
+    "radius": "त्रिज्या"
+  },
+  "shipmentDetail": {
+    "loadingShipment": "शिपमेंट लोड होत आहे...",
+    "markAsCompleted": "पूर्ण झाले म्हणून चिन्हांकित करा",
+    "backToShipments": "शिपमेंटवर परत जा",
+    "shipmentDetail": "शिपमेंट तपशील",
+    "decisionContext": "निर्णय संदर्भ",
+    "riskBreakdownUnavailable": "या शिपमेंटसाठी जोखीम विश्लेषण उपलब्ध नाही.",
+    "updated": "अद्यतनित",
+    "polling": "मतदान...",
+    "pollPrediction": "अंदाज मिळवा",
+    "noRecentPredictionPolled": "कोणताही अलीकडील अंदाज नाही. इंजिन सुरू करण्यासाठी 'अंदाज मिळवा' वर क्लिक करा.",
+    "overallConfidence": "एकूण आत्मविश्वास",
+    "delayRisk": "विलंब जोखीम",
+    "reasoning": "तर्क",
+    "loadingTimeline": "समयरेखा लोड होत आहे...",
+    "noTimelineEvents": "अद्याप कोणतेही समयरेखा कार्यक्रम नोंदवले गेले नाहीत.",
+    "riskTimeline": "जोखीम समयरेखा",
+    "source": "स्रोत",
+    "predictiveIntelligence": "भविष्यवाणी इंटेलिजन्स",
+    "safestContext": "{cargo} मालासाठी सर्वात सुरक्षित मार्ग निवडला गेला (जोखीम: {risk}). व्यत्ययाची शक्यता कमी करण्यासाठी आणि मालाची सुरक्षा राखण्यासाठी जास्त वेळ स्वीकारला गेला.",
+    "fastestContext": "सर्वात वेगवान मार्ग निवडला गेला (जोखीम: {risk}). वेगाला प्राधान्य दिले गेले — प्रवासादरम्यान गर्दी आणि हवामान इशारा यावर लक्ष ठेवा.",
+    "balancedContext": "संतुलित मार्ग निवडला गेला (जोखीम: {risk}). {cargo} मालासाठी वेळ आणि व्यत्यय यातील इष्टतम तडजोड."
   }
 }

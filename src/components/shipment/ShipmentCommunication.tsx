@@ -2,17 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
+import { useCompany } from "@/lib/company-context";
 
 export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
+  const { userRecord } = useCompany();
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
 
+  const isSuperAdmin = userRecord?.role === "super_admin";
+  const isCrossCompany = isSuperAdmin && typeof window !== "undefined" && new URLSearchParams(window.location.search).has("companyId");
+  const targetCompanyId = isCrossCompany && typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("companyId") : null;
+
   useEffect(() => {
     async function fetchMessages() {
       try {
-        const res = await fetch(`/api/intelligence/shipments/${shipmentId}/messages`);
+        const query = targetCompanyId ? `?companyId=${targetCompanyId}` : "";
+        const res = await fetch(`/api/intelligence/shipments/${shipmentId}/messages${query}`);
         if (res.ok) {
           const data = await res.json();
           setMessages(data.messages || []);
@@ -27,11 +34,11 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
     fetchMessages();
     const interval = setInterval(fetchMessages, 10000); // Simple polling
     return () => clearInterval(interval);
-  }, [shipmentId]);
+  }, [shipmentId, targetCompanyId]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (isCrossCompany || !newMessage.trim()) return;
 
     setSending(true);
     try {
@@ -90,13 +97,13 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
             type="text" 
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type message to driver..."
+            placeholder={isCrossCompany ? "Read-only mode (Super Admin)" : "Type message to driver..."}
             className="flex-1 bg-background border border-input rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            disabled={sending}
+            disabled={sending || isCrossCompany}
           />
           <button 
             type="submit" 
-            disabled={sending || !newMessage.trim()}
+            disabled={sending || isCrossCompany || !newMessage.trim()}
             className="p-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             <Send className="w-4 h-4" />

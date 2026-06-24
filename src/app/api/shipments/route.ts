@@ -7,6 +7,7 @@ import { encryptObjectFields, decryptObjectFields } from "@/lib/encryption";
 import { emitToUser } from "@/lib/socket-server";
 import { utcNow } from "@/lib/time";
 import type { UserRecord } from "@/lib/types";
+import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 
 /**
  * GET /api/shipments
@@ -45,9 +46,30 @@ export async function GET(req: NextRequest) {
     // Resolve companyId for tenant isolation (falls back to userId-only for legacy records)
     const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
     const companyId  = userRecord?.companyId;
+    const isSuperAdmin = userRecord?.role === "super_admin";
+
+    let queryCompanyId = companyId;
+    const targetCompanyId = req.nextUrl.searchParams.get("companyId");
+    if (isSuperAdmin && targetCompanyId) {
+      queryCompanyId = targetCompanyId;
+    }
+
+    if (isSuperAdmin && targetCompanyId) {
+      createIntelligenceAudit({
+        companyId: queryCompanyId!,
+        userId,
+        eventType: "super_admin_read",
+        source:    "ShipmentsRoute",
+        metadata: {
+          companyIdViewed: queryCompanyId,
+          endpoint:        "/api/shipments",
+          timestamp:       new Date().toISOString(),
+        },
+      }).catch(() => {});
+    }
 
     // Build query: if user has a company, scope by companyId; else fallback to userId
-    const query = companyId ? { companyId } : { userId };
+    const query = queryCompanyId ? { companyId: queryCompanyId } : { userId };
 
     const docs = await db
       .collection("shipments")

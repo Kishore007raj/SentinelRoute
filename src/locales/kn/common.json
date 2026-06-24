@@ -313,6 +313,63 @@
     "highRiskShipments": "ಹೆಚ್ಚಿನ ಅಪಾಯದ ಸರಕು ರವಾನೆಗಳು",
     "avgOperationalRisk": "ಸರಾಸರಿ ಕಾರ್ಯಾಚರಣೆ ಅಪಾಯ",
     "avgDelayProbability": "ಸರಾಸರಿ ವಿಳಂಬ ಸಂಭಾವ್ಯತೆ",
-    "avgEtaConfidence": "ಸರಾಸರಿ ETA ವಿಶ್ವಾಸ"
+    "avgEtaConfidence": "ಸರಾಸರಿ ETA ವಿಶ್ವಾಸ",
+    "avgDisruptionProbability": "ಸರಾಸರಿ ಅಡ್ಡಿ ಸಂಭಾವ್ಯತೆ",
+    "openIncidents": "ಮುಕ್ತ ಘಟನೆಗಳು",
+    "stable": "ಸ್ಥಿರ"
+  },
+  "riskCenter": {
+    "downLastWeek": "↓ ಕಳೆದ ವಾರಕ್ಕಿಂತ 5% ಕಡಿಮೆ",
+    "acrossCorridors": "8 ಕಾರಿಡಾರ್‌ಗಳಲ್ಲಿ",
+    "requireAttention": "ತಕ್ಷಣದ ಗಮನ ಬೇಕು",
+    "conditionsNormal": "ಪರಿಸ್ಥಿತಿಗಳು ಸಾಮಾನ್ಯ",
+    "acknowledge": "ಒಪ್ಪಿಕೊಳ್ಳಿ",
+    "resolve": "ಪರಿಹರಿಸಿ",
+    "shipmentLabel": "ಸಾಗಣೆ:",
+    "acknowledged": "ಒಪ್ಪಿಕೊಳ್ಳಲಾಗಿದೆ",
+    "resolved": "ಪರಿಹರಿಸಲಾಗಿದೆ"
+  },
+  "incidentCenter": {
+    "radius": "ತ್ರಿಜ್ಯ",
+    "category": "ವರ್ಗ",
+    "time": "ಸಮಯ",
+    "closeIncident": "ಘಟನೆಯನ್ನು ಮುಚ್ಚಿ"
+  },
+  "routeIntelligencePage": {
+    "trafficDensity": "ಸಂಚಾರ ಸಾಂದ್ರತೆ",
+    "weatherImpact": "ಹವಾಮಾನ ಪ್ರಭಾವ",
+    "disruptionProbability": "ಅಡ್ಡಿ ಸಂಭಾವ್ಯತೆ",
+    "cargoSensitivity": "ಸರಕು ಸಂವೇದನಾಶೀಲತೆ",
+    "trafficDetail": "{n} ಸಾಗಣೆಗಳಲ್ಲಿ ಸರಾಸರಿ ಸಂಚಾರ ಅಪಾಯ.",
+    "weatherDetail": "ನಿಮ್ಮ ಸಕ್ರಿಯ ಕಾರಿಡಾರ್‌ಗಳಲ್ಲಿ ಸರಾಸರಿ ಹವಾಮಾನ ಅಪಾಯ.",
+    "disruptionDetail": "ಕಳುಹಿಸಲಾದ ಮಾರ್ಗಗಳಲ್ಲಿ ಸರಾಸರಿ ಅಡ್ಡಿ ಸ್ಕೋರ್.",
+    "cargoDetail": "ನಿಮ್ಮ ಸಾಗಣೆ ಪ್ರಕಾರಗಳಲ್ಲಿ ಸರಾಸರಿ ಸರಕು ಸಂವೇದನಾಶೀಲತೆ."
+  },
+  "heatmap": {
+    "severity": "ತೀವ್ರತೆ",
+    "radius": "ತ್ರಿಜ್ಯ"
+  },
+  "shipmentDetail": {
+    "loadingShipment": "ಸಾಗಣೆ ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+    "markAsCompleted": "ಪೂರ್ಣಗೊಂಡಿದೆ ಎಂದು ಗುರುತಿಸಿ",
+    "backToShipments": "ಸಾಗಣೆಗಳಿಗೆ ಹಿಂತಿರುಗಿ",
+    "shipmentDetail": "ಸಾಗಣೆ ವಿವರ",
+    "decisionContext": "ನಿರ್ಧಾರದ ಸಂದರ್ಭ",
+    "riskBreakdownUnavailable": "ಈ ಸಾಗಣೆಗೆ ಅಪಾಯದ ವಿಭಜನೆ ಲಭ್ಯವಿಲ್ಲ.",
+    "updated": "ನವೀಕರಿಸಲಾಗಿದೆ",
+    "polling": "ಪೋಲಿಂಗ್...",
+    "pollPrediction": "ಭವಿಷ್ಯವಾಣಿ ಪೋಲ್ ಮಾಡಿ",
+    "noRecentPredictionPolled": "ಯಾವುದೇ ಇತ್ತೀಚಿನ ಭವಿಷ್ಯವಾಣಿ ಇಲ್ಲ. ಇಂಜಿನ್ ಅನ್ನು ಪ್ರಚೋದಿಸಲು 'ಭವಿಷ್ಯವಾಣಿ ಪೋಲ್ ಮಾಡಿ' ಕ್ಲಿಕ್ ಮಾಡಿ.",
+    "overallConfidence": "ಒಟ್ಟಾರೆ ವಿಶ್ವಾಸ",
+    "delayRisk": "ವಿಳಂಬದ ಅಪಾಯ",
+    "reasoning": "ಕಾರಣಗಳು",
+    "loadingTimeline": "ಸಮಯರೇಖೆ ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+    "noTimelineEvents": "ಯಾವುದೇ ಸಮಯರೇಖೆಯ ಘಟನೆಗಳು ಇನ್ನೂ ದಾಖಲಾಗಿಲ್ಲ.",
+    "riskTimeline": "ಅಪಾಯದ ಸಮಯರೇಖೆ",
+    "source": "ಮೂಲ",
+    "predictiveIntelligence": "ಮುನ್ಸೂಚನೆ ಇಂಟೆಲಿಜೆನ್ಸ್",
+    "safestContext": "{cargo} ಸರಕುಗಳಿಗಾಗಿ ಸುರಕ್ಷಿತ ಮಾರ್ಗವನ್ನು ಆಯ್ಕೆ ಮಾಡಲಾಗಿದೆ (ಅಪಾಯ: {risk}). ಅಡ್ಡಿಯನ್ನು ಕಡಿಮೆ ಮಾಡಲು ಮತ್ತು ಸರಕುಗಳ ಸುರಕ್ಷತೆಗಾಗಿ ಹೆಚ್ಚಿನ ಸಮಯವನ್ನು ಒಪ್ಪಿಕೊಳ್ಳಲಾಗಿದೆ.",
+    "fastestContext": "ವೇಗದ ಮಾರ್ಗವನ್ನು ಆಯ್ಕೆ ಮಾಡಲಾಗಿದೆ (ಅಪಾಯ: {risk}). ವೇಗಕ್ಕೆ ಆದ್ಯತೆ ನೀಡಲಾಗಿದೆ — ಪ್ರಯಾಣದ ಸಮಯದಲ್ಲಿ ಸಂಚಾರ ಮತ್ತು ಹವಾಮಾನ ಎಚ್ಚರಿಕೆಗಳನ್ನು ಗಮನಿಸಿ.",
+    "balancedContext": "ಸಮತೋಲಿತ ಮಾರ್ಗವನ್ನು ಆಯ್ಕೆ ಮಾಡಲಾಗಿದೆ (ಅಪಾಯ: {risk}). {cargo} ಸರಕುಗಳಿಗಾಗಿ ಸಮಯ armament ಅಡ್ಡಿಯ ನಡುವಿನ ಸೂಕ್ತ ಸಮತೋಲನ."
   }
 }

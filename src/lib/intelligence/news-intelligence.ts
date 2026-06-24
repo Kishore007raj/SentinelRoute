@@ -147,13 +147,28 @@ async function persistIncidents(incidents: Incident[]): Promise<void> {
 
   // Upsert into incident_events — deduplication via incidentId
   await Promise.all(
-    incidents.map((inc) =>
-      db.collection("incident_events").updateOne(
+    incidents.map(async (inc) => {
+      const existing = await db.collection("incident_events").findOne({ incidentId: inc.incidentId });
+
+      await db.collection("incident_events").updateOne(
         { incidentId: inc.incidentId },
         { $set: inc },
         { upsert: true }
-      )
-    )
+      );
+
+      createIntelligenceAudit({
+        companyId:  "system",
+        incidentId: inc.incidentId,
+        eventType:  existing ? "incident_updated" : "incident_detected",
+        source:     "NewsIntelligence",
+        metadata: {
+          title:    inc.title,
+          category: inc.category,
+          severity: inc.severity,
+          source:   inc.source,
+        },
+      }).catch(() => {});
+    })
   );
 }
 
@@ -167,6 +182,30 @@ export interface NewsRiskContribution {
   normalizedIncidents:  Incident[];
 }
 
+const MOCK_NEWS_ARTICLES: NewsAPIArticle[] = [
+  {
+    title: "Truck strike blockades Chennai-Bengaluru highway, severe cargo delay expected",
+    description: "All India Motor Transport Congress calls strike. Hundreds of trucks blocked on highway NH-48. Traffic disruption is critical.",
+    url: "https://timesofindia.indiatimes.com/india/truck-strike-highway-closure",
+    publishedAt: new Date().toISOString(),
+    source: { name: "Times of India" }
+  },
+  {
+    title: "Landslide on Mumbai-Pune Expressway halts logistics flow",
+    description: "Heavy rainfall triggers landslide near Lonavala. Highway authorities close two lanes. Restoration work underway.",
+    url: "https://indianexpress.com/article/cities/mumbai/landslide-highway-closure",
+    publishedAt: new Date().toISOString(),
+    source: { name: "Indian Express" }
+  },
+  {
+    title: "Protest near Delhi-NCR causes major transport disruption",
+    description: "Political rally blockades regional highways. Traffic police issues warnings for heavy container vehicles.",
+    url: "https://www.thehindu.com/news/national/protest-blockade",
+    publishedAt: new Date().toISOString(),
+    source: { name: "The Hindu" }
+  }
+];
+
 // ─── Main export ─────────────────────────────────────────────────────────────
 
 /**
@@ -175,7 +214,7 @@ export interface NewsRiskContribution {
  *
  * @param companyId  Company context for audit logging
  * @param shipmentId Optional shipment context
- * @returns NewsRiskContribution — zeros returned if API key missing or fetch fails
+ * @returns NewsRiskContribution — mock news returned if API key missing or fetch fails
  */
 export async function getNewsRiskContribution(
   companyId: string,
@@ -190,38 +229,44 @@ export async function getNewsRiskContribution(
   };
 
   const apiKey = process.env.NEWS_API_KEY;
+  let articles: NewsAPIArticle[] = [];
+
   if (!apiKey) {
-    console.warn("[news-intelligence] NEWS_API_KEY not set — skipping news fetch");
-    return EMPTY;
+    console.warn("[news-intelligence] NEWS_API_KEY not set — falling back to deterministic mock news");
+    articles = MOCK_NEWS_ARTICLES;
+  } else {
+    try {
+      const url =
+        `https://newsapi.org/v2/everything` +
+        `?q=${encodeURIComponent(DISRUPTION_KEYWORDS)}` +
+        `&language=en` +
+        `&sortBy=publishedAt` +
+        `&pageSize=20` +
+        `&apiKey=${apiKey}`;
+
+      const res = await fetch(url, {
+        next: { revalidate: 3600 }, // cache for 1 hour
+      });
+
+      if (res.ok) {
+        const data: NewsAPIResponse = await res.json();
+        if (data.status === "ok" && Array.isArray(data.articles)) {
+          articles = data.articles;
+        }
+      }
+    } catch (err) {
+      console.error("[news-intelligence] NewsAPI fetch failed, falling back to mock news:", err);
+    }
+
+    if (articles.length === 0) {
+      console.warn("[news-intelligence] No articles returned from NewsAPI — falling back to mock news");
+      articles = MOCK_NEWS_ARTICLES;
+    }
   }
 
   try {
-    const url =
-      `https://newsapi.org/v2/everything` +
-      `?q=${encodeURIComponent(DISRUPTION_KEYWORDS)}` +
-      `&language=en` +
-      `&sortBy=publishedAt` +
-      `&pageSize=20` +
-      `&apiKey=${apiKey}`;
-
-    const res = await fetch(url, {
-      next: { revalidate: 3600 }, // cache for 1 hour
-    });
-
-    if (!res.ok) {
-      console.error(`[news-intelligence] NewsAPI returned ${res.status}`);
-      return EMPTY;
-    }
-
-    const data: NewsAPIResponse = await res.json();
-
-    if (data.status !== "ok" || !Array.isArray(data.articles)) {
-      console.error("[news-intelligence] Unexpected NewsAPI response shape");
-      return EMPTY;
-    }
-
     // Normalize — filter nulls
-    const normalized: Incident[] = data.articles
+    const normalized: Incident[] = articles
       .map(normalizeArticle)
       .filter((x): x is Incident => x !== null);
 
@@ -270,7 +315,7 @@ export async function getNewsRiskContribution(
       normalizedIncidents: normalized,
     };
   } catch (err) {
-    console.error("[news-intelligence] Fetch error:", err);
+    console.error("[news-intelligence] Error in processing news contribution:", err);
     return EMPTY;
   }
 }

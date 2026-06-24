@@ -313,6 +313,63 @@
     "highRiskShipments": "উচ্চ ঝুঁকির পণ্য চালান",
     "avgOperationalRisk": "গড় কার্যক্ষম ঝুঁকি",
     "avgDelayProbability": "গড় বিলম্বের সম্ভাবনা",
-    "avgEtaConfidence": "গড় ETA আস্থা"
+    "avgEtaConfidence": "গড় ETA আস্থা",
+    "avgDisruptionProbability": "গড় ব্যাঘাতের সম্ভাবনা",
+    "openIncidents": "খোলা ঘটনা",
+    "stable": "স্থিতিশীল"
+  },
+  "riskCenter": {
+    "downLastWeek": "↓ গত সপ্তাহের চেয়ে 5% কম",
+    "acrossCorridors": "8টি করিডোর জুড়ে",
+    "requireAttention": "অবিলম্বে মনোযোগ প্রয়োজন",
+    "conditionsNormal": "পরিস্থিতি স্বাভাবিক",
+    "acknowledge": "স্বীকার করুন",
+    "resolve": "সমাধান করুন",
+    "shipmentLabel": "চালান:",
+    "acknowledged": "স্বীকৃত",
+    "resolved": "মীমাংসিত"
+  },
+  "incidentCenter": {
+    "radius": "ব্যাসার্ধ",
+    "category": "বিভাগ",
+    "time": "সময়",
+    "closeIncident": "ঘটনা বন্ধ করুন"
+  },
+  "routeIntelligencePage": {
+    "trafficDensity": "ট্রাফিক ঘনত্ব",
+    "weatherImpact": "আবহাওয়া প্রভাব",
+    "disruptionProbability": "ব্যাঘাতের সম্ভাবনা",
+    "cargoSensitivity": "কার্গো সংবেদনশীলতা",
+    "trafficDetail": "{n} চালানের গড় ট্রাফিক ঝুঁকি।",
+    "weatherDetail": "আপনার সক্রিয় করিডোর জুড়ে গড় আবহাওয়া ঝুঁকি।",
+    "disruptionDetail": "প্রেরিত রুট জুড়ে গড় ব্যাঘাত স্কোর।",
+    "cargoDetail": "আপনার চালানের ধরন জুড়ে গড় কার্গো সংবেদনশীলতা।"
+  },
+  "heatmap": {
+    "severity": "তীব্রতা",
+    "radius": "ব্যাসার্ধ"
+  },
+  "shipmentDetail": {
+    "loadingShipment": "চালান লোড হচ্ছে...",
+    "markAsCompleted": "সম্পন্ন হিসেবে চিহ্নিত করুন",
+    "backToShipments": "চালানে ফিরে যান",
+    "shipmentDetail": "চালান বিবরণ",
+    "decisionContext": "সিদ্ধান্তের প্রসঙ্গ",
+    "riskBreakdownUnavailable": "এই চালানের জন্য ঝুঁকি বিশ্লেষণ উপলব্ধ নেই।",
+    "updated": "আপডেট করা হয়েছে",
+    "polling": "পোলিং...",
+    "pollPrediction": "ভবিষ্যদ্বাণী পোল করুন",
+    "noRecentPredictionPolled": "কোন সাম্প্রতিক ভবিষ্যদ্বাণী নেই। ইঞ্জিন ট্রিগার করতে 'ভবিষ্যদ্বাণী পোল করুন' ক্লিক করুন।",
+    "overallConfidence": "সামগ্রিক আত্মবিশ্বাস",
+    "delayRisk": "বিলম্বের ঝুঁকি",
+    "reasoning": "যুক্তি",
+    "loadingTimeline": "সময়রেখা লোড হচ্ছে...",
+    "noTimelineEvents": "এখনও কোন সময়রেখার ঘটনা রেকর্ড করা হয়নি।",
+    "riskTimeline": "ঝুঁকি সময়রেখা",
+    "source": "উৎস",
+    "predictiveIntelligence": "পূর্বাভাসমূলক বুদ্ধিমত্তা",
+    "safestContext": "{cargo} কার্গোর জন্য সবচেয়ে নিরাপদ রুট নির্বাচন করা হয়েছে (ঝুঁকি: {risk})। ব্যাঘাত কমানোর জন্য এবং কার্গো অখণ্ডতা রক্ষায় দীর্ঘতর সময়সীমা গ্রহণ করা হয়েছে।",
+    "fastestContext": "সবচেয়ে দ্রুততম রুট নির্বাচন করা হয়েছে (ঝুঁকি: {risk})। গতিকে অগ্রাধিকার দেওয়া হয়েছিল — ট্রানজিট চলাকালীন যানজট এবং আবহাওয়ার সতর্কতা পর্যবেক্ষণ করুন।",
+    "balancedContext": "ভারসাম্যপূর্ণ রুট নির্বাচন করা হয়েছে (ঝুঁকি: {risk})। {cargo} কার্গোর জন্য সময় এবং ব্যাঘাতের ঝুঁকির মধ্যে সর্বোত্তম সমঝোতা।"
   }
 }

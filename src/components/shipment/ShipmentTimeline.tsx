@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { Clock, Activity, MessageSquare, AlertTriangle, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
+  const { t } = useI18n();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,13 +26,13 @@ export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
     }
     
     fetchTimeline();
-    // In a real app with websockets we would listen for updates here.
-    const interval = setInterval(fetchTimeline, 30000); // poll every 30s as fallback
+    // poll every 30s as fallback
+    const interval = setInterval(fetchTimeline, 30000);
     return () => clearInterval(interval);
   }, [shipmentId]);
 
-  if (loading) return <div className="p-6 text-sm text-muted-foreground animate-pulse border border-border rounded-xl">Loading timeline...</div>;
-  if (events.length === 0) return <div className="p-6 text-sm text-muted-foreground border border-border rounded-xl">No timeline events recorded yet.</div>;
+  if (loading) return <div className="p-6 text-sm text-muted-foreground animate-pulse border border-border rounded-xl">{t('shipmentDetail.loadingTimeline')}</div>;
+  if (events.length === 0) return <div className="p-6 text-sm text-muted-foreground border border-border rounded-xl">{t('shipmentDetail.noTimelineEvents')}</div>;
 
   const getIcon = (type: string) => {
     if (type.includes("Alert") || type.includes("Risk")) return <AlertTriangle className="w-4 h-4 text-amber-500" />;
@@ -42,7 +44,7 @@ export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
   return (
     <div className="panel p-6 bg-card border border-border rounded-xl space-y-6">
       <h3 className="font-semibold flex items-center gap-2">
-        <Clock className="w-4 h-4 text-primary" /> Risk Timeline
+        <Clock className="w-4 h-4 text-primary" /> {t('shipmentDetail.riskTimeline')}
       </h3>
       
       <div className="relative pl-6 space-y-6 before:absolute before:inset-0 before:ml-[11px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
@@ -65,7 +67,7 @@ export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
               <p className="text-sm text-muted-foreground leading-relaxed">{event.description}</p>
               <div className="mt-3 flex items-center gap-2">
                 <span className="text-[10px] px-2 py-0.5 bg-background border border-border rounded-full text-muted-foreground">
-                  Source: {event.source}
+                  {t('shipmentDetail.source')}: {event.source}
                 </span>
               </div>
             </div>

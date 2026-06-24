@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import { useI18n } from "@/lib/i18n";
 import "leaflet/dist/leaflet.css";
 
 export function HeatmapMap() {
+  const { t } = useI18n();
   const [incidents, setIncidents] = useState<any[]>([]);
 
   useEffect(() => {
@@ -59,7 +61,16 @@ export function HeatmapMap() {
                   <h3 className="font-bold">{incident.title}</h3>
                   <p className="mt-1">{incident.description}</p>
                   <p className="mt-2 font-semibold text-xs text-muted-foreground uppercase">
-                    Severity: <span style={{ color }}>{incident.severity}</span>
+                    {t('heatmap.severity')}:{" "}
+                    <span style={{ color }}>
+                      {incident.severity === "critical"
+                        ? t("logistics.critical")
+                        : incident.severity === "high"
+                        ? t("logistics.high")
+                        : incident.severity === "medium"
+                        ? t("logistics.medium")
+                        : t("logistics.low")}
+                    </span>
                   </p>
                 </div>
               </Popup>

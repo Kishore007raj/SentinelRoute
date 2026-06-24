@@ -2,13 +2,21 @@
 
 import { useState } from "react";
 import { RefreshCw, Activity, AlertTriangle } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
+import { useCompany } from "@/lib/company-context";
 
 export function ShipmentRiskPanel({ shipmentId }: { shipmentId: string }) {
+  const { t } = useI18n();
+  const { userRecord } = useCompany();
   const [loading, setLoading] = useState(false);
   const [prediction, setPrediction] = useState<any>(null);
   const [alert, setAlert] = useState<any>(null);
 
+  const isSuperAdmin = userRecord?.role === "super_admin";
+  const isCrossCompany = isSuperAdmin && typeof window !== "undefined" && new URLSearchParams(window.location.search).has("companyId");
+
   const handlePoll = async () => {
+    if (isCrossCompany) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/intelligence/shipments/${shipmentId}/poll`, {
@@ -31,37 +39,37 @@ export function ShipmentRiskPanel({ shipmentId }: { shipmentId: string }) {
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Activity className="w-4 h-4 text-primary" />
-          Predictive Intelligence
+          {t('shipmentDetail.predictiveIntelligence')}
         </h3>
         <button
           onClick={handlePoll}
-          disabled={loading}
+          disabled={loading || isCrossCompany}
           className="flex items-center gap-2 text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
-          {loading ? "Polling..." : "Poll Prediction"}
+          {loading ? t('shipmentDetail.polling') : t('shipmentDetail.pollPrediction')}
         </button>
       </div>
 
       {!prediction ? (
         <div className="text-sm text-muted-foreground">
-          No recent prediction polled. Click "Poll Prediction" to trigger the engine.
+          {t('shipmentDetail.noRecentPredictionPolled')}
         </div>
       ) : (
         <div className="space-y-4 mt-4 border-t border-border pt-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Overall Confidence</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t('shipmentDetail.overallConfidence')}</p>
               <p className="text-2xl font-bold">{prediction.overallOperationalConfidence}%</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Delay Risk</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t('shipmentDetail.delayRisk')}</p>
               <p className="text-2xl font-bold">{prediction.delayProbability}%</p>
             </div>
           </div>
           
           <div className="bg-muted/30 p-3 rounded-lg text-sm">
-            <p className="font-semibold mb-1">Reasoning</p>
+            <p className="font-semibold mb-1">{t('shipmentDetail.reasoning')}</p>
             <p className="text-muted-foreground">{prediction.reason}</p>
           </div>
 

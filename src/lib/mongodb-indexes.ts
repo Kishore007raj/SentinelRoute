@@ -73,6 +73,11 @@ async function ensureRoutePredictionsIndexes(db: Db): Promise<void> {
     col.createIndex({ shipmentId: 1 }, { name: "predictions_shipmentId", background: true }),
     col.createIndex({ companyId: 1 }, { name: "predictions_companyId", background: true }),
     col.createIndex({ timestamp: -1 }, { name: "predictions_timestamp_desc", background: true }),
+    col.createIndex({ createdAt: -1 }, { name: "predictions_createdAt_desc", background: true }),
+    col.createIndex(
+      { companyId: 1, shipmentId: 1, createdAt: -1 },
+      { name: "predictions_company_shipment_created", background: true }
+    ),
   ]);
 }
 
@@ -117,6 +122,12 @@ async function ensureOperationalAlertsIndexes(db: Db): Promise<void> {
     col.createIndex({ alertId: 1 }, { unique: true, name: "alerts_id_unique", background: true }),
     col.createIndex({ shipmentId: 1 }, { name: "alerts_shipmentId", background: true }),
     col.createIndex({ companyId: 1, timestamp: -1 }, { name: "alerts_companyId_timestamp", background: true }),
+    col.createIndex({ status: 1 }, { name: "alerts_status", background: true }),
+    col.createIndex({ severity: 1 }, { name: "alerts_severity", background: true }),
+    col.createIndex(
+      { companyId: 1, status: 1, severity: 1 },
+      { name: "alerts_company_status_severity", background: true }
+    ),
   ]);
 }
 
@@ -129,9 +140,15 @@ async function ensureIncidentEventsIndexes(db: Db): Promise<void> {
     col.createIndex({ companyId: 1 }, { name: "incident_events_companyId", background: true }),
     col.createIndex({ severity: 1 }, { name: "incident_events_severity", background: true }),
     col.createIndex({ startTime: -1 }, { name: "incident_events_startTime_desc", background: true }),
+    col.createIndex({ shipmentId: 1 }, { name: "incident_events_shipmentId", background: true }),
+    col.createIndex({ createdAt: -1 }, { name: "incident_events_createdAt_desc", background: true }),
     col.createIndex(
       { companyId: 1, severity: 1, startTime: -1 },
       { name: "incident_events_companyId_severity_time", background: true }
+    ),
+    col.createIndex(
+      { companyId: 1, shipmentId: 1, severity: 1, createdAt: -1 },
+      { name: "incident_events_company_shipment_severity_created", background: true }
     ),
   ]);
 }

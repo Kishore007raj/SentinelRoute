@@ -295,7 +295,7 @@
     "mediumRisk": "ਦਰਮਿਆਨਾ ਜੋਖਮ",
     "avgRiskFactors": "ਔਸਤ ਜੋਖਮ ਕਾਰਕ",
     "routeSelectionHistory": "ਰਸਤਾ ਚੋਣ ਇਤਿਹਾਸ",
-    "activeAlerts": "ਸਰਗਰਮ ਚੇਤਾਵਨੀਆਂ",
+    "activeAlerts": "ਸਰਗਰਮ ਅਲਰਟ",
     "noActiveAlertsShort": "ਕੋਈ ਸਰਗਰਮ ਚੇਤਾਵਨੀਆਂ ਨਹੀਂ",
     "systemInsight": "ਸਿਸਟਮ ਸੂਝ",
     "basedOnShipments": "ਤੁਹਾਡੇ {n} ਮਾਲ ਭੇਜਣੇ ਦੇ ਆਧਾਰ ਤੇ:",
@@ -313,6 +313,63 @@
     "highRiskShipments": "ਉੱਚ ਜੋਖਮ ਮਾਲ ਭੇਜਣੇ",
     "avgOperationalRisk": "ਔਸਤ ਓਪਰੇਸ਼ਨਲ ਜੋਖਮ",
     "avgDelayProbability": "ਔਸਤ ਦੇਰੀ ਸੰਭਾਵਨਾ",
-    "avgEtaConfidence": "ਔਸਤ ETA ਭਰੋਸਾ"
+    "avgEtaConfidence": "ਔਸਤ ETA ਭਰੋਸਾ",
+    "avgDisruptionProbability": "ਔਸਤ ਵਿਘਨ ਦੀ ਸੰਭਾਵਨਾ",
+    "openIncidents": "ਖੁੱਲ੍ਹੀਆਂ ਘਟਨਾਵਾਂ",
+    "stable": "ਸਥਿਰ"
+  },
+  "riskCenter": {
+    "downLastWeek": "↓ ਪਿਛਲੇ ਹਫ਼ਤੇ ਨਾਲੋਂ 5% ਘੱਟ",
+    "acrossCorridors": "8 ਕਾਰੀਡੋਰਾਂ ਵਿੱਚ",
+    "requireAttention": "ਤੁਰੰਤ ਧਿਆਨ ਦੇਣ ਦੀ ਲੋੜ ਹੈ",
+    "conditionsNormal": "ਹਾਲਾਤ ਆਮ ਹਨ",
+    "acknowledge": "ਸਵੀਕਾਰ ਕਰੋ",
+    "resolve": "ਹੱਲ ਕਰੋ",
+    "shipmentLabel": "ਸ਼ਿਪਮੈਂਟ:",
+    "acknowledged": "ਸਵੀਕਾਰ ਕੀਤਾ",
+    "resolved": "ਹੱਲ ਕੀਤਾ"
+  },
+  "incidentCenter": {
+    "radius": "അരവ്യാസം",
+    "category": "ਸ਼੍ਰੇਣੀ",
+    "time": "ਸਮਾਂ",
+    "closeIncident": "ਘਟਨਾ ਬੰਦ ਕਰੋ"
+  },
+  "routeIntelligencePage": {
+    "trafficDensity": "ਟ੍ਰੈਫਿਕ ਘਣਤਾ",
+    "weatherImpact": "ਮੌਸਮ ਦਾ ਪ੍ਰਭਾਵ",
+    "disruptionProbability": "ਵਿਘਨ ਦੀ ਸੰਭਾਵਨਾ",
+    "cargoSensitivity": "ਕਾਰਗੋ ਸੰਵੇਦਨਸ਼ੀਲਤਾ",
+    "trafficDetail": "{n} ਸ਼ਿਪਮੈਂਟਾਂ ਵਿੱਚ ਔਸਤ ਟ੍ਰੈਫਿਕ ਜੋਖਮ।",
+    "weatherDetail": "ਤੁਹਾਡੇ ਸਰਗਰਮ ਕਾਰੀਡੋਰਾਂ ਵਿੱਚ ਔਸਤ ਮੌਸਮ ਜੋਖਮ।",
+    "disruptionDetail": "ਭੇਜੇ ਗਏ ਰੂਟਾਂ ਵਿੱਚ ਔਸਤ ਵਿਘਨ ਸਕੋਰ।",
+    "cargoDetail": "ਤੁਹਾਡੀਆਂ ਸ਼ਿਪਮੈਂਟ ਕਿਸਮਾਂ ਵਿੱਚ ਔਸਤ ਕਾਰਗੋ ਸੰਵੇਦਨਸ਼ੀਲਤਾ।"
+  },
+  "heatmap": {
+    "severity": "ਗੰਭੀਰਤਾ",
+    "radius": "ਅਰਧ-ਵਿਆਸ"
+  },
+  "shipmentDetail": {
+    "loadingShipment": "ਸ਼ਿਪਮੈਂਟ ਲੋਡ ਹੋ ਰਹੀ ਹੈ...",
+    "markAsCompleted": "ਮੁਕੰਮਲ ਵਜੋਂ ਨਿਸ਼ਾਨਬੱਧ ਕਰੋ",
+    "backToShipments": "ਸ਼ਿਪਮੈਂਟਾਂ 'ਤੇ ਵਾਪਸ ਜਾਓ",
+    "shipmentDetail": "ਸ਼ਿਪਮੈਂਟ ਵੇਰਵਾ",
+    "decisionContext": "ਫੈਸਲੇ ਦਾ ਸੰਦਰਭ",
+    "riskBreakdownUnavailable": "ਇਸ ਸ਼ਿਪਮੈਂਟ ਲਈ ਜੋਖਮ ਦਾ ਵੇਰਵਾ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।",
+    "updated": "ਅੱਪਡੇਟ ਕੀਤਾ",
+    "polling": "ਪੋਲਿੰਗ...",
+    "pollPrediction": "ਭਵਿੱਖਬਾਣੀ ਪ੍ਰਾਪਤ ਕਰੋ",
+    "noRecentPredictionPolled": "ਕੋਈ ਹਾਲੀਆ ਭਵਿੱਖਬਾਣੀ ਨਹੀਂ ਹੈ। ਇੰਜਣ ਨੂੰ ਚਾਲੂ ਕਰਨ ਲਈ 'ਭਵਿੱਖਬਾਣੀ ਪ੍ਰਾਪਤ ਕਰੋ' 'ਤੇ ਕਲਿੱक ਕਰੋ।",
+    "overallConfidence": "ਸਮੁੱਚਾ ਵਿਸ਼ਵਾਸ",
+    "delayRisk": "ਦੇਰੀ ਦਾ ਜੋਖਮ",
+    "reasoning": "ਤਰਕ",
+    "loadingTimeline": "ਸਮਾਂਰੇਖਾ ਲੋਡ ਹੋ ਰਹੀ ਹੈ...",
+    "noTimelineEvents": "ਅਜੇ ਤੱਕ ਕੋਈ ਸਮਾਂਰੇਖਾ ਘਟਨਾ ਦਰਜ ਨਹੀਂ ਕੀਤੀ ਗਈ ਹੈ।",
+    "riskTimeline": "ਜੋਖਮ ਸਮਾਂਰੇਖਾ",
+    "source": "ਸਰੋਤ",
+    "predictiveIntelligence": "ਭਵਿੱਖਸੂਚਕ ਇੰਟੈਲੀਜੈਂਸ",
+    "safestContext": "{cargo} ਕਾਰਗੋ ਲਈ ਸਭ ਤੋਂ ਸੁਰੱਖਿਅਤ ਰੂਟ ਚੁਣਿਆ ਗਿਆ (ਜੋਖਮ: {risk})। ਵਿਘਨ ਦੀ ਸੰਭਾਵਨਾ ਨੂੰ ਘੱਟ ਕਰਨ ਅਤੇ ਕਾਰਗੋ ਦੀ ਸੁਰੱਖਿਆ ਲਈ ਲੰਬਾ ਈਟੀਏ ਸਵੀਕਾਰ ਕੀਤਾ ਗਿਆ।",
+    "fastestContext": "ਸਭ ਤੋਂ ਤੇਜ਼ ਰੂਟ ਚੁਣਿਆ ਗਿਆ (ਜੋਖਮ: {risk})। ਤੇਜ਼ੀ ਨੂੰ ਤਰਜੀਹ ਦਿੱਤੀ ਗਈ ਸੀ — ਯਾਤਰਾ ਦੌਰਾਨ ਜਾਮ ਅਤੇ ਮੌਸਮ ਚੇਤਾਵਨੀਆਂ ਦੀ ਨਿਗਰਾਨੀ ਕਰੋ।",
+    "balancedContext": "ਸੰਤੁਲਿਤ ਰੂਟ ਚੁਣਿਆ ਗਿਆ (ਜੋਖਮ: {risk})। {cargo} ਕਾਰਗੋ ਲਈ ਸਮਾਂ ਅਤੇ ਵਿਘਨ ਵਿਚਕਾਰ ਸਹੀ ਤਾਲਮੇਲ।"
   }
 }

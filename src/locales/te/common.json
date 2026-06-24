@@ -295,7 +295,7 @@
     "mediumRisk": "మధ్యస్థ నష్టం",
     "avgRiskFactors": "సగటు నష్టం కారకాలు",
     "routeSelectionHistory": "మార్గ ఎంపిక చరిత్ర",
-    "activeAlerts": "చురుకైన హెచ్చరికలు",
+    "activeAlerts": "క్రియాశీల హెచ్చరికలు",
     "noActiveAlertsShort": "చురుకైన హెచ్చరికలు లేవు",
     "systemInsight": "సిస్టమ్ అంతర్దృష్టి",
     "basedOnShipments": "మీ {n} సరకు రవాణా(ల) ఆధారంగా:",
@@ -313,6 +313,63 @@
     "highRiskShipments": "అధిక నష్టం సరకు రవాణాలు",
     "avgOperationalRisk": "సగటు కార్యాచరణ నష్టం",
     "avgDelayProbability": "సగటు ఆలస్యం సంభావ్యత",
-    "avgEtaConfidence": "సగటు ETA విశ్వాసం"
+    "avgEtaConfidence": "సగటు ETA విశ్వాసం",
+    "avgDisruptionProbability": "సగటు అంతరాయ సంభావ్యత",
+    "openIncidents": "తెరిచిన సంఘటనలు",
+    "stable": "స్థిరంగా"
+  },
+  "riskCenter": {
+    "downLastWeek": "↓ గత వారం కంటే 5% తక్కువ",
+    "acrossCorridors": "8 కారిడార్లలో",
+    "requireAttention": "తక్షణ శ్రద్ధ అవసరం",
+    "conditionsNormal": "పరిస్థితులు సాధారణం",
+    "acknowledge": "అంగీకరించు",
+    "resolve": "పరిష్కరించు",
+    "shipmentLabel": "రవాణా:",
+    "acknowledged": "అంగీకరించబడింది",
+    "resolved": "పరిష్కరించబడింది"
+  },
+  "incidentCenter": {
+    "radius": "వ్యాసార్థం",
+    "category": "వర్గం",
+    "time": "సమయం",
+    "closeIncident": "సంఘటనను మూసివేయి"
+  },
+  "routeIntelligencePage": {
+    "trafficDensity": "ట్రాఫిక్ సాంద్రత",
+    "weatherImpact": "వాతావరణ ప్రభావం",
+    "disruptionProbability": "అంతరాయ సంభావ్యత",
+    "cargoSensitivity": "కార్గో సున్నితత్వం",
+    "trafficDetail": "{n} రవాణాలలో సగటు ట్రాఫిక్ ప్రమాదం.",
+    "weatherDetail": "మీ క్రియాశీల కారిడార్లలో సగటు వాతావరణ ప్రమాదం.",
+    "disruptionDetail": "పంపిన మార్గాల్లో సగటు అంతరాయ స్కోరు.",
+    "cargoDetail": "మీ రవాణా రకాల్లో సగటు కార్గో సున్నితత్వం."
+  },
+  "heatmap": {
+    "severity": "తీవ్రత",
+    "radius": "ವ్యాసార్థం"
+  },
+  "shipmentDetail": {
+    "loadingShipment": "రవాణా లోడ్ అవుతోంది...",
+    "markAsCompleted": "పూర్తయినట్లుగా గుర్తించు",
+    "backToShipments": "తిరిగి రవాణాలకు వెళ్ళండి",
+    "shipmentDetail": "రవాణా వివరాలు",
+    "decisionContext": "నిర్ణయ సందర్భం",
+    "riskBreakdownUnavailable": "ఈ రవాణాకు ప్రమాద విభజన అందుబాటులో లేదు.",
+    "updated": "నవీకరించబడింది",
+    "polling": "పోలింగ్...",
+    "pollPrediction": "అంచనా పోల్ చేయి",
+    "noRecentPredictionPolled": "ఇటీవలి అంచనాలు లేవు. ఇంజిన్‌ను ప్రారంభించడానికి 'అంచనా పోల్ చేయి' క్లిక్ చేయండి.",
+    "overallConfidence": "మొత్తం విశ్వాసం",
+    "delayRisk": "ఆలస్య ప్రమాదం",
+    "reasoning": "కారణాలు",
+    "loadingTimeline": "సమయరేఖ లోడ్ అవుతోంది...",
+    "noTimelineEvents": "సమయరేఖ సంఘటనలు ఏవీ ఇంకా నమోదు కాలేదు.",
+    "riskTimeline": "ప్రమాద సమయరేఖ",
+    "source": "మూలం",
+    "predictiveIntelligence": "అంచనా మేధస్సు",
+    "safestContext": "{cargo} కార్గో కోసం సురక్షితమైన మార్గం ఎంచుకోబడింది (ప్రమాదం: {risk}). అంతరాయం కలిగే సంభావ్యతను తగ్గించడానికి మరియు కార్గో సమగ్రతను రక్షించడానికి ఎక్కువ సమయం అంగీకరించబడింది.",
+    "fastestContext": "అతి వేగవంతమైన మార్గం ఎంచుకోబడింది (ప్రమాదం: {risk}). వేగానికి ప్రాధాన్యత ఇవ్వబడింది — ప్రయాణంలో ట్రాఫిక్ మరియు వాతావరణ హెచ్చరికలను గమనించండి.",
+    "balancedContext": "సమతుల్య మార్గం ఎంచుకోబడింది (ప్రమాదం: {risk}). {cargo} కార్గో కోసం సమయం మరియు అంతరాయం మధ్య సరైన రాజీ."
   }
 }

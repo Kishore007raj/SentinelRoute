@@ -32,6 +32,8 @@ export async function evaluateAlerts(
       confidence:        prediction.overallOperationalConfidence,
       timestamp:         new Date().toISOString(),
       recommendedAction,
+      status:            "active",
+      severity:          prediction.delayProbability > 70 ? "critical" : prediction.disruptionProbability > 50 ? "high" : "medium",
     };
 
     const db = await getDb();
