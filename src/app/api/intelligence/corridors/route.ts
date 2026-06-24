@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireCompany } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/mongodb";
 import { CorridorStatistic } from "@/lib/types";
+import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 
 // Deterministic mockup for corridor statistics
 const MOCK_CORRIDORS: CorridorStatistic[] = [
@@ -51,8 +52,24 @@ const MOCK_CORRIDORS: CorridorStatistic[] = [
 
 export async function GET(req: Request) {
   try {
-    const { company } = await requireCompany(req as any);
+    const { userRecord, company } = await requireCompany(req as any);
     const companyId = company.companyId;
+    const isSuperAdmin = userRecord.role === "super_admin";
+
+    // ── Super admin cross-company read audit ─────────────────────────────────
+    if (isSuperAdmin) {
+      createIntelligenceAudit({
+        companyId,
+        userId:    userRecord.userId,
+        eventType: "super_admin_read",
+        source:    "CorridorsRoute",
+        metadata: {
+          companyIdViewed: companyId,
+          endpoint:        "/api/intelligence/corridors",
+          timestamp:       new Date().toISOString(),
+        },
+      }).catch(() => {});
+    }
     
     // In a full implementation, these would be calculated by aggregating shipment_timelines and route_predictions
     // For this demonstration we use a mix of deterministic static mock and any existing DB records.
@@ -73,8 +90,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ corridors: uniqueCorridors });
   } catch (err: any) {
-    if (err.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (err instanceof Response) {
+      return new NextResponse(err.body, { status: err.status, headers: { "Content-Type": "application/json" } });
     }
     console.error("[GET /api/intelligence/corridors]", err);
     return NextResponse.json({ error: "Failed to fetch corridors" }, { status: 500 });

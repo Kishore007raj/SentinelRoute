@@ -33,12 +33,16 @@ export async function ensureIndexes(db: Db): Promise<void> {
       ensureCompanySettingsIndexes(db),
       // Module 3
       ensureIncidentsIndexes(db),
+      ensureIncidentEventsIndexes(db),
       ensureRoutePredictionsIndexes(db),
+      ensureRiskCalculationsIndexes(db),
       ensureShipmentTimelinesIndexes(db),
       ensureCorridorStatisticsIndexes(db),
       ensureShipmentChannelsIndexes(db),
       ensureShipmentMessagesIndexes(db),
       ensureOperationalAlertsIndexes(db),
+      ensureIntelligenceAuditsIndexes(db),
+      ensureFestivalCalendarIndexes(db),
     ]);
     console.log("[mongodb-indexes] All indexes ensured.");
   } catch (err) {
@@ -113,6 +117,66 @@ async function ensureOperationalAlertsIndexes(db: Db): Promise<void> {
     col.createIndex({ alertId: 1 }, { unique: true, name: "alerts_id_unique", background: true }),
     col.createIndex({ shipmentId: 1 }, { name: "alerts_shipmentId", background: true }),
     col.createIndex({ companyId: 1, timestamp: -1 }, { name: "alerts_companyId_timestamp", background: true }),
+  ]);
+}
+
+// ─── incident_events (Task 7 — Module 3 Finalization) ────────────────────────
+
+async function ensureIncidentEventsIndexes(db: Db): Promise<void> {
+  const col = db.collection("incident_events");
+  await Promise.all([
+    col.createIndex({ incidentId: 1 }, { unique: true, name: "incident_events_id_unique", background: true }),
+    col.createIndex({ companyId: 1 }, { name: "incident_events_companyId", background: true }),
+    col.createIndex({ severity: 1 }, { name: "incident_events_severity", background: true }),
+    col.createIndex({ startTime: -1 }, { name: "incident_events_startTime_desc", background: true }),
+    col.createIndex(
+      { companyId: 1, severity: 1, startTime: -1 },
+      { name: "incident_events_companyId_severity_time", background: true }
+    ),
+  ]);
+}
+
+// ─── risk_calculations (Task 7 — Module 3 Finalization) ──────────────────────
+
+async function ensureRiskCalculationsIndexes(db: Db): Promise<void> {
+  const col = db.collection("risk_calculations");
+  await Promise.all([
+    col.createIndex({ calculationId: 1 }, { unique: true, name: "risk_calc_id_unique", background: true }),
+    col.createIndex({ companyId: 1 }, { name: "risk_calc_companyId", background: true }),
+    col.createIndex({ shipmentId: 1 }, { name: "risk_calc_shipmentId", background: true }),
+    col.createIndex({ createdAt: -1 }, { name: "risk_calc_createdAt_desc", background: true }),
+    col.createIndex(
+      { companyId: 1, shipmentId: 1, createdAt: -1 },
+      { name: "risk_calc_companyId_shipmentId_time", background: true }
+    ),
+  ]);
+}
+
+// ─── intelligence_audits (Task 1 — Module 3 Finalization) ────────────────────
+
+async function ensureIntelligenceAuditsIndexes(db: Db): Promise<void> {
+  const col = db.collection("intelligence_audits");
+  await Promise.all([
+    col.createIndex({ auditId: 1 }, { unique: true, name: "intel_audit_id_unique", background: true }),
+    col.createIndex({ companyId: 1, timestamp: -1 }, { name: "intel_audit_companyId_time", background: true }),
+    col.createIndex({ shipmentId: 1 }, { name: "intel_audit_shipmentId", background: true }),
+    col.createIndex({ eventType: 1 }, { name: "intel_audit_eventType", background: true }),
+    col.createIndex(
+      { companyId: 1, eventType: 1, timestamp: -1 },
+      { name: "intel_audit_companyId_eventType_time", background: true }
+    ),
+  ]);
+}
+
+// ─── festival_calendar (Task 4 — Module 3 Finalization) ──────────────────────
+
+async function ensureFestivalCalendarIndexes(db: Db): Promise<void> {
+  const col = db.collection("festival_calendar");
+  await Promise.all([
+    col.createIndex({ id: 1 }, { unique: true, name: "festival_id_unique", background: true }),
+    col.createIndex({ state: 1 }, { name: "festival_state", background: true }),
+    col.createIndex({ startDate: 1, endDate: 1 }, { name: "festival_date_range", background: true }),
+    col.createIndex({ riskLevel: 1 }, { name: "festival_riskLevel", background: true }),
   ]);
 }
 

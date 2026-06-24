@@ -1,13 +1,17 @@
 import { getDb } from "./mongodb";
 import { OperationalAlert, RoutePrediction, Shipment } from "./types";
+import { createIntelligenceAudit } from "./intelligence-audit";
 
 /**
  * Analyzes a new route prediction and generates operational alerts if necessary.
  */
-export async function evaluateAlerts(shipment: Shipment, prediction: RoutePrediction): Promise<OperationalAlert | null> {
-  let alertReason = null;
+export async function evaluateAlerts(
+  shipment: Shipment,
+  prediction: RoutePrediction
+): Promise<OperationalAlert | null> {
+  let alertReason: string | null = null;
   let recommendedAction = "Monitor closely";
-  
+
   if (prediction.delayProbability > 70) {
     alertReason = "High Delay Probability Detected";
     recommendedAction = "Consider rerouting or notifying recipient immediately.";
@@ -21,17 +25,36 @@ export async function evaluateAlerts(shipment: Shipment, prediction: RoutePredic
 
   if (alertReason) {
     const alert: OperationalAlert = {
-      alertId: `alert-${shipment.id}-${Date.now()}`,
-      shipmentId: shipment.id,
-      companyId: shipment.companyId || "system",
-      reason: alertReason,
-      confidence: prediction.overallOperationalConfidence,
-      timestamp: new Date().toISOString(),
+      alertId:           `alert-${shipment.id}-${Date.now()}`,
+      shipmentId:        shipment.id,
+      companyId:         shipment.companyId || "system",
+      reason:            alertReason,
+      confidence:        prediction.overallOperationalConfidence,
+      timestamp:         new Date().toISOString(),
       recommendedAction,
     };
 
     const db = await getDb();
     await db.collection("operational_alerts").insertOne(alert);
+
+    // ── Audit: alert_created ───────────────────────────────────────────────
+    createIntelligenceAudit({
+      companyId:  alert.companyId,
+      shipmentId: alert.shipmentId,
+      eventType:  "alert_created",
+      source:     "AlertService",
+      metadata: {
+        alertId:           alert.alertId,
+        reason:            alert.reason,
+        recommendedAction: alert.recommendedAction,
+        confidence:        alert.confidence,
+        predictionId:      prediction.predictionId,
+        delayProbability:  prediction.delayProbability,
+        disruptionProbability: prediction.disruptionProbability,
+        weatherConfidence: prediction.weatherConfidence,
+      },
+    }).catch(() => {/* never block caller */});
+
     return alert;
   }
 
