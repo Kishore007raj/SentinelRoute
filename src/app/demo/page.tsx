@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RouteCard } from "@/components/shipment/RouteCard";
 import { ShipmentPass } from "@/components/shipment/ShipmentPass";
-import { RouteMapView } from "@/components/shipment/RouteMapView";
+import dynamic from "next/dynamic";
+const RouteMapView = dynamic(() => import("@/components/shipment/RouteMapView").then((mod) => mod.RouteMapView), { ssr: false });
 import type { Route } from "@/lib/types";
 import Link from "next/link";
 
