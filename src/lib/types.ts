@@ -415,3 +415,132 @@ export interface WorkforceAudit {
   details:     Record<string, unknown>;
   timestamp:   string;       // UTC ISO — immutable, never updated
 }
+
+// ─── Module 3 — Operational Intelligence Platform ─────────────────────────────
+
+export type IncidentCategory = "Weather" | "Traffic" | "Road Closure" | "Accident" | "Construction" | "Political" | "Public Event" | "Natural Disaster" | "Restriction" | "Unknown";
+
+export interface Incident {
+  incidentId:         string;
+  companyId?:         string; // Optional, some incidents might be company specific but usually global
+  title:              string;
+  description:        string;
+  category:           IncidentCategory;
+  severity:           "low" | "medium" | "high" | "critical";
+  confidence:         number;
+  latitude:           number;
+  longitude:          number;
+  affectedRadiusKm:   number;
+  startTime:          string;
+  lastUpdated:        string;
+  expectedEndTime?:   string;
+  source:             string;
+  verifiedStatus:     boolean;
+  impactScore:        number;
+  recommendedAction:  string;
+}
+
+export interface RoutePrediction {
+  predictionId:               string;
+  shipmentId:                 string;
+  companyId:                  string;
+  timestamp:                  string;
+  delayProbability:           number; // 0-100
+  disruptionProbability:      number; // 0-100
+  etaConfidence:              number; // 0-100
+  corridorVolatility:         number; // 0-100
+  weatherConfidence:          number; // 0-100
+  incidentDensity:            number; // 0-100
+  trafficStability:           number; // 0-100
+  historicalCorridorReliability: number; // 0-100
+  riskTrend:                  "improving" | "stable" | "degrading";
+  expectedDelayMinutes:       number;
+  recommendedRouteConfidence: number; // 0-100
+  overallOperationalConfidence: number; // 0-100
+  reason:                     string;
+  contributingFactors:        string[];
+  weight?:                    number;
+  sourceApis?:                string[];
+}
+
+export type TimelineEventType =
+  | "Shipment Created"
+  | "Route Selected"
+  | "Dispatch Started"
+  | "Weather Changed"
+  | "Traffic Increased"
+  | "Incident Detected"
+  | "Risk Increased"
+  | "Risk Reduced"
+  | "ETA Updated"
+  | "Driver Message"
+  | "Dispatcher Message"
+  | "System Alert"
+  | "Suggested Reroute"
+  | "Route Changed"
+  | "Shipment Completed";
+
+export interface ShipmentTimelineEvent {
+  eventId:          string;
+  shipmentId:       string;
+  companyId:        string;
+  timestamp:        string; // ISO timestamp
+  type:             TimelineEventType;
+  description:      string;
+  source:           string;
+  confidence:       number;
+  affectedMetrics?: string[];
+}
+
+export interface CorridorStatistic {
+  corridorId:            string;
+  companyId?:            string; // Mostly global, but keep tenant-scoped for isolated intelligence? Spec says "Every logistics corridor receives intelligence. Example Chennai -> Bengaluru"
+  origin:                string;
+  destination:           string;
+  averageDelay:          number; // minutes
+  riskHistory:           number[]; // Historical scores
+  weatherTrend:          "clear" | "rainy" | "stormy" | "foggy";
+  incidentDensity:       number; // 0-100
+  roadQuality:           number; // 0-100
+  averageEtaVariance:    number; // minutes
+  historicalReliability: number; // 0-100
+  currentOperationalStatus: "optimal" | "warning" | "disrupted";
+  confidence:            number; // 0-100
+}
+
+export interface ShipmentChannel {
+  channelId:   string;
+  shipmentId:  string;
+  companyId:   string;
+  active:      boolean;
+  createdAt:   string;
+  updatedAt:   string;
+}
+
+export type MessageType = "text" | "system" | "image" | "pdf";
+export type MessageSenderRole = "Dispatcher" | "Driver" | "Operations Manager" | "System";
+
+export interface ShipmentMessage {
+  messageId:   string;
+  channelId:   string;
+  shipmentId:  string;
+  companyId:   string;
+  senderType:  MessageSenderRole;
+  senderId?:   string; // userId or driverId
+  senderName:  string;
+  messageType: MessageType;
+  message:     string;
+  fileUrl?:    string; // for image/pdf
+  timestamp:   string;
+  readStatus:  boolean;
+}
+
+export interface OperationalAlert {
+  alertId:           string;
+  shipmentId?:       string;
+  companyId:         string;
+  reason:            string;
+  confidence:        number;
+  timestamp:         string;
+  recommendedAction: string;
+}

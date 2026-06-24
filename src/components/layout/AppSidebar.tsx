@@ -18,6 +18,10 @@ import {
   UserCheck,
   Truck,
   UserCog,
+  Activity,
+  AlertTriangle,
+  Map,
+  TrendingUp,
 } from "lucide-react";
 import {
   Sidebar,
@@ -173,6 +177,41 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </div>
               );
             })()}
+
+            {/* ─── Operational Intelligence nav (Module 3) ────────────────── */}
+            {(() => {
+              const intellItems = [
+                { label: "Risk Center",    href: "/company/intelligence/risk-center", icon: Activity },
+                { label: "Incident Center",href: "/company/intelligence/incidents",   icon: AlertTriangle },
+                { label: "Heatmap",        href: "/company/intelligence/heatmap",     icon: Map },
+                { label: "Corridors",      href: "/company/intelligence/corridors",   icon: TrendingUp },
+              ];
+              return (
+                <div className="mt-4">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest px-3 mb-2">Operational Intelligence</p>
+                  <div className="space-y-1">
+                    {intellItems.map((item) => {
+                      const isActive = typeof window !== "undefined" && (window.location.pathname === item.href || window.location.pathname.startsWith(item.href + "/"));
+                      return (
+                        <Link key={item.href} href={item.href}>
+                          <div className={cn(
+                            "flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg",
+                            isActive
+                              ? "bg-primary/10 text-primary border border-primary/20"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                          )}>
+                            <item.icon className="w-4 h-4 shrink-0" />
+                            {item.label}
+                            {isActive && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
           </div>
         </div>
 
@@ -352,6 +391,48 @@ export function AppSidebar() {
             </SidebarGroup>
           );
         })()}
+
+        {/* ─── Operational Intelligence nav (Module 3) ───────────────────── */}
+        {(() => {
+          const intellItems = [
+            { label: "Risk Center",    href: "/company/intelligence/risk-center", icon: Activity },
+            { label: "Incident Center",href: "/company/intelligence/incidents",   icon: AlertTriangle },
+            { label: "Heatmap",        href: "/company/intelligence/heatmap",     icon: Map },
+            { label: "Corridors",      href: "/company/intelligence/corridors",   icon: TrendingUp },
+          ];
+          return (
+            <SidebarGroup>
+              <SidebarGroupLabel className="label-meta px-3 mb-2">Operational Intelligence</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  {intellItems.map((item) => {
+                    const isActive = typeof window !== "undefined" && (window.location.pathname === item.href || window.location.pathname.startsWith(item.href + "/"));
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          render={<Link href={item.href} />}
+                          isActive={isActive}
+                          tooltip={item.label}
+                          className={cn(
+                            "relative rounded-lg transition-all duration-150 py-3",
+                            isActive
+                              ? "bg-primary/10 text-primary border border-primary/20"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                          )}
+                        >
+                          <item.icon className="w-4 h-4 shrink-0" />
+                          <span className="text-sm font-medium">{item.label}</span>
+                          {isActive && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })()}
+
       </SidebarContent>
 
       <SidebarFooter className="px-3 py-4 border-t border-border">

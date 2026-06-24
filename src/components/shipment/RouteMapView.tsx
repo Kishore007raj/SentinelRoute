@@ -1,18 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Shield, Clock, MapPin, AlertTriangle, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Route } from "@/lib/types";
 import { AiInsightBox } from "./AiInsightBox";
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-
-// Dynamically import Leaflet components to avoid SSR issues
-const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
-const TileLayer    = dynamic(() => import("react-leaflet").then((m) => m.TileLayer),    { ssr: false });
-const Polyline     = dynamic(() => import("react-leaflet").then((m) => m.Polyline),     { ssr: false });
-const Marker       = dynamic(() => import("react-leaflet").then((m) => m.Marker),       { ssr: false });
-const Popup        = dynamic(() => import("react-leaflet").then((m) => m.Popup),        { ssr: false });
 
 // ─── City coordinate fallbacks for map centering ──────────────────────────────
 const CITY_COORDS: Record<string, [number, number]> = {
@@ -100,21 +94,20 @@ export function RouteMapView({
   dataSource,
 }: RouteMapViewProps) {
   const [isClient, setIsClient] = useState(false);
+  const mapRef = useRef<any>(null);
 
   useEffect(() => {
-    // setIsClient deferred to next tick to avoid synchronous setState-in-effect warning
-    const id = setTimeout(() => setIsClient(true), 0);
-    import("leaflet").then((L) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-        iconUrl:       "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-        shadowUrl:     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-      });
-    });
-    return () => clearTimeout(id);
+    setIsClient(true);
   }, []);
+
+  // Fix missing marker icons natively in Leaflet
+  const DefaultIcon = typeof window !== 'undefined' ? (require("leaflet") as any).icon({
+    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+  }) : null;
 
   // Derive map center from city names or fall back to India center
   const originCoords      = origin      ? CITY_COORDS[origin]      : null;
@@ -177,6 +170,7 @@ export function RouteMapView({
       {/* ── Map ───────────────────────────────────────────────────────────── */}
       <div className="h-[300px] w-full relative z-0">
         <MapContainer
+          ref={mapRef}
           center={mapCenter}
           zoom={originCoords && destCoords ? 6 : 5}
           style={{ height: "100%", width: "100%" }}
@@ -189,10 +183,10 @@ export function RouteMapView({
           {polylinePoints.length >= 2 && (
             <>
               <Polyline positions={polylinePoints} color="#5eadd4" weight={4} opacity={0.85} />
-              <Marker position={polylinePoints[0]}>
+              <Marker position={polylinePoints[0]} icon={DefaultIcon}>
                 <Popup>Origin: {origin}</Popup>
               </Marker>
-              <Marker position={polylinePoints[polylinePoints.length - 1]}>
+              <Marker position={polylinePoints[polylinePoints.length - 1]} icon={DefaultIcon}>
                 <Popup>Destination: {destination}</Popup>
               </Marker>
             </>
@@ -200,7 +194,7 @@ export function RouteMapView({
         </MapContainer>
 
         {/* Status badge */}
-        <div className="absolute top-4 right-4 z-1000 bg-background/90 backdrop-blur-md border border-border p-3 rounded-lg shadow-xl" style={{ boxShadow: "var(--glow-soft)" }}>
+        <div className="absolute top-4 right-4 z-[1000] bg-background/90 backdrop-blur-md border border-border p-3 rounded-lg shadow-xl" style={{ boxShadow: "var(--glow-soft)" }}>
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-primary" />

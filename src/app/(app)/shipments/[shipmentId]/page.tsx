@@ -9,6 +9,9 @@ import { RouteMapView } from "@/components/shipment/RouteMapView";
 import { getRiskColor, cn, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import type { Shipment } from "@/lib/types";
+import { ShipmentRiskPanel } from "@/components/shipment/ShipmentRiskPanel";
+import { ShipmentTimeline } from "@/components/shipment/ShipmentTimeline";
+import { ShipmentCommunication } from "@/components/shipment/ShipmentCommunication";
 
 export default function ShipmentDetailPage({
   params,
@@ -203,6 +206,11 @@ export default function ShipmentDetailPage({
             <p className="label-meta mb-4">Decision context</p>
             <p className="text-sm text-muted-foreground leading-relaxed">{decisionContext}</p>
           </div>
+
+          {/* Module 3 Intelligence Panels */}
+          <ShipmentRiskPanel shipmentId={shipment.id} />
+          <ShipmentTimeline shipmentId={shipment.id} />
+
         </div>
 
         {/* Right: map */}
@@ -219,6 +227,9 @@ export default function ShipmentDetailPage({
             origin={shipment.origin}
             destination={shipment.destination}
           />
+          <div className="mt-6">
+            <ShipmentCommunication shipmentId={shipment.id} />
+          </div>
         </div>
       </div>
     </div>

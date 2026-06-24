@@ -31,6 +31,14 @@ export async function ensureIndexes(db: Db): Promise<void> {
       ensureCompanyDocumentsIndexes(db),
       ensureCompanyAuditsIndexes(db),
       ensureCompanySettingsIndexes(db),
+      // Module 3
+      ensureIncidentsIndexes(db),
+      ensureRoutePredictionsIndexes(db),
+      ensureShipmentTimelinesIndexes(db),
+      ensureCorridorStatisticsIndexes(db),
+      ensureShipmentChannelsIndexes(db),
+      ensureShipmentMessagesIndexes(db),
+      ensureOperationalAlertsIndexes(db),
     ]);
     console.log("[mongodb-indexes] All indexes ensured.");
   } catch (err) {
@@ -39,6 +47,75 @@ export async function ensureIndexes(db: Db): Promise<void> {
     console.error("[mongodb-indexes] Failed to ensure indexes:", err);
   }
 }
+
+// ─── Module 3 ─────────────────────────────────────────────────────────────────
+
+async function ensureIncidentsIndexes(db: Db): Promise<void> {
+  const col = db.collection("incidents");
+  await Promise.all([
+    col.createIndex({ incidentId: 1 }, { unique: true, name: "incidents_id_unique", background: true }),
+    col.createIndex({ companyId: 1 }, { name: "incidents_companyId", background: true }),
+    // Geo index for Map
+    col.createIndex({ "latitude": 1, "longitude": 1 }, { name: "incidents_geo", background: true }),
+    col.createIndex({ startTime: -1 }, { name: "incidents_startTime_desc", background: true }),
+    col.createIndex({ category: 1 }, { name: "incidents_category", background: true }),
+  ]);
+}
+
+async function ensureRoutePredictionsIndexes(db: Db): Promise<void> {
+  const col = db.collection("route_predictions");
+  await Promise.all([
+    col.createIndex({ predictionId: 1 }, { unique: true, name: "predictions_id_unique", background: true }),
+    col.createIndex({ shipmentId: 1 }, { name: "predictions_shipmentId", background: true }),
+    col.createIndex({ companyId: 1 }, { name: "predictions_companyId", background: true }),
+    col.createIndex({ timestamp: -1 }, { name: "predictions_timestamp_desc", background: true }),
+  ]);
+}
+
+async function ensureShipmentTimelinesIndexes(db: Db): Promise<void> {
+  const col = db.collection("shipment_timelines");
+  await Promise.all([
+    col.createIndex({ eventId: 1 }, { unique: true, name: "timelines_id_unique", background: true }),
+    col.createIndex({ shipmentId: 1, timestamp: -1 }, { name: "timelines_shipmentId_timestamp", background: true }),
+    col.createIndex({ companyId: 1 }, { name: "timelines_companyId", background: true }),
+  ]);
+}
+
+async function ensureCorridorStatisticsIndexes(db: Db): Promise<void> {
+  const col = db.collection("corridor_statistics");
+  await Promise.all([
+    col.createIndex({ corridorId: 1 }, { unique: true, name: "corridors_id_unique", background: true }),
+    col.createIndex({ origin: 1, destination: 1 }, { name: "corridors_origin_dest", background: true }),
+  ]);
+}
+
+async function ensureShipmentChannelsIndexes(db: Db): Promise<void> {
+  const col = db.collection("shipment_channels");
+  await Promise.all([
+    col.createIndex({ channelId: 1 }, { unique: true, name: "channels_id_unique", background: true }),
+    col.createIndex({ shipmentId: 1 }, { unique: true, name: "channels_shipmentId_unique", background: true }),
+    col.createIndex({ companyId: 1 }, { name: "channels_companyId", background: true }),
+  ]);
+}
+
+async function ensureShipmentMessagesIndexes(db: Db): Promise<void> {
+  const col = db.collection("shipment_messages");
+  await Promise.all([
+    col.createIndex({ messageId: 1 }, { unique: true, name: "messages_id_unique", background: true }),
+    col.createIndex({ channelId: 1, timestamp: 1 }, { name: "messages_channel_timestamp", background: true }),
+    col.createIndex({ shipmentId: 1 }, { name: "messages_shipmentId", background: true }),
+  ]);
+}
+
+async function ensureOperationalAlertsIndexes(db: Db): Promise<void> {
+  const col = db.collection("operational_alerts");
+  await Promise.all([
+    col.createIndex({ alertId: 1 }, { unique: true, name: "alerts_id_unique", background: true }),
+    col.createIndex({ shipmentId: 1 }, { name: "alerts_shipmentId", background: true }),
+    col.createIndex({ companyId: 1, timestamp: -1 }, { name: "alerts_companyId_timestamp", background: true }),
+  ]);
+}
+
 
 // ─── companies ────────────────────────────────────────────────────────────────
 
