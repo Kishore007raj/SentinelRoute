@@ -151,6 +151,76 @@ export async function calculateRoutePrediction(shipment: Shipment): Promise<Rout
     console.error("[PredictionEngine] Failed to save risk calculation:", err);
   });
 
+  // ── Risk delta audit: risk_calculated / risk_increased / risk_decreased ───
+  // Compare new risk score against the most recent prior calculation for this
+  // shipment. Fire-and-forget — never blocks the prediction result.
+  (async () => {
+    try {
+      const currentRiskScore = riskCalc.overallRiskScore;
+
+      // Fetch previous calculation (sorted by createdAt desc, skip the one we just inserted)
+      const previousCalc = await db
+        .collection("risk_calculations")
+        .find({ companyId, shipmentId: shipment.id })
+        .sort({ createdAt: -1 })
+        .skip(1)   // skip the record we just inserted
+        .limit(1)
+        .toArray();
+
+      const riskDeltaMetadata = {
+        predictionId,
+        currentRiskScore,
+        delayProbability,
+        disruptionProbability,
+        overallOperationalConfidence,
+        contributingFactors,
+      };
+
+      if (previousCalc.length === 0) {
+        // First calculation for this shipment
+        await createIntelligenceAudit({
+          companyId,
+          shipmentId: shipment.id,
+          eventType:  "risk_calculated",
+          source:     "PredictionEngine",
+          metadata:   { ...riskDeltaMetadata, isFirstCalculation: true },
+        });
+      } else {
+        const prevScore = previousCalc[0].overallRiskScore as number;
+        const delta     = currentRiskScore - prevScore;
+
+        if (Math.abs(delta) < 3) {
+          // Negligible change — still record it as a baseline recalculation
+          await createIntelligenceAudit({
+            companyId,
+            shipmentId: shipment.id,
+            eventType:  "risk_calculated",
+            source:     "PredictionEngine",
+            metadata:   { ...riskDeltaMetadata, previousRiskScore: prevScore, delta, change: "stable" },
+          });
+        } else if (delta > 0) {
+          await createIntelligenceAudit({
+            companyId,
+            shipmentId: shipment.id,
+            eventType:  "risk_increased",
+            source:     "PredictionEngine",
+            metadata:   { ...riskDeltaMetadata, previousRiskScore: prevScore, delta, change: "increased" },
+          });
+        } else {
+          await createIntelligenceAudit({
+            companyId,
+            shipmentId: shipment.id,
+            eventType:  "risk_decreased",
+            source:     "PredictionEngine",
+            metadata:   { ...riskDeltaMetadata, previousRiskScore: prevScore, delta, change: "decreased" },
+          });
+        }
+      }
+    } catch (auditErr) {
+      console.error("[PredictionEngine] Risk delta audit failed:", auditErr);
+    }
+  })();
+
   // ── Audit events (fire-and-forget) ────────────────────────────────────────
 
   createIntelligenceAudit({

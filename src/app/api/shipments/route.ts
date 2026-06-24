@@ -133,6 +133,22 @@ export async function POST(req: NextRequest) {
     confidencePercent,
     predictiveAlert,
     riskBreakdown,
+    // Mappls coordinate fields (optional)
+    originName,
+    originAddress,
+    originLat,
+    originLng,
+    originPlaceId,
+    destinationName,
+    destinationAddress,
+    destinationLat,
+    destinationLng,
+    destinationPlaceId,
+    // Cargo + schedule (optional)
+    cargoWeightKg,
+    cargoVolumeM3,
+    plannedDeparture,
+    plannedArrival,
   } = raw as unknown as CreateShipmentRequest;
 
   // Also extract weather/disruption scores for at-risk classification
@@ -214,6 +230,22 @@ export async function POST(req: NextRequest) {
                          : undefined,
     createdAt:         now,
     updatedAt:         now,
+    // Mappls location data
+    ...(originName       ? { originName }       : {}),
+    ...(originAddress    ? { originAddress }    : {}),
+    ...(typeof originLat === "number" && isFinite(originLat) ? { originLat } : {}),
+    ...(typeof originLng === "number" && isFinite(originLng) ? { originLng } : {}),
+    ...(originPlaceId    ? { originPlaceId }    : {}),
+    ...(destinationName       ? { destinationName }       : {}),
+    ...(destinationAddress    ? { destinationAddress }    : {}),
+    ...(typeof destinationLat === "number" && isFinite(destinationLat) ? { destinationLat } : {}),
+    ...(typeof destinationLng === "number" && isFinite(destinationLng) ? { destinationLng } : {}),
+    ...(destinationPlaceId    ? { destinationPlaceId }    : {}),
+    // Cargo + schedule
+    ...(typeof cargoWeightKg === "number" && isFinite(cargoWeightKg) ? { cargoWeightKg } : {}),
+    ...(typeof cargoVolumeM3 === "number" && isFinite(cargoVolumeM3) ? { cargoVolumeM3 } : {}),
+    ...(plannedDeparture ? { plannedDeparture } : {}),
+    ...(plannedArrival   ? { plannedArrival }   : {}),
   };
 
   try {

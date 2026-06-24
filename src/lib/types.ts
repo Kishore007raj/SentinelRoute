@@ -76,7 +76,7 @@ export interface Shipment {
   predictiveAlert?:  string;
   /** Full breakdown stored at dispatch time — never reconstructed */
   riskBreakdown?:    RiskBreakdown;
-  /** OSRM road geometry [lat, lng][] stored at dispatch — used for map rendering */
+  /** Road geometry [lng, lat][] stored at dispatch — used for map rendering */
   geometry?:         [number, number][];
   userId?:           string;
   /** Tenant isolation — set at creation from authenticated user's company */
@@ -85,19 +85,65 @@ export interface Shipment {
   createdByUserId?:  string;
   createdAt?:        string;
   updatedAt?:        string;
+  // ── Mappls location data (Phase 3 — coordinate-aware shipments) ──────────
+  /** Origin display name from Mappls autosuggest */
+  originName?:            string;
+  /** Origin full address string */
+  originAddress?:         string;
+  /** Origin latitude (WGS84) */
+  originLat?:             number;
+  /** Origin longitude (WGS84) */
+  originLng?:             number;
+  /** Mappls eLoc placeId for origin */
+  originPlaceId?:         string;
+  /** Destination display name from Mappls autosuggest */
+  destinationName?:       string;
+  /** Destination full address string */
+  destinationAddress?:    string;
+  /** Destination latitude (WGS84) */
+  destinationLat?:        number;
+  /** Destination longitude (WGS84) */
+  destinationLng?:        number;
+  /** Mappls eLoc placeId for destination */
+  destinationPlaceId?:    string;
+  // ── Cargo + schedule data (Phase 9 — Module 4 readiness) ─────────────────
+  /** Gross cargo weight in kilograms */
+  cargoWeightKg?:         number;
+  /** Cargo volume in cubic metres */
+  cargoVolumeM3?:         number;
+  /** ISO-8601 planned departure datetime (UTC) */
+  plannedDeparture?:      string;
+  /** ISO-8601 planned arrival datetime (UTC) */
+  plannedArrival?:        string;
 }
 
 // ─── Pending shipment (form state before dispatch) ────────────────────────────
 
 export interface PendingShipment {
-  origin:         string;
-  destination:    string;
-  vehicleType:    string;
-  cargoType:      string;
-  urgency:        string;
-  deadline?:      string;
-  insurance?:     string;
-  tempSensitive?: string;
+  origin:              string;
+  destination:         string;
+  vehicleType:         string;
+  cargoType:           string;
+  urgency:             string;
+  deadline?:           string;
+  insurance?:          string;
+  tempSensitive?:      string;
+  // Mappls coordinate data
+  originName?:         string;
+  originAddress?:      string;
+  originLat?:          number;
+  originLng?:          number;
+  originPlaceId?:      string;
+  destinationName?:    string;
+  destinationAddress?: string;
+  destinationLat?:     number;
+  destinationLng?:     number;
+  destinationPlaceId?: string;
+  // Cargo + schedule
+  cargoWeightKg?:      number;
+  cargoVolumeM3?:      number;
+  plannedDeparture?:   string;
+  plannedArrival?:     string;
 }
 
 // ─── API shapes ───────────────────────────────────────────────────────────────
@@ -118,21 +164,37 @@ export interface AnalyzeRoutesResponse {
 }
 
 export interface CreateShipmentRequest {
-  origin:            string;
-  destination:       string;
-  vehicleType:       string;
-  cargoType:         string;
-  urgency:           string;
-  routeId:           string;
-  routeName:         string;
-  riskScore:         number;
-  riskLevel:         RiskLevel;
-  eta:               string;
-  distance:          string;
-  confidencePercent: number;
-  predictiveAlert?:  string;
+  origin:              string;
+  destination:         string;
+  vehicleType:         string;
+  cargoType:           string;
+  urgency:             string;
+  routeId:             string;
+  routeName:           string;
+  riskScore:           number;
+  riskLevel:           RiskLevel;
+  eta:                 string;
+  distance:            string;
+  confidencePercent:   number;
+  predictiveAlert?:    string;
   /** Full breakdown from the route analysis — stored on the shipment */
-  riskBreakdown?:    RiskBreakdown;
+  riskBreakdown?:      RiskBreakdown;
+  // Mappls coordinate data (optional — gracefully absent for legacy shipments)
+  originName?:         string;
+  originAddress?:      string;
+  originLat?:          number;
+  originLng?:          number;
+  originPlaceId?:      string;
+  destinationName?:    string;
+  destinationAddress?: string;
+  destinationLat?:     number;
+  destinationLng?:     number;
+  destinationPlaceId?: string;
+  // Cargo + schedule
+  cargoWeightKg?:      number;
+  cargoVolumeM3?:      number;
+  plannedDeparture?:   string;
+  plannedArrival?:     string;
 }
 
 // ─── User Settings ────────────────────────────────────────────────────────────
