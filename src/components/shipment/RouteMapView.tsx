@@ -8,18 +8,7 @@ import { AiInsightBox } from "./AiInsightBox";
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
-// ─── City coordinate fallbacks for map centering ──────────────────────────────
-const CITY_COORDS: Record<string, [number, number]> = {
-  Chennai:    [13.0827, 80.2707],
-  Bangalore:  [12.9716, 77.5946],
-  Hyderabad:  [17.3850, 78.4867],
-  Pune:       [18.5204, 73.8567],
-  Mumbai:     [19.0760, 72.8777],
-  Coimbatore: [11.0168, 76.9558],
-  Salem:      [11.6643, 78.1460],
-  Thrissur:   [10.5276, 76.2144],
-  Vijayawada: [16.5062, 80.6480],
-};
+
 
 // ─── Human-readable risk factor labels ───────────────────────────────────────
 
@@ -75,7 +64,7 @@ interface RouteMapViewProps {
   aiLoading?: boolean;
   cargoType?: string;
   urgency?: string;
-  /** "osrm+openweather" | "static-fallback" | undefined */
+  /** "mappls+openweather" | "mappls+openweather+tomtom" | "static-fallback" | undefined */
   dataSource?: string;
 }
 
@@ -109,23 +98,23 @@ export function RouteMapView({
     iconAnchor: [12, 41],
   }) : null;
 
-  // Derive map center from city names or fall back to India center
-  const originCoords      = origin      ? CITY_COORDS[origin]      : null;
-  const destCoords        = destination ? CITY_COORDS[destination]  : null;
+  // Derive map center from geometry bounds
+  let originCoords: [number, number] | null = null;
+  let destCoords: [number, number] | null = null;
+
+  if (route.geometry && route.geometry.length > 1) {
+    originCoords = route.geometry[0];
+    destCoords   = route.geometry[route.geometry.length - 1];
+  }
+
   const mapCenter: [number, number] =
     originCoords && destCoords
       ? [(originCoords[0] + destCoords[0]) / 2, (originCoords[1] + destCoords[1]) / 2]
-      : originCoords ?? destCoords ?? [20.5937, 78.9629];
+      : [20.5937, 78.9629]; // Default India center
 
-  // Build polyline: use real OSRM geometry when available, fall back to straight line
-  const polylinePoints: [number, number][] =
-    route.geometry && route.geometry.length > 1
-      ? route.geometry
-      : originCoords && destCoords
-        ? [originCoords, destCoords]
-        : [];
+  const polylinePoints: [number, number][] = route.geometry ?? [];
 
-  const isLiveData = dataSource === "osrm+openweather" || dataSource === "osrm+openweather+tomtom";
+  const isLiveData = dataSource === "mappls+openweather" || dataSource === "mappls+openweather+tomtom";
   const isFallback = dataSource === "static-fallback";
 
   if (!isClient) {
@@ -149,8 +138,8 @@ export function RouteMapView({
             <div className="flex items-center gap-2">
               <Wifi className="w-3.5 h-3.5 shrink-0" />
               <span>
-                Live data — OSRM routing + OpenWeather
-                {dataSource === "osrm+openweather+tomtom" ? " + TomTom Traffic" : ""}
+                Live data — Mappls routing + OpenWeather
+                {dataSource === "mappls+openweather+tomtom" ? " + TomTom Traffic" : ""}
               </span>
             </div>
           ) : isFallback ? (

@@ -8,6 +8,8 @@
  * to avoid hammering the API and filling logs with warnings.
  */
 
+import { GEMINI_API_KEY } from "./env";
+
 const TIMEOUT_MS = 10_000;
 
 // In-process cooldown after a 429 — avoids log spam and wasted quota
@@ -19,7 +21,7 @@ const RATE_LIMIT_COOLDOWN_MS = 60_000; // 60 seconds
  * Returns a deterministic fallback string on any failure — never throws.
  */
 export async function generateExplanation(prompt: string): Promise<string | null> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = GEMINI_API_KEY();
   if (!apiKey) return null;
 
   // Skip the call entirely if we're still in the post-429 cooldown window

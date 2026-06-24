@@ -1,4 +1,4 @@
-﻿/**
+/**
  * mappls.ts — Mappls (MapMyIndia) API integration for SentinelRoute.
  *
  * Capabilities:
@@ -236,11 +236,11 @@ export async function mapplsRoute(
   originLat: number,
   destLng:   number,
   destLat:   number
-): Promise<MapplsRouteResult | null> {
+): Promise<MapplsRouteResult[]> {
   const apiKey = MAPPLS_API_KEY();
   if (!apiKey) {
     console.warn("[mappls] MAPPLS_API_KEY not set — route unavailable");
-    return null;
+    return [];
   }
 
   const origin = `${originLng},${originLat}`;
@@ -253,21 +253,22 @@ export async function mapplsRoute(
     `&resource=route_adv` +
     `&geometries=geojson` +
     `&overview=full` +
+    `&alternatives=true` +
     `&access_token=${apiKey}`;
 
   const data = await mapplsFetch<MapplsDirectionsResponse>(url);
-  const route = data?.routes?.[0];
+  const routes = data?.routes ?? [];
 
-  if (!route || route.distance == null || route.duration == null) {
+  if (routes.length === 0) {
     console.warn(`[mappls] No route returned for ${origin} -> ${dest}`);
-    return null;
+    return [];
   }
 
-  return {
-    distanceKm:      Math.round(route.distance / 1000),
-    durationMinutes: Math.round(route.duration  / 60),
+  return routes.map((route) => ({
+    distanceKm:      Math.round((route.distance ?? 0) / 1000),
+    durationMinutes: Math.round((route.duration ?? 0) / 60),
     geometry:        route.geometry?.coordinates ?? [],
-  };
+  }));
 }
 
 /**
@@ -277,6 +278,6 @@ export async function mapplsRoute(
 export async function mapplsRouteByCoords(
   origin: { lat: number; lng: number },
   dest:   { lat: number; lng: number }
-): Promise<MapplsRouteResult | null> {
+): Promise<MapplsRouteResult[]> {
   return mapplsRoute(origin.lng, origin.lat, dest.lng, dest.lat);
 }

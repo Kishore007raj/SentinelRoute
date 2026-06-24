@@ -12,10 +12,12 @@
 import { MongoClient, type Db } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb-indexes";
 import { ensureWorkforceIndexes } from "@/lib/workforce-indexes";
+import { MONGODB_URI } from "@/lib/env";
 
-// ─── Env validation — fail fast ───────────────────────────────────────────────
 
-const uri = process.env.MONGODB_URI;
+// ─── URI validation — fail fast ─────────────────────────────────────────────────
+
+const uri = MONGODB_URI();
 
 if (!uri) {
   throw new Error(

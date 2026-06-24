@@ -17,13 +17,15 @@
 
 import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
+import { FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY } from "./env";
 
 // ─── Env check ────────────────────────────────────────────────────────────────
 
-const projectId   = process.env.FIREBASE_PROJECT_ID;
-const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+const projectId   = FIREBASE_PROJECT_ID();
+const clientEmail = FIREBASE_CLIENT_EMAIL();
 // .env.local stores \n as literal backslash-n — replace with real newlines
-const privateKey  = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+const rawKey      = FIREBASE_PRIVATE_KEY();
+const privateKey  = rawKey ? rawKey.replace(/\\n/g, "\n") : "";
 
 const isConfigured = !!(projectId && clientEmail && privateKey);
 

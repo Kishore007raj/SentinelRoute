@@ -16,28 +16,21 @@
  */
 
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+import { DATA_ENCRYPTION_KEY } from "./env";
 
-// ─── Environment validation ───────────────────────────────────────────────────
-
-const encryptionKey = process.env.DATA_ENCRYPTION_KEY;
-
-if (!encryptionKey) {
-  console.warn(
-    "[encryption] DATA_ENCRYPTION_KEY not set.\n" +
-    "Sensitive data encryption is disabled. Set a 32-byte base64 key in .env.local"
-  );
-}
+// ─── Encryption key accessor ──────────────────────────────────────────────────
 
 function getEncryptionKey(): Buffer {
-  if (!encryptionKey) {
+  const raw = DATA_ENCRYPTION_KEY();
+  if (!raw) {
     throw new Error("DATA_ENCRYPTION_KEY not configured");
   }
-  
-  const key = Buffer.from(encryptionKey, "base64");
+
+  const key = Buffer.from(raw, "base64");
   if (key.length !== 32) {
     throw new Error("DATA_ENCRYPTION_KEY must be exactly 32 bytes when base64 decoded");
   }
-  
+
   return key;
 }
 

@@ -12,21 +12,13 @@
  * Always returns a safe fallback — never throws to callers.
  */
 
+import { TRAFFIC_API_KEY } from "./env";
+import { type TrafficProvider, type TrafficResult } from "./traffic-provider";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface TomTomTrafficResult {
-  /** Real congestion score 0–100 derived from flow data. -1 = unavailable. */
-  trafficScore:    number;
-  /** Human-readable incident descriptions to surface as route alerts. */
-  incidents:       string[];
-  /** True if any incident is a full road closure on this corridor. */
-  hasRoadClosure:  boolean;
-  /** True if TomTom data was successfully fetched (false = fallback values). */
-  isLive:          boolean;
-}
-
 /** Safe fallback returned when TomTom is unavailable. */
-const FALLBACK: TomTomTrafficResult = {
+const FALLBACK: TrafficResult = {
   trafficScore:   -1,
   incidents:      [],
   hasRoadClosure: false,
@@ -243,20 +235,21 @@ async function fetchFlowScore(
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-/**
- * Fetches real traffic data for the corridor between origin and destination.
- *
- * Runs incidents + flow in parallel with a shared 10s AbortController.
- * Returns FALLBACK on any error — callers must handle isLive: false.
- *
- * @param originCoords  [lng, lat] of origin city
- * @param destCoords    [lng, lat] of destination city
- */
-export async function getTomTomTrafficData(
-  originCoords: [number, number],
-  destCoords:   [number, number]
-): Promise<TomTomTrafficResult> {
-  const apiKey = process.env.TRAFFIC_API_KEY;
+export class TomTomTrafficProvider implements TrafficProvider {
+  /**
+   * Fetches real traffic data for the corridor between origin and destination.
+   *
+   * Runs incidents + flow in parallel with a shared 10s AbortController.
+   * Returns FALLBACK on any error — callers must handle isLive: false.
+   *
+   * @param originCoords  [lng, lat] of origin city
+   * @param destCoords    [lng, lat] of destination city
+   */
+  async getTrafficData(
+    originCoords: [number, number],
+    destCoords:   [number, number]
+  ): Promise<TrafficResult> {
+  const apiKey = TRAFFIC_API_KEY();
   if (!apiKey) {
     console.warn("[tomtom] TRAFFIC_API_KEY not set — skipping live traffic");
     return FALLBACK;
@@ -316,4 +309,5 @@ export async function getTomTomTrafficData(
     }
     return FALLBACK;
   }
+}
 }

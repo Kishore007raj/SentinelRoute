@@ -16,6 +16,7 @@
 import { getDb } from "../mongodb";
 import { createIntelligenceAudit } from "../intelligence-audit";
 import type { Incident, IncidentCategory } from "../types";
+import { NEWS_API_KEY } from "../env";
 
 // ─── NewsAPI response shapes ──────────────────────────────────────────────────
 
@@ -228,7 +229,7 @@ export async function getNewsRiskContribution(
     normalizedIncidents: [],
   };
 
-  const apiKey = process.env.NEWS_API_KEY;
+  const apiKey = NEWS_API_KEY();
   let articles: NewsAPIArticle[] = [];
 
   if (!apiKey) {

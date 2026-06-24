@@ -62,7 +62,7 @@ export function deriveConfidence(
   const weatherPenalty    = Math.round(weather    * 0.25);
   const trafficPenalty    = Math.round(traffic    * 0.20);
   const disruptionPenalty = Math.round(disruption * 0.15);
-  const sourceBonus       = dataSource === "osrm+openweather" ? 5 : -8;
+  const sourceBonus       = dataSource === "mappls+openweather" || dataSource === "mappls+openweather+tomtom" ? 5 : -8;
 
   let spreadPenalty    = 0;
   let clearWinnerBonus = 0;

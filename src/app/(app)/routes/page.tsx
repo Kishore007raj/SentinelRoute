@@ -585,14 +585,14 @@ export default function RoutesPage() {
               {dataSource && (
                 <div className={cn(
                   "flex items-start gap-2 text-xs font-medium px-4 py-3 rounded-lg border mb-5",
-                  dataSource === "osrm+openweather"
+                  dataSource === "mappls+openweather"
                     ? "bg-emerald-400/5 border-emerald-400/20 text-emerald-400"
                     : "bg-amber-400/5 border-amber-400/20 text-amber-400"
                 )}>
-                  {dataSource === "osrm+openweather" ? (
+                  {dataSource === "mappls+openweather" ? (
                     <div className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 mt-0.5" />
-                      <span>Live data — OSRM routing + OpenWeather active</span>
+                      <span>Live data — Mappls routing + OpenWeather active</span>
                     </div>
                   ) : (
                     <div className="space-y-1">

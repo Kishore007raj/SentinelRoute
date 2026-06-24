@@ -17,6 +17,11 @@ import { createServer } from "http";
 import { parse } from "url";
 import next from "next";
 import { Server as SocketIOServer } from "socket.io";
+import { validateStartup, logEnvStatus } from "./src/lib/env";
+
+// ── Startup validation — fail fast if critical env vars are missing ──────────
+validateStartup();
+logEnvStatus();
 
 const dev  = process.env.NODE_ENV !== "production";
 const port = parseInt(process.env.PORT ?? "3000", 10);

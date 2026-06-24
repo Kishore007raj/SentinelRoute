@@ -155,6 +155,76 @@ const FESTIVAL_CALENDAR: FestivalEntry[] = [
     riskLevel: "critical",
     affectedStates: ["WB", "OR", "JH", "BR"],
   },
+  {
+    id: "holi",
+    name: "Holi",
+    state: "national",
+    startDate: "03-24",
+    endDate: "03-25",
+    congestionMultiplier: 1.8,
+    riskLevel: "high",
+    affectedStates: ["all"],
+  },
+  {
+    id: "navratri",
+    name: "Navratri",
+    state: "national",
+    startDate: "10-03",
+    endDate: "10-11",
+    congestionMultiplier: 1.7,
+    riskLevel: "high",
+    affectedStates: ["all"],
+  },
+  {
+    id: "ugadi",
+    name: "Ugadi",
+    state: "national",
+    startDate: "04-09",
+    endDate: "04-09",
+    congestionMultiplier: 1.6,
+    riskLevel: "medium",
+    affectedStates: ["KA", "AP", "TS"],
+  },
+  {
+    id: "bihu",
+    name: "Bihu",
+    state: "AS",
+    startDate: "04-14",
+    endDate: "04-15",
+    congestionMultiplier: 1.5,
+    riskLevel: "medium",
+    affectedStates: ["AS"],
+  },
+  {
+    id: "baisakhi",
+    name: "Baisakhi",
+    state: "PB",
+    startDate: "04-13",
+    endDate: "04-14",
+    congestionMultiplier: 1.6,
+    riskLevel: "medium",
+    affectedStates: ["PB", "HR"],
+  },
+  {
+    id: "vishu",
+    name: "Vishu",
+    state: "KL",
+    startDate: "04-14",
+    endDate: "04-14",
+    congestionMultiplier: 1.6,
+    riskLevel: "medium",
+    affectedStates: ["KL"],
+  },
+  {
+    id: "puthandu",
+    name: "Puthandu",
+    state: "TN",
+    startDate: "04-14",
+    endDate: "04-14",
+    congestionMultiplier: 1.6,
+    riskLevel: "medium",
+    affectedStates: ["TN"],
+  },
 ];
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
@@ -193,7 +263,21 @@ export async function getFestivalRiskContribution(
   const windowEnd = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
   const windowEndMMDD = toMMDD(windowEnd);
 
-  const activeFestivals: FestivalEntry[] = FESTIVAL_CALENDAR.filter((fest) => {
+  const db = await getDb();
+  const col = db.collection<FestivalEntry>("festival_calendar");
+  let allFestivals = await col.find({}).toArray();
+
+  if (allFestivals.length === 0) {
+    // Seed database if empty
+    await Promise.all(
+      FESTIVAL_CALENDAR.map((f) =>
+        col.updateOne({ id: f.id }, { $set: f }, { upsert: true })
+      )
+    );
+    allFestivals = await col.find({}).toArray();
+  }
+
+  const activeFestivals: FestivalEntry[] = allFestivals.filter((fest) => {
     // Is the festival currently active OR starting within 3 days?
     const isCurrentlyActive = isDateInRange(todayMMDD, fest.startDate, fest.endDate);
     const isUpcoming        = todayMMDD <= windowEndMMDD && windowEndMMDD >= fest.startDate;
@@ -234,12 +318,11 @@ export async function getFestivalRiskContribution(
     return order[f.riskLevel] > order[worst] ? f.riskLevel : worst;
   }, "low" as FestivalEntry["riskLevel"]);
 
-  // Persist active festivals to festival_calendar collection (upsert, idempotent)
+  // Persist active festivals updates (idempotent)
   try {
-    const db = await getDb();
     await Promise.all(
       activeFestivals.map((f) =>
-        db.collection("festival_calendar").updateOne(
+        col.updateOne(
           { id: f.id },
           { $set: { ...f, lastChecked: new Date().toISOString() } },
           { upsert: true }
@@ -273,8 +356,16 @@ export async function getFestivalRiskContribution(
 }
 
 /**
- * Returns the full static festival calendar (for API exposure / admin view).
+ * Returns the full festival calendar from the database (for API exposure / admin view).
+ * Falls back to static list if DB is not available.
  */
-export function getFestivalCalendar(): FestivalEntry[] {
+export async function getFestivalCalendar(): Promise<FestivalEntry[]> {
+  try {
+    const db = await getDb();
+    const festivals = await db.collection<FestivalEntry>("festival_calendar").find({}).toArray();
+    if (festivals.length > 0) return festivals;
+  } catch (err) {
+    console.error("[festival-intelligence] DB fetch failed, returning static list");
+  }
   return FESTIVAL_CALENDAR;
 }

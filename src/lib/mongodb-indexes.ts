@@ -43,6 +43,9 @@ export async function ensureIndexes(db: Db): Promise<void> {
       ensureOperationalAlertsIndexes(db),
       ensureIntelligenceAuditsIndexes(db),
       ensureFestivalCalendarIndexes(db),
+      // Pre-Module-4 Sprint Additions
+      ensureRouteAnalysesIndexes(db),
+      ensureWeatherSnapshotsIndexes(db),
     ]);
     console.log("[mongodb-indexes] All indexes ensured.");
   } catch (err) {
@@ -95,6 +98,23 @@ async function ensureCorridorStatisticsIndexes(db: Db): Promise<void> {
   await Promise.all([
     col.createIndex({ corridorId: 1 }, { unique: true, name: "corridors_id_unique", background: true }),
     col.createIndex({ origin: 1, destination: 1 }, { name: "corridors_origin_dest", background: true }),
+  ]);
+}
+
+async function ensureRouteAnalysesIndexes(db: Db): Promise<void> {
+  const col = db.collection("route_analyses");
+  await Promise.all([
+    col.createIndex({ computedAt: -1 }, { name: "route_analyses_computedAt_desc", background: true }),
+    col.createIndex({ origin: 1, destination: 1 }, { name: "route_analyses_origin_dest", background: true }),
+  ]);
+}
+
+async function ensureWeatherSnapshotsIndexes(db: Db): Promise<void> {
+  const col = db.collection("weather_snapshots");
+  await Promise.all([
+    col.createIndex({ shipmentId: 1 }, { name: "weather_snapshots_shipmentId", background: true }),
+    col.createIndex({ timestamp: -1 }, { name: "weather_snapshots_timestamp_desc", background: true }),
+    col.createIndex({ location: 1 }, { name: "weather_snapshots_location", background: true }),
   ]);
 }
 

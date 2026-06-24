@@ -75,6 +75,12 @@ export const firebaseConfig = {
 // ─── Server-only API keys (lazy — validated at request time) ──────────────────
 
 /**
+ * MongoDB connection URI — server-side only.
+ * Call MONGODB_URI() inside a request handler, never at top level.
+ */
+export const MONGODB_URI = lazyEnv("MONGODB_URI");
+
+/**
  * OpenWeather API key — server-side only.
  * Call OPENWEATHER_API_KEY() inside a request handler, never at top level.
  */
@@ -103,11 +109,26 @@ export const NEWS_API_KEY = lazyEnv("NEWS_API_KEY");
 /**
  * TomTom Traffic API key — server-side only.
  * Used by tomtom.ts for traffic incidents and flow data.
- * Call TRAFFIC_API_KEY() inside a request handler, never at top level.
+ * Stored in environment as TRAFFIC_API_KEY.
+ * Call TRAFFIC_API_KEY() or TOMTOM_API_KEY() (alias) inside a request handler.
  */
 export const TRAFFIC_API_KEY = lazyEnv("TRAFFIC_API_KEY");
 
-// ─── Aadhaar encryption key ───────────────────────────────────────────────────
+/**
+ * Alias for TRAFFIC_API_KEY — TomTom is the current traffic provider.
+ * Use this alias when explicitly referring to TomTom operations.
+ */
+export const TOMTOM_API_KEY = TRAFFIC_API_KEY;
+
+// ─── Data encryption ──────────────────────────────────────────────────────────
+
+/**
+ * DATA_ENCRYPTION_KEY — 32-byte base64 key for AES-256-GCM encryption.
+ *
+ * Used by encryption.ts for general-purpose field encryption (notes, etc.).
+ * Lazy accessor: throws at request time in production if missing.
+ */
+export const DATA_ENCRYPTION_KEY = lazyEnv("DATA_ENCRYPTION_KEY");
 
 /**
  * AADHAAR_ENCRYPTION_KEY — 32-byte key for AES-256-CBC Aadhaar encryption.
@@ -122,6 +143,84 @@ export const TRAFFIC_API_KEY = lazyEnv("TRAFFIC_API_KEY");
  * Production:  throws — missing key is a fatal runtime error, not a build error.
  */
 export const AADHAAR_ENCRYPTION_KEY = lazyEnv("AADHAAR_ENCRYPTION_KEY");
+
+// ─── Firebase Admin SDK (server-only) ────────────────────────────────────────
+
+/**
+ * Firebase Admin project ID — server-side only.
+ */
+export const FIREBASE_PROJECT_ID = lazyEnv("FIREBASE_PROJECT_ID");
+
+/**
+ * Firebase Admin client email — server-side only.
+ */
+export const FIREBASE_CLIENT_EMAIL = lazyEnv("FIREBASE_CLIENT_EMAIL");
+
+/**
+ * Firebase Admin private key — server-side only.
+ * Raw value with literal \n — callers must replace with real newlines.
+ */
+export const FIREBASE_PRIVATE_KEY = lazyEnv("FIREBASE_PRIVATE_KEY");
+
+/**
+ * Super admin seed secret for initialization scripts.
+ */
+export const SUPER_ADMIN_SEED_SECRET = lazyEnv("SUPER_ADMIN_SEED_SECRET");
+
+// ─── Startup validation (production fast-fail) ────────────────────────────────
+
+/**
+ * validateStartup() — Validates all critical environment variables.
+ *
+ * Call this once at application startup (e.g., in server.ts or instrumentation.ts).
+ * In production: throws immediately if any critical var is absent.
+ * In development: logs a summary of present/missing vars.
+ *
+ * Critical vars (app cannot function without these):
+ *   - MONGODB_URI          — database connection
+ *   - FIREBASE_PROJECT_ID  — auth (Firebase Admin)
+ *   - FIREBASE_CLIENT_EMAIL
+ *   - FIREBASE_PRIVATE_KEY
+ *   - MAPPLS_API_KEY       — location and routing
+ *   - OPENWEATHER_API_KEY  — weather intelligence
+ *   - NEWS_API_KEY         — news disruption signals
+ *   - DATA_ENCRYPTION_KEY  — field encryption
+ */
+export function validateStartup(): void {
+  const critical: string[] = [
+    "MONGODB_URI",
+    "FIREBASE_PROJECT_ID",
+    "FIREBASE_CLIENT_EMAIL",
+    "FIREBASE_PRIVATE_KEY",
+    "MAPPLS_API_KEY",
+    "OPENWEATHER_API_KEY",
+    "NEWS_API_KEY",
+    "TRAFFIC_API_KEY",
+    "DATA_ENCRYPTION_KEY",
+    "AADHAAR_ENCRYPTION_KEY",
+  ];
+
+  const missing: string[] = [];
+
+  for (const key of critical) {
+    const val = process.env[key];
+    if (!val || val.trim() === "") {
+      missing.push(key);
+    }
+  }
+
+  if (missing.length > 0) {
+    const list = missing.join(", ");
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        `[SentinelRoute] STARTUP FAILURE — Missing critical environment variables: ${list}\n` +
+        `Set these in your deployment environment and redeploy.`
+      );
+    } else {
+      console.warn(`\n[SentinelRoute] ⚠️  Missing environment variables: ${list}\n`);
+    }
+  }
+}
 
 // ─── Env summary (dev only) ───────────────────────────────────────────────────
 
@@ -141,14 +240,14 @@ export function logEnvStatus(): void {
     "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
     "NEXT_PUBLIC_FIREBASE_APP_ID",
     // Server secrets
+    "MONGODB_URI",
     "OPENWEATHER_API_KEY",
     "GEMINI_API_KEY",
     "MAPPLS_API_KEY",
     "NEWS_API_KEY",
     "TRAFFIC_API_KEY",
-    "AADHAAR_ENCRYPTION_KEY",
     "DATA_ENCRYPTION_KEY",
-    "MONGODB_URI",
+    "AADHAAR_ENCRYPTION_KEY",
     // Firebase Admin
     "FIREBASE_PROJECT_ID",
     "FIREBASE_CLIENT_EMAIL",
@@ -163,5 +262,3 @@ export function logEnvStatus(): void {
   }
   console.log("");
 }
-
-

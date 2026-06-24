@@ -1,38 +1,26 @@
 /**
  * weather.ts — OpenWeather API client for SentinelRoute.
  *
- * Fetches current weather conditions for a route corridor and converts
- * them into a weather risk score (0–100) for the risk engine.
+ * Provides:
+ *   1. Current weather for a corridor (origin + destination)
+ *   2. 5-day / 3-hour forecast for a coordinate pair
+ *   3. Weather intelligence (rain probability, storm risk, visibility risk, temp anomaly)
+ *   4. Snapshot persistence to weather_snapshots collection
  *
  * Strategy:
- *   - Sample weather at both origin and destination
+ *   - Sample weather at both origin and destination using coordinates
  *   - Take the worse of the two (most conservative risk estimate)
  *   - Convert weather conditions to a risk score
+ *   - No hardcoded city tables — all lookups use lat/lng
  *
- * API: OpenWeather Current Weather Data (free tier)
+ * API: OpenWeather Current Weather Data + 5 Day Forecast
  * Docs: https://openweathermap.org/current
+ *       https://openweathermap.org/forecast5
  *
- * Server-side only — uses OPENWEATHER_API_KEY (no NEXT_PUBLIC_ prefix).
+ * Server-side only — uses OPENWEATHER_API_KEY from env.ts (no NEXT_PUBLIC_ prefix).
  */
 
-// ─── City coordinates (same as google-maps.ts) ────────────────────────────────
-
-interface LatLng {
-  lat: number;
-  lon: number;
-}
-
-const CITY_COORDS: Record<string, LatLng> = {
-  Chennai:     { lat: 13.0827, lon: 80.2707 },
-  Bangalore:   { lat: 12.9716, lon: 77.5946 },
-  Hyderabad:   { lat: 17.3850, lon: 78.4867 },
-  Pune:        { lat: 18.5204, lon: 73.8567 },
-  Mumbai:      { lat: 19.0760, lon: 72.8777 },
-  Coimbatore:  { lat: 11.0168, lon: 76.9558 },
-  Salem:       { lat: 11.6643, lon: 78.1460 },
-  Thrissur:    { lat: 10.5276, lon: 76.2144 },
-  Vijayawada:  { lat: 16.5062, lon: 80.6480 },
-};
+import { OPENWEATHER_API_KEY } from "./env";
 
 // ─── OpenWeather API response types (subset) ──────────────────────────────────
 
@@ -43,9 +31,11 @@ interface OWWeatherCondition {
 }
 
 interface OWMain {
-  temp: number;       // Kelvin
+  temp: number;       // Celsius (units=metric)
   feels_like: number;
   humidity: number;   // %
+  temp_min?: number;
+  temp_max?: number;
 }
 
 interface OWWind {
@@ -63,10 +53,6 @@ interface OWSnow {
   "3h"?: number;
 }
 
-interface OWVisibility {
-  // metres
-}
-
 export interface OWCurrentWeather {
   weather: OWWeatherCondition[];
   main: OWMain;
@@ -76,6 +62,45 @@ export interface OWCurrentWeather {
   visibility?: number;  // metres
   dt: number;           // Unix timestamp
   name: string;         // city name
+  coord?: { lat: number; lon: number };
+}
+
+// ─── Forecast types ───────────────────────────────────────────────────────────
+
+export interface OWForecastItem {
+  dt: number;
+  main: OWMain;
+  weather: OWWeatherCondition[];
+  wind: OWWind;
+  rain?: { "3h"?: number };
+  snow?: { "3h"?: number };
+  visibility?: number;
+  pop: number;          // probability of precipitation 0–1
+  dt_txt: string;
+}
+
+export interface OWForecastResponse {
+  list: OWForecastItem[];
+  city: { name: string; country: string };
+}
+
+// ─── Weather Intelligence output ──────────────────────────────────────────────
+
+export interface WeatherIntelligence {
+  /** 0–100: probability of rain in next 24 hours */
+  rainProbability:    number;
+  /** 0–100: storm risk score */
+  stormRisk:         number;
+  /** 0–100: visibility impairment score */
+  visibilityRisk:    number;
+  /** Temperature deviation from seasonal norm (°C) */
+  temperatureAnomaly: number;
+  /** Composite weather risk score 0–100 */
+  overallRisk:       number;
+  /** Human-readable alert if conditions are adverse */
+  weatherAlert:      string | null;
+  /** Raw current weather */
+  current:           OWCurrentWeather | null;
 }
 
 // ─── Weather risk scoring ─────────────────────────────────────────────────────
@@ -121,8 +146,8 @@ function windRiskBonus(windSpeedMs: number, gustMs?: number): number {
   return 0;
 }
 
-function rainRiskBonus(rain?: OWRain): number {
-  const mm = rain?.["1h"] ?? rain?.["3h"] ?? 0;
+function rainRiskBonus(rain?: OWRain | { "3h"?: number }): number {
+  const mm = (rain as OWRain | undefined)?.["1h"] ?? rain?.["3h"] ?? 0;
   if (mm > 20) return 20; // heavy rain
   if (mm > 7)  return 12; // moderate rain
   if (mm > 2)  return 6;  // light rain
@@ -172,28 +197,51 @@ export function weatherToAlertText(weather: OWCurrentWeather): string | null {
   return null;
 }
 
-// ─── API fetch ────────────────────────────────────────────────────────────────
+// ─── API fetch helpers ────────────────────────────────────────────────────────
 
 /**
- * Fetches current weather for a single city.
+ * Fetches current weather by coordinate pair.
  * Returns null if the API key is missing or the call fails.
  */
-async function fetchCityWeather(city: string): Promise<OWCurrentWeather | null> {
-  const apiKey = process.env.OPENWEATHER_API_KEY;
+async function fetchWeatherByCoords(
+  lat: number,
+  lon: number
+): Promise<OWCurrentWeather | null> {
+  const apiKey = OPENWEATHER_API_KEY();
   if (!apiKey) return null;
 
-  const coords = CITY_COORDS[city];
-  let url: string;
-
-  if (coords) {
-    url = `https://api.openweathermap.org/data/2.5/weather?lat=${coords.lat}&lon=${coords.lon}&appid=${apiKey}&units=metric`;
-  } else {
-    url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)},IN&appid=${apiKey}&units=metric`;
-  }
+  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
 
   try {
     const res = await fetch(url, {
-      next: { revalidate: 1800 }, // cache for 30 minutes — weather doesn't change that fast
+      next: { revalidate: 1800 }, // cache for 30 minutes
+    });
+
+    if (!res.ok) {
+      console.error(`[weather] API error ${res.status} for (${lat.toFixed(3)},${lon.toFixed(3)})`);
+      return null;
+    }
+
+    return await res.json() as OWCurrentWeather;
+  } catch (err) {
+    console.error(`[weather] Fetch failed for (${lat},${lon}):`, err);
+    return null;
+  }
+}
+
+/**
+ * Fetches current weather by city name (string fallback for legacy city-name flows).
+ * Returns null if the API key is missing or the call fails.
+ */
+async function fetchWeatherByCityName(city: string): Promise<OWCurrentWeather | null> {
+  const apiKey = OPENWEATHER_API_KEY();
+  if (!apiKey) return null;
+
+  const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)},IN&appid=${apiKey}&units=metric`;
+
+  try {
+    const res = await fetch(url, {
+      next: { revalidate: 1800 },
     });
 
     if (!res.ok) {
@@ -206,6 +254,107 @@ async function fetchCityWeather(city: string): Promise<OWCurrentWeather | null> 
     console.error(`[weather] Fetch failed for ${city}:`, err);
     return null;
   }
+}
+
+/**
+ * Fetches 5-day / 3-hour forecast by coordinate pair.
+ * Returns null on failure.
+ */
+export async function fetchForecastByCoords(
+  lat: number,
+  lon: number
+): Promise<OWForecastResponse | null> {
+  const apiKey = OPENWEATHER_API_KEY();
+  if (!apiKey) return null;
+
+  const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&cnt=40`;
+
+  try {
+    const res = await fetch(url, {
+      next: { revalidate: 3600 }, // cache for 1 hour — forecast data
+    });
+
+    if (!res.ok) {
+      console.error(`[weather] Forecast API error ${res.status} for (${lat.toFixed(3)},${lon.toFixed(3)})`);
+      return null;
+    }
+
+    return await res.json() as OWForecastResponse;
+  } catch (err) {
+    console.error(`[weather] Forecast fetch failed for (${lat},${lon}):`, err);
+    return null;
+  }
+}
+
+// ─── Weather Intelligence ─────────────────────────────────────────────────────
+
+/**
+ * Derives WeatherIntelligence from current weather + 5-day forecast.
+ *
+ * rain probability   — max pop (probability of precipitation) across next 24h forecast items
+ * storm risk         — based on thunderstorm condition codes in forecast
+ * visibility risk    — worst visibility across current + forecast
+ * temp anomaly       — deviation from India's approximate seasonal norm (~28°C)
+ */
+export async function getWeatherIntelligence(
+  lat: number,
+  lon: number
+): Promise<WeatherIntelligence> {
+  const NEUTRAL: WeatherIntelligence = {
+    rainProbability:    0,
+    stormRisk:         0,
+    visibilityRisk:    0,
+    temperatureAnomaly: 0,
+    overallRisk:       20,
+    weatherAlert:      null,
+    current:           null,
+  };
+
+  const apiKey = OPENWEATHER_API_KEY();
+  if (!apiKey) return NEUTRAL;
+
+  const [current, forecast] = await Promise.all([
+    fetchWeatherByCoords(lat, lon),
+    fetchForecastByCoords(lat, lon),
+  ]);
+
+  if (!current) return NEUTRAL;
+
+  // ── Rain probability — from forecast pop values (next 24h = 8 x 3h slots) ──
+  const next24hItems = forecast?.list?.slice(0, 8) ?? [];
+  const maxPop = next24hItems.length > 0
+    ? Math.max(...next24hItems.map(f => f.pop ?? 0))
+    : 0;
+  const rainProbability = Math.round(maxPop * 100);
+
+  // ── Storm risk — thunderstorm code in current or next 24h ─────────────────
+  const hasThunderstorm =
+    current.weather.some(w => w.id >= 200 && w.id < 300) ||
+    next24hItems.some(f => f.weather.some(w => w.id >= 200 && w.id < 300));
+  const stormRisk = hasThunderstorm ? 85 : rainProbability > 70 ? 40 : 0;
+
+  // ── Visibility risk ────────────────────────────────────────────────────────
+  const visibilityRisk = visibilityRiskBonus(current.visibility);
+
+  // ── Temperature anomaly — difference from ~28°C seasonal norm for India ───
+  const INDIA_NORM_TEMP = 28;
+  const temperatureAnomaly = Math.round(current.main.temp - INDIA_NORM_TEMP);
+
+  // ── Overall risk ──────────────────────────────────────────────────────────
+  const currentRisk   = weatherToRiskScore(current);
+  const overallRisk   = Math.min(100, Math.max(currentRisk, stormRisk, Math.round(rainProbability * 0.5)));
+
+  const weatherAlert  = weatherToAlertText(current);
+
+  return {
+    rainProbability,
+    stormRisk,
+    visibilityRisk,
+    temperatureAnomaly,
+    overallRisk,
+    weatherAlert,
+    current,
+  };
 }
 
 // ─── Route weather assessment ─────────────────────────────────────────────────
@@ -221,8 +370,8 @@ export interface RouteWeatherResult {
 }
 
 /**
- * Fetches weather for both origin and destination, returns the
- * worst-case weather risk score for the corridor.
+ * Fetches weather for both origin and destination by name (legacy city-string flow).
+ * When coordinates are available, prefer getRouteWeatherByCoords() instead.
  *
  * Both fetches run in parallel for performance.
  * Falls back to neutral score (20) if the API key is missing or calls fail.
@@ -238,7 +387,7 @@ export async function getRouteWeather(
     destinationWeather: null,
   };
 
-  const apiKey = process.env.OPENWEATHER_API_KEY;
+  const apiKey = OPENWEATHER_API_KEY();
   if (!apiKey) {
     console.warn("[weather] OPENWEATHER_API_KEY not set — using neutral weather score");
     return NEUTRAL;
@@ -246,8 +395,8 @@ export async function getRouteWeather(
 
   // Fetch both in parallel
   const [originWeather, destinationWeather] = await Promise.all([
-    fetchCityWeather(origin),
-    fetchCityWeather(destination),
+    fetchWeatherByCityName(origin),
+    fetchWeatherByCityName(destination),
   ]);
 
   if (!originWeather && !destinationWeather) {
@@ -272,4 +421,154 @@ export async function getRouteWeather(
   );
 
   return { weatherScore, weatherAlert, originWeather, destinationWeather };
+}
+
+/**
+ * Fetches weather for both endpoints using coordinate pairs.
+ * Preferred over getRouteWeather() when Mappls coordinates are available.
+ */
+export async function getRouteWeatherByCoords(
+  originLat: number,
+  originLon: number,
+  destLat: number,
+  destLon: number
+): Promise<RouteWeatherResult> {
+  const NEUTRAL: RouteWeatherResult = {
+    weatherScore: 20,
+    weatherAlert: null,
+    originWeather: null,
+    destinationWeather: null,
+  };
+
+  const apiKey = OPENWEATHER_API_KEY();
+  if (!apiKey) {
+    console.warn("[weather] OPENWEATHER_API_KEY not set — using neutral weather score");
+    return NEUTRAL;
+  }
+
+  const [originWeather, destinationWeather] = await Promise.all([
+    fetchWeatherByCoords(originLat, originLon),
+    fetchWeatherByCoords(destLat, destLon),
+  ]);
+
+  if (!originWeather && !destinationWeather) {
+    console.warn("[weather] Both coord-based weather fetches failed — using neutral score");
+    return NEUTRAL;
+  }
+
+  const originScore      = originWeather      ? weatherToRiskScore(originWeather)      : 20;
+  const destinationScore = destinationWeather ? weatherToRiskScore(destinationWeather) : 20;
+  const weatherScore     = Math.max(originScore, destinationScore);
+
+  const worseWeather     = originScore >= destinationScore ? originWeather : destinationWeather;
+  const weatherAlert     = worseWeather ? weatherToAlertText(worseWeather) : null;
+
+  console.log(
+    `[weather] (${originLat.toFixed(3)},${originLon.toFixed(3)})(${originScore}) → ` +
+    `(${destLat.toFixed(3)},${destLon.toFixed(3)})(${destinationScore}) = corridor score ${weatherScore}`
+  );
+
+  return { weatherScore, weatherAlert, originWeather, destinationWeather };
+}
+
+// ─── Snapshot persistence ─────────────────────────────────────────────────────
+
+export interface WeatherSnapshot {
+  snapshotId:        string;
+  shipmentId:        string;
+  companyId:         string;
+  capturedAt:        string;
+  originLat?:        number;
+  originLon?:        number;
+  destLat?:          number;
+  destLon?:          number;
+  weatherScore:      number;
+  rainProbability:   number;
+  stormRisk:         number;
+  visibilityRisk:    number;
+  temperatureAnomaly: number;
+  weatherAlert:      string | null;
+  originCondition?:  string;
+  destCondition?:    string;
+}
+
+/**
+ * Persists a weather snapshot to the weather_snapshots collection.
+ * Fire-and-forget — failures are logged but never rethrow.
+ */
+export async function saveWeatherSnapshot(snapshot: WeatherSnapshot): Promise<void> {
+  try {
+    const { getDb } = await import("./mongodb");
+    const db = await getDb();
+    await db.collection("weather_snapshots").insertOne({
+      ...snapshot,
+      _insertedAt: new Date().toISOString(),
+    });
+    console.log(`[weather] Snapshot saved for shipment ${snapshot.shipmentId}`);
+  } catch (err) {
+    console.error("[weather] Failed to save weather snapshot:", err);
+  }
+}
+
+// ─── Coordinate-based sampling (from weather-service) ───────────────────────
+
+export interface WeatherPoint {
+  lat: number;
+  lng: number;
+  condition: string;
+  temp: number;
+  riskScore: number;
+}
+
+export async function getRouteWeatherRisk(coordinates: [number, number][]): Promise<{
+  averageRisk: number;
+  points: WeatherPoint[];
+}> {
+  const apiKey = OPENWEATHER_API_KEY();
+  if (!apiKey) {
+    return { averageRisk: 0, points: [] };
+  }
+
+  // Sample up to 5 evenly-spaced points from the geometry
+  const step = Math.max(1, Math.floor(coordinates.length / 4));
+  const sampledIndices = [0, step, step * 2, step * 3, coordinates.length - 1];
+  const uniqueIndices = Array.from(new Set(sampledIndices));
+  const pointsToFetch = uniqueIndices.map(i => coordinates[i]);
+
+  const weatherPoints: WeatherPoint[] = [];
+
+  for (const [lng, lat] of pointsToFetch) {
+    try {
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${apiKey}&units=metric`;
+      const response = await fetch(url);
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const condition = data.weather[0].main as string;
+      const temp = data.main.temp as number;
+
+      // Risk score based on condition
+      let riskScore = 10; // Base: Clear
+      if (condition === "Thunderstorm")           riskScore = 80;
+      else if (condition === "Snow")              riskScore = 60;
+      else if (condition === "Rain")              riskScore = 40;
+      else if (condition === "Drizzle")           riskScore = 25;
+      else if (condition === "Mist" || condition === "Fog") riskScore = 30;
+      else if (condition === "Haze")              riskScore = 15;
+
+      // Wind bonus
+      const windSpeedMs = data.wind?.speed ?? 0;
+      if (windSpeedMs > 14) riskScore = Math.min(100, riskScore + 15);
+
+      weatherPoints.push({ lat, lng, condition, temp, riskScore });
+    } catch (error) {
+      console.error("[weather] Fetch error in point sampling:", error);
+    }
+  }
+
+  const averageRisk = weatherPoints.length > 0
+    ? Math.round(weatherPoints.reduce((acc, p) => acc + p.riskScore, 0) / weatherPoints.length)
+    : 0;
+
+  return { averageRisk, points: weatherPoints };
 }

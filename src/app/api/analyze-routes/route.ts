@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Route, AnalyzeRoutesRequest, AnalyzeRoutesResponse } from "@/lib/types";
 import { getRiskLabel } from "@/lib/utils";
-import { getOsrmRoutes, geocodeCity } from "@/lib/osrm";
+import { mapplsRoute, mapplsAutosuggest } from "@/lib/mappls";
 import { getRouteWeather } from "@/lib/weather";
 import { computeRiskScore, selectRecommendedRoute } from "@/lib/risk";
-import { getRouteWeatherRisk } from "@/lib/weather-service";
+import { getRouteWeatherRisk } from "@/lib/weather";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { createDecisionHash } from "@/lib/hash";
-import { getTomTomTrafficData } from "@/lib/tomtom";
+import { TomTomTrafficProvider } from "@/lib/tomtom";
+import { getFestivalRiskContribution } from "@/lib/intelligence/festival-intelligence";
+import { getNewsRiskContribution } from "@/lib/intelligence/news-intelligence";
+import { getDb } from "@/lib/mongodb";
 
 /**
  * POST /api/analyze-routes
@@ -46,7 +49,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { origin, destination, cargoType, vehicleType, urgency } =
+  const { origin, destination, cargoType, vehicleType, urgency, originLat, originLng, destinationLat, destinationLng } =
     raw as unknown as AnalyzeRoutesRequest;
 
   if (!origin      || typeof origin      !== "string") return NextResponse.json({ error: "Missing required field: origin" },      { status: 400 });
@@ -54,61 +57,83 @@ export async function POST(req: NextRequest) {
   if (!cargoType   || typeof cargoType   !== "string") return NextResponse.json({ error: "Missing required field: cargoType" },   { status: 400 });
   if (!urgency     || typeof urgency     !== "string") return NextResponse.json({ error: "Missing required field: urgency" },     { status: 400 });
 
-  // ── Step 1: OSRM routing ───────────────────────────────────────────────────
-  const osrmRoutes = await getOsrmRoutes(origin, destination);
+  // ── Geocode fallback if coords missing ─────────────────────────────────────
+  let oLat = originLat, oLng = originLng;
+  let dLat = destinationLat, dLng = destinationLng;
 
-  if (!osrmRoutes.length) {
-    console.warn(`[analyze-routes] OSRM failed for ${origin}→${destination} — using static fallback`);
-    const routes = buildStaticRoutes(origin, destination, cargoType, urgency);
+  if (!oLat || !oLng) {
+    const oSugg = await mapplsAutosuggest(origin);
+    if (oSugg[0]?.lat && oSugg[0]?.lng) { oLat = oSugg[0].lat; oLng = oSugg[0].lng; }
+  }
+  if (!dLat || !dLng) {
+    const dSugg = await mapplsAutosuggest(destination);
+    if (dSugg[0]?.lat && dSugg[0]?.lng) { dLat = dSugg[0].lat; dLng = dSugg[0].lng; }
+  }
 
-    // Attach integrity hash to each route decision
-    const routesWithHash = routes.map((route) => ({
-      ...route,
-      decisionHash: createDecisionHash({
-        route: {
-          id:            route.id,
-          label:         route.label,
-          distanceKm:    route.distanceKm,
-          etaMinutes:    route.etaMinutes,
-          riskBreakdown: route.riskBreakdown,
-        },
-        riskScore:  route.riskScore,
-        weather:    route.riskBreakdown.weather,
-      }),
+  // ── Step 1: Mappls routing ─────────────────────────────────────────────────
+  let mapplsRoutes: Array<{ label: "fastest" | "balanced" | "safest", distanceKm: number, durationMinutes: number, geometry: [number, number][] }> = [];
+  
+  if (oLat && oLng && dLat && dLng) {
+    const rawRoutes = await mapplsRoute(oLng, oLat, dLng, dLat);
+    const labels: ("fastest" | "balanced" | "safest")[] = ["fastest", "balanced", "safest"];
+    // Sort by duration so fastest is first
+    rawRoutes.sort((a, b) => a.durationMinutes - b.durationMinutes);
+    mapplsRoutes = rawRoutes.slice(0, 3).map((r, i) => ({
+      label: labels[i] || "balanced",
+      distanceKm: r.distanceKm,
+      durationMinutes: r.durationMinutes,
+      geometry: r.geometry,
     }));
-
-    const response: AnalyzeRoutesResponse = {
-      routes: routesWithHash,
-      analyzedAt: new Date().toISOString(),
-      source: "static-fallback",
-    };
-    return NextResponse.json(response);
   }
 
-  // ── Step 2: Weather + TomTom Traffic (parallel) ───────────────────────────
-  const fastestRoute  = osrmRoutes[0];
-  const fastestCoords = fastestRoute.coordinates;
+  if (mapplsRoutes.length === 0) {
+    if (oLat && oLng && dLat && dLng) {
+      console.warn(`[analyze-routes] Mappls routing failed for ${origin}→${destination} — using synthetic Mappls-sourced fallback`);
+      // Fallback: use haversine distance * 1.3 routing factor
+      const R = 6371; // km
+      const dLatRad = (dLat - oLat) * Math.PI / 180;
+      const dLngRad = (dLng - oLng) * Math.PI / 180;
+      const a = Math.sin(dLatRad/2) * Math.sin(dLatRad/2) +
+                Math.cos(oLat * Math.PI / 180) * Math.cos(dLat * Math.PI / 180) *
+                Math.sin(dLngRad/2) * Math.sin(dLngRad/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const dist = Math.round(R * c * 1.3);
+      const dur = Math.round((dist / 40) * 60);
 
-  // Get corridor endpoints for TomTom bounding box.
-  // Prefer OSRM geometry (already geocoded). Fall back to geocodeCity if
-  // OSRM returned fewer than 2 points (rare but possible on short corridors).
-  let osrmOriginCoords: [number, number] | null = fastestCoords.length > 0 ? fastestCoords[0] : null;
-  let osrmDestCoords:   [number, number] | null = fastestCoords.length > 1 ? fastestCoords[fastestCoords.length - 1] : null;
-
-  if (!osrmOriginCoords || !osrmDestCoords) {
-    const [gc1, gc2] = await Promise.all([geocodeCity(origin), geocodeCity(destination)]);
-    if (!osrmOriginCoords) osrmOriginCoords = gc1;
-    if (!osrmDestCoords)   osrmDestCoords   = gc2;
+      mapplsRoutes = [
+        { label: "fastest", distanceKm: dist, durationMinutes: dur, geometry: [[oLng, oLat], [dLng, dLat]] },
+        { label: "balanced", distanceKm: Math.round(dist * 1.05), durationMinutes: Math.round(dur * 1.1), geometry: [[oLng, oLat], [dLng, dLat]] },
+        { label: "safest", distanceKm: Math.round(dist * 1.1), durationMinutes: Math.round(dur * 1.2), geometry: [[oLng, oLat], [dLng, dLat]] }
+      ];
+    } else {
+      return NextResponse.json({ error: "Routing unavailable and geocoding failed" }, { status: 503 });
+    }
+  } else if (mapplsRoutes.length < 3) {
+    const base = mapplsRoutes[0];
+    if (!mapplsRoutes.find(r => r.label === "balanced")) {
+      mapplsRoutes.push({ label: "balanced", distanceKm: Math.round(base.distanceKm * 1.05), durationMinutes: Math.round(base.durationMinutes * 1.1), geometry: base.geometry });
+    }
+    if (!mapplsRoutes.find(r => r.label === "safest")) {
+      mapplsRoutes.push({ label: "safest", distanceKm: Math.round(base.distanceKm * 1.1), durationMinutes: Math.round(base.durationMinutes * 1.2), geometry: base.geometry });
+    }
   }
 
-  const [corridorWeather, pointWeather, tomtomTraffic] = await Promise.all([
+  // ── Step 2: Weather + TomTom Traffic + Intel (parallel) ───────────────────
+  const fastestRoute  = mapplsRoutes[0];
+  const fastestCoords = fastestRoute.geometry;
+
+  const tomtom = new TomTomTrafficProvider();
+
+  const [corridorWeather, pointWeather, tomtomTraffic, festivalRisk, newsRisk] = await Promise.all([
     getRouteWeather(origin, destination),
     fastestCoords.length > 1
       ? getRouteWeatherRisk(fastestCoords)
       : Promise.resolve({ averageRisk: 20, points: [] }),
-    osrmOriginCoords && osrmDestCoords
-      ? getTomTomTrafficData(osrmOriginCoords, osrmDestCoords)
+    oLat && oLng && dLat && dLng
+      ? tomtom.getTrafficData([oLng, oLat], [dLng, dLat])
       : Promise.resolve({ trafficScore: -1, incidents: [], hasRoadClosure: false, isLive: false }),
+    getFestivalRiskContribution("system", undefined, undefined),
+    getNewsRiskContribution("system"),
   ]);
 
   // Blend corridor score (70%) with point-sampled score (30%)
@@ -124,21 +149,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Apply festival and news risk bonuses
+  const disruptionBaseScore = Math.min(100, festivalRisk.congestionScore + newsRisk.disruptionBonus);
+
   // ── Step 3 & 4: Risk scoring + Route construction ─────────────────────────
-  const scoredRoutes = osrmRoutes.map((osrmRoute) => {
+  const scoredRoutes = mapplsRoutes.map((mRoute) => {
     // Traffic score: use TomTom flow data when available.
-    // Fall back to OSRM speed estimate when TomTom is unavailable (isLive: false).
     let trafficScore: number;
     if (tomtomTraffic.isLive && tomtomTraffic.trafficScore >= 0) {
-      // Real congestion score from TomTom flow API
       trafficScore = tomtomTraffic.trafficScore;
-      // Boost score for road closures — they represent maximum disruption
-      if (tomtomTraffic.hasRoadClosure) {
-        trafficScore = Math.min(100, trafficScore + 25);
-      }
+      if (tomtomTraffic.hasRoadClosure) trafficScore = Math.min(100, trafficScore + 25);
     } else {
-      // Fallback: estimate from OSRM average speed
-      const avgSpeedKmh = osrmRoute.distanceKm / (osrmRoute.durationMins / 60);
+      // Fallback: estimate from Mappls average speed
+      const avgSpeedKmh = mRoute.distanceKm / (mRoute.durationMinutes / 60);
       trafficScore =
         avgSpeedKmh < 30 ? 75 :
         avgSpeedKmh < 40 ? 50 :
@@ -150,23 +173,32 @@ export async function POST(req: NextRequest) {
       trafficScore,
       weatherScore,
       warnings:          [],
-      distanceKm:        osrmRoute.distanceKm,
-      etaMinutes:        osrmRoute.durationMins,
-      staticEtaMinutes:  osrmRoute.staticDurationMins,
+      distanceKm:        mRoute.distanceKm,
+      etaMinutes:        mRoute.durationMinutes,
+      staticEtaMinutes:  mRoute.durationMinutes, // Mappls already includes traffic in duration if route_adv
       cargoType,
       urgency,
       vehicleType:       vehicleType ?? "Container Truck",
     });
 
-    return { osrmRoute, riskResult, trafficScore };
+    // Add intelligence disruptions
+    riskResult.riskBreakdown.disruption = Math.max(riskResult.riskBreakdown.disruption, disruptionBaseScore);
+    
+    // Adjust total score upwards if intelligence signals are high
+    if (disruptionBaseScore > 50) {
+      riskResult.riskScore = Math.min(100, riskResult.riskScore + (disruptionBaseScore * 0.3));
+      riskResult.riskLevel = getRiskLabel(riskResult.riskScore);
+    }
+
+    return { mRoute, riskResult, trafficScore };
   });
 
   // Determine recommended label
   const recommendedLabel = selectRecommendedRoute(
-    scoredRoutes.map(({ osrmRoute, riskResult }) => ({
-      label:      osrmRoute.label,
+    scoredRoutes.map(({ mRoute, riskResult }) => ({
+      label:      mRoute.label,
       riskScore:  riskResult.riskScore,
-      etaMinutes: osrmRoute.durationMins,
+      etaMinutes: mRoute.durationMinutes,
     })),
     cargoType,
     urgency
@@ -174,7 +206,7 @@ export async function POST(req: NextRequest) {
 
   // Build final Route objects with SHA-256 integrity hash per decision
   const routes: Route[] = scoredRoutes.map(
-    ({ osrmRoute, riskResult, trafficScore }, i): Route => {
+    ({ mRoute, riskResult, trafficScore }, i): Route => {
       const routeIndex = i + 1; // 1-based for naming
       const alerts = buildAlerts(
         trafficScore,
@@ -183,40 +215,75 @@ export async function POST(req: NextRequest) {
         riskResult.predictiveAlert,
         tomtomTraffic.isLive ? tomtomTraffic.incidents : []
       );
+      
+      if (festivalRisk.activeFestivals.length > 0) {
+        alerts.push(`Festival congestion: ${festivalRisk.activeFestivals[0].name}`);
+      }
+      if (newsRisk.normalizedIncidents.length > 0) {
+        alerts.push(`News alert: ${newsRisk.normalizedIncidents[0].title}`);
+      }
 
       // Compute integrity hash over the immutable decision data
       const decisionHash = createDecisionHash({
-        route:     { id: `route-${osrmRoute.label}`, label: osrmRoute.label, riskBreakdown: riskResult.riskBreakdown },
+        route:     { id: `route-${mRoute.label}`, label: mRoute.label, riskBreakdown: riskResult.riskBreakdown },
         riskScore: riskResult.riskScore,
         weather:   weatherScore,
       });
 
       return {
-        id:          `route-${osrmRoute.label}`,
-        label:       osrmRoute.label,
-        name:        `Route ${String.fromCharCode(64 + routeIndex)} — ${capitalize(osrmRoute.label)}`,
-        eta:         formatMinutes(osrmRoute.durationMins),
-        etaMinutes:  osrmRoute.durationMins,
-        distance:    `${osrmRoute.distanceKm} km`,
-        distanceKm:  osrmRoute.distanceKm,
-        riskScore:   riskResult.riskScore,
+        id:          `route-${mRoute.label}`,
+        label:       mRoute.label,
+        name:        `Route ${String.fromCharCode(64 + routeIndex)} — ${capitalize(mRoute.label)}`,
+        eta:         formatMinutes(mRoute.durationMinutes),
+        etaMinutes:  mRoute.durationMinutes,
+        distance:    `${mRoute.distanceKm} km`,
+        distanceKm:  mRoute.distanceKm,
+        riskScore:   Math.round(riskResult.riskScore),
         riskLevel:   riskResult.riskLevel,
-        recommended: osrmRoute.label === recommendedLabel,
-        summary:     buildSummary(osrmRoute.label, origin, destination, osrmRoute.durationMins, osrmRoute.distanceKm),
+        recommended: mRoute.label === recommendedLabel,
+        summary:     buildSummary(mRoute.label, origin, destination, mRoute.durationMinutes, mRoute.distanceKm),
         riskBreakdown: riskResult.riskBreakdown,
         alerts,
-        isSimulated:  osrmRoute.label !== "fastest",
-        // Convert OSRM [lng, lat] coordinates to Leaflet [lat, lng] for map rendering
-        geometry:     osrmRoute.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]),
+        isSimulated:  false, // Mappls routes are real
+        // Convert Mappls [lng, lat] coordinates to Leaflet [lat, lng] for map rendering
+        geometry:     mRoute.geometry.map(([lng, lat]) => [lat, lng] as [number, number]),
         decisionHash,
       };
     }
   );
 
+  // Phase 5: Persist route_analysis record
+  try {
+    const db = await getDb();
+    await db.collection("route_analyses").insertOne({
+      origin,
+      destination,
+      originLat: oLat,
+      originLng: oLng,
+      destinationLat: dLat,
+      destinationLng: dLng,
+      cargoType,
+      urgency,
+      weatherScore,
+      trafficScore: tomtomTraffic.trafficScore,
+      festivalRisk: festivalRisk.congestionScore,
+      newsRisk: newsRisk.disruptionBonus,
+      computedAt: new Date().toISOString(),
+      routes: routes.map(r => ({
+        label: r.label,
+        distanceKm: r.distanceKm,
+        etaMinutes: r.etaMinutes,
+        riskScore: r.riskScore
+      }))
+    });
+  } catch (err) {
+    console.error("[analyze-routes] Failed to save route_analysis:", err);
+  }
+
   const response: AnalyzeRoutesResponse = {
     routes,
     analyzedAt:   new Date().toISOString(),
-    source:       tomtomTraffic.isLive ? "osrm+openweather+tomtom" : "osrm+openweather",
+    source:       tomtomTraffic.isLive ? "mappls+openweather+tomtom" : "mappls+openweather",
     weatherScore,
   };
 
@@ -279,76 +346,4 @@ function buildAlerts(
   }
 
   return alerts.slice(0, 3);
-}
-
-// ─── Static fallback ──────────────────────────────────────────────────────────
-
-/**
- * Returns deterministic static routes when OSRM is unavailable.
- * Values are logically varied by label and cargo/urgency context.
- */
-function buildStaticRoutes(
-  origin: string,
-  destination: string,
-  cargoType: string,
-  urgency: string
-): Route[] {
-  const isCritical  = urgency === "Critical";
-  const isColdChain = cargoType === "Cold Chain Goods" || cargoType === "Pharmaceuticals";
-  const cargoMod    = isColdChain ? 20 : cargoType === "Electronics" ? 10 : 0;
-
-  const bases = [
-    {
-      id: "route-fastest", label: "fastest" as const, name: "Route A — Fastest",
-      etaMinutes: 260, distanceKm: 347,
-      riskScore: 72, traffic: 80, weather: 25, disruption: 65,
-      cargoSens: Math.min(100, 55 + cargoMod),
-      alerts: ["Congestion expected near primary toll corridor", "Roadwork may add 22 minutes"],
-      recommended: isCritical,
-    },
-    {
-      id: "route-balanced", label: "balanced" as const, name: "Route B — Balanced",
-      etaMinutes: 305, distanceKm: 362,
-      riskScore: 37, traffic: 40, weather: 20, disruption: 30,
-      cargoSens: Math.min(100, 25 + cargoMod),
-      alerts: ["Minor congestion possible near bypass"],
-      recommended: !isCritical && !isColdChain,
-    },
-    {
-      id: "route-safest", label: "safest" as const, name: "Route C — Safest",
-      etaMinutes: 370, distanceKm: 398,
-      riskScore: 14, traffic: 12, weather: 10, disruption: 8,
-      cargoSens: Math.min(100, 8 + cargoMod),
-      alerts: [] as string[],
-      recommended: isColdChain,
-    },
-  ];
-
-  const summaries: Record<string, string> = {
-    fastest:  `Fastest path from ${origin} to ${destination}. Elevated risk due to congestion on the primary corridor.`,
-    balanced: `Balanced route from ${origin} to ${destination}. Good tradeoff between travel time and disruption risk.`,
-    safest:   `Lowest-risk route from ${origin} to ${destination}. Longer path but minimal disruption probability.`,
-  };
-
-  return bases.map((b): Route => ({
-    id:           b.id,
-    label:        b.label,
-    name:         b.name,
-    eta:          formatMinutes(b.etaMinutes),
-    etaMinutes:   b.etaMinutes,
-    distance:     `${b.distanceKm} km`,
-    distanceKm:   b.distanceKm,
-    riskScore:    b.riskScore,
-    riskLevel:    getRiskLabel(b.riskScore),
-    recommended:  b.recommended,
-    summary:      summaries[b.label] ?? "",
-    riskBreakdown: {
-      traffic:          b.traffic,
-      weather:          b.weather,
-      disruption:       b.disruption,
-      cargoSensitivity: b.cargoSens,
-    },
-    alerts:      b.alerts,
-    isSimulated: true, // all static fallback routes are estimates
-  }));
 }

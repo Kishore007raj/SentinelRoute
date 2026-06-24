@@ -154,6 +154,10 @@ export interface AnalyzeRoutesRequest {
   cargoType:   string;
   vehicleType: string;
   urgency:     string;
+  originLat?:          number;
+  originLng?:          number;
+  destinationLat?:     number;
+  destinationLng?:     number;
 }
 
 export interface AnalyzeRoutesResponse {

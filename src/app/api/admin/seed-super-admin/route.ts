@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, adminAuth } from "@/lib/firebase-admin";
+import { SUPER_ADMIN_SEED_SECRET } from "@/lib/env";
 import type { UserRecord } from "@/lib/types";
 
 /**
@@ -41,15 +42,9 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Secret guard ──────────────────────────────────────────────────────────
-  const seedSecret = process.env.SUPER_ADMIN_SEED_SECRET;
-  if (!seedSecret) {
-    return NextResponse.json(
-      { error: "SUPER_ADMIN_SEED_SECRET not configured" },
-      { status: 503 }
-    );
-  }
-
-  if (body.secret !== seedSecret) {
+  const secretKey = body.secret;
+  const expectedSecret = SUPER_ADMIN_SEED_SECRET();
+  if (!expectedSecret || expectedSecret !== secretKey) {
     return NextResponse.json({ error: "Invalid secret" }, { status: 403 });
   }
 
