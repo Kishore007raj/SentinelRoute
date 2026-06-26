@@ -323,6 +323,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         riskBreakdown:     route.riskBreakdown,
         // Store geometry for map rendering on shipment detail page
         geometry:          route.geometry ?? undefined,
+        // Mappls coordinate data — stored for Module 4 and route intelligence
+        originName:         pending.originName,
+        originAddress:      pending.originAddress,
+        originLat:          pending.originLat,
+        originLng:          pending.originLng,
+        originPlaceId:      pending.originPlaceId,
+        destinationName:    pending.destinationName,
+        destinationAddress: pending.destinationAddress,
+        destinationLat:     pending.destinationLat,
+        destinationLng:     pending.destinationLng,
+        destinationPlaceId: pending.destinationPlaceId,
+        // Cargo + schedule
+        cargoWeightKg:      pending.cargoWeightKg,
+        cargoVolumeM3:      pending.cargoVolumeM3,
+        plannedDeparture:   pending.plannedDeparture,
+        plannedArrival:     pending.plannedArrival,
       };
       // Only include predictiveAlert if it's a non-empty string
       const alert = route.alerts[0];

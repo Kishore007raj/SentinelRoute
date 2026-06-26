@@ -1,77 +1,128 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { RefreshCw, Activity, AlertTriangle } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useCompany } from "@/lib/company-context";
+import type { RoutePrediction, OperationalAlert } from "@/lib/types";
 
 export function ShipmentRiskPanel({ shipmentId }: { shipmentId: string }) {
   const { t } = useI18n();
   const { userRecord } = useCompany();
-  const [loading, setLoading] = useState(false);
-  const [prediction, setPrediction] = useState<any>(null);
-  const [alert, setAlert] = useState<any>(null);
+  const [loading, setLoading]               = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [prediction, setPrediction]         = useState<RoutePrediction | null>(null);
+  const [alert, setAlert]                   = useState<OperationalAlert | null>(null);
+  const didAutoLoad                         = useRef(false);
 
-  const isSuperAdmin = userRecord?.role === "super_admin";
-  const isCrossCompany = isSuperAdmin && typeof window !== "undefined" && new URLSearchParams(window.location.search).has("companyId");
+  const isSuperAdmin   = userRecord?.role === "super_admin";
+  const isCrossCompany = isSuperAdmin
+    && typeof window !== "undefined"
+    && new URLSearchParams(window.location.search).has("companyId");
 
-  const handlePoll = async () => {
+  const pollPrediction = useCallback(async (isAutoLoad = false) => {
     if (isCrossCompany) return;
-    setLoading(true);
+    if (!isAutoLoad) setLoading(true);
     try {
       const res = await fetch(`/api/intelligence/shipments/${shipmentId}/poll`, {
-        method: "POST"
+        method: "POST",
       });
       if (res.ok) {
-        const data = await res.json();
-        setPrediction(data.prediction);
-        setAlert(data.alert);
+        const data = await res.json() as {
+          prediction?: RoutePrediction;
+          alert?: OperationalAlert;
+        };
+        setPrediction(data.prediction ?? null);
+        setAlert(data.alert ?? null);
       }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
-  };
+  }, [shipmentId, isCrossCompany]);
+
+  // Auto-load on mount — defer one tick so the effect body itself never
+  // calls setState synchronously (satisfies the linter rule).
+  useEffect(() => {
+    if (didAutoLoad.current) return;
+    didAutoLoad.current = true;
+    const t = setTimeout(() => { void pollPrediction(true); }, 0);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="panel p-6 space-y-4 bg-card border border-border rounded-xl">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Activity className="w-4 h-4 text-primary" />
-          {t('shipmentDetail.predictiveIntelligence')}
+          {t("shipmentDetail.predictiveIntelligence")}
         </h3>
         <button
-          onClick={handlePoll}
+          onClick={() => { void pollPrediction(false); }}
           disabled={loading || isCrossCompany}
           className="flex items-center gap-2 text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
-          {loading ? t('shipmentDetail.polling') : t('shipmentDetail.pollPrediction')}
+          {loading ? t("shipmentDetail.polling") : t("shipmentDetail.pollPrediction")}
         </button>
       </div>
 
-      {!prediction ? (
+      {initialLoading ? (
+        <div className="text-sm text-muted-foreground animate-pulse">
+          {t("shipmentDetail.polling")}…
+        </div>
+      ) : !prediction ? (
         <div className="text-sm text-muted-foreground">
-          {t('shipmentDetail.noRecentPredictionPolled')}
+          {t("shipmentDetail.noRecentPredictionPolled")}
         </div>
       ) : (
         <div className="space-y-4 mt-4 border-t border-border pt-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t('shipmentDetail.overallConfidence')}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                {t("shipmentDetail.overallConfidence")}
+              </p>
               <p className="text-2xl font-bold">{prediction.overallOperationalConfidence}%</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t('shipmentDetail.delayRisk')}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                {t("shipmentDetail.delayRisk")}
+              </p>
               <p className="text-2xl font-bold">{prediction.delayProbability}%</p>
             </div>
           </div>
-          
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">ETA Confidence</p>
+              <p className="text-lg font-bold">{prediction.etaConfidence}%</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Disruption Risk</p>
+              <p className="text-lg font-bold">{prediction.disruptionProbability}%</p>
+            </div>
+          </div>
+
           <div className="bg-muted/30 p-3 rounded-lg text-sm">
-            <p className="font-semibold mb-1">{t('shipmentDetail.reasoning')}</p>
+            <p className="font-semibold mb-1">{t("shipmentDetail.reasoning")}</p>
             <p className="text-muted-foreground">{prediction.reason}</p>
           </div>
+
+          {Array.isArray(prediction.contributingFactors) && prediction.contributingFactors.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Contributing Factors</p>
+              <ul className="space-y-1">
+                {prediction.contributingFactors.map((f, i) => (
+                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                    <span className="text-primary mt-0.5">·</span>
+                    {String(f)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {alert && (
             <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg flex items-start gap-3">

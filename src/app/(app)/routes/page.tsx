@@ -258,11 +258,16 @@ export default function RoutesPage() {
             ...(token ? { "Authorization": `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({
-            origin:      shipmentData.origin,
-            destination: shipmentData.destination,
-            cargoType:   shipmentData.cargoType,
-            vehicleType: shipmentData.vehicleType,
-            urgency:     shipmentData.urgency ?? "Standard",
+            origin:         shipmentData.origin,
+            destination:    shipmentData.destination,
+            cargoType:      shipmentData.cargoType,
+            vehicleType:    shipmentData.vehicleType,
+            urgency:        shipmentData.urgency ?? "Standard",
+            // Pass through Mappls coordinates when available
+            originLat:      shipmentData.originLat,
+            originLng:      shipmentData.originLng,
+            destinationLat: shipmentData.destinationLat,
+            destinationLng: shipmentData.destinationLng,
           }),
         });
         if (!res.ok) throw new Error(`API error: ${res.status}`);
@@ -414,11 +419,15 @@ export default function RoutesPage() {
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          origin:      shipmentData.origin,
-          destination: shipmentData.destination,
-          cargoType:   shipmentData.cargoType,
-          vehicleType: shipmentData.vehicleType,
-          urgency:     shipmentData.urgency ?? "Standard",
+          origin:         shipmentData.origin,
+          destination:    shipmentData.destination,
+          cargoType:      shipmentData.cargoType,
+          vehicleType:    shipmentData.vehicleType,
+          urgency:        shipmentData.urgency ?? "Standard",
+          originLat:      shipmentData.originLat,
+          originLng:      shipmentData.originLng,
+          destinationLat: shipmentData.destinationLat,
+          destinationLng: shipmentData.destinationLng,
         }),
       })
         .then((r) => {

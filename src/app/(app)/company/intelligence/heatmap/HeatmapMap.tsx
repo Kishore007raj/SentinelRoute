@@ -32,11 +32,10 @@ export function HeatmapMap() {
         scrollWheelZoom={true}
         className="w-full h-full"
       >
-        {/* Using Mappls raster tiles or standard fallback as required. 
-            Mappls tiles typically require an API key, fallback to OpenStreetMap if none provided. */}
+        {/* CartoDB dark tiles — consistent with RouteMapView, no API key required */}
         <TileLayer
-          attribution='&copy; <a href="https://www.mappls.com/">Mappls</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
         
         {incidents.map((incident) => {

@@ -8,6 +8,7 @@ import { emitToUser } from "@/lib/socket-server";
 import { utcNow } from "@/lib/time";
 import type { UserRecord } from "@/lib/types";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
+import { addTimelineEvent } from "@/lib/timeline-service";
 
 /**
  * GET /api/shipments
@@ -311,6 +312,18 @@ export async function POST(req: NextRequest) {
 
   // Emit real-time event to the user's connected clients
   emitToUser(userId, "shipment:created", { shipment });
+
+  // Write "Shipment Created" timeline event so the timeline is never empty
+  addTimelineEvent(
+    shipment.id,
+    shipment.companyId!,
+    "Shipment Created",
+    `Shipment dispatched via ${shipment.routeName} — ${shipment.origin} → ${shipment.destination}. ` +
+    `Risk: ${shipment.riskScore} (${shipment.riskLevel}). ETA: ${shipment.eta}. Distance: ${shipment.distance}.`,
+    "SentinelRoute",
+    shipment.confidencePercent,
+    ["riskScore", "eta", "distance"]
+  ).catch(() => {/* fire-and-forget — never block the response */});
 
   return NextResponse.json({ shipment }, { status: 201 });
 }
