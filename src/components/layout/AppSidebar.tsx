@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   Map,
   TrendingUp,
+  ShieldAlert,
 } from "lucide-react";
 import {
   Sidebar,
@@ -181,6 +182,7 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
             {/* ─── Operational Intelligence nav (Module 3) ────────────────── */}
             {(() => {
               const intellItems = [
+                { label: "Command Center",  href: "/command-center",                     icon: ShieldAlert },
                 { label: "Risk Center",    href: "/company/intelligence/risk-center", icon: Activity },
                 { label: "Incident Center",href: "/company/intelligence/incidents",   icon: AlertTriangle },
                 { label: "Heatmap",        href: "/company/intelligence/heatmap",     icon: Map },
@@ -395,6 +397,7 @@ export function AppSidebar() {
         {/* ─── Operational Intelligence nav (Module 3) ───────────────────── */}
         {(() => {
           const intellItems = [
+            { label: "Command Center",  href: "/command-center",                     icon: ShieldAlert },
             { label: "Risk Center",    href: "/company/intelligence/risk-center", icon: Activity },
             { label: "Incident Center",href: "/company/intelligence/incidents",   icon: AlertTriangle },
             { label: "Heatmap",        href: "/company/intelligence/heatmap",     icon: Map },

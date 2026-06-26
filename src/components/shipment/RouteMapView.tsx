@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
-import { Shield, Clock, MapPin, AlertTriangle, Wifi, WifiOff } from "lucide-react";
+import { Shield, Clock, MapPin, AlertTriangle, Wifi, WifiOff, Layers, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Route } from "@/lib/types";
+import type { Route, Incident } from "@/lib/types";
 import { AiInsightBox } from "./AiInsightBox";
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { useStore } from "@/lib/store";
+import { useUser } from "@/lib/auth-context";
 
 
 
@@ -55,8 +57,8 @@ function breakdownColor(score: number): string {
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface RouteMapViewProps {
-  route: Route;
-  routes: Route[];
+  route?: Route;
+  routes?: Route[];
   status?: "active" | "at-risk" | "dispatched" | "completed";
   origin?: string;
   destination?: string;
@@ -66,6 +68,7 @@ interface RouteMapViewProps {
   urgency?: string;
   /** "mappls+openweather" | "mappls+openweather+tomtom" | "static-fallback" | undefined */
   dataSource?: string;
+  isGlobal?: boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -81,13 +84,39 @@ export function RouteMapView({
   cargoType,
   urgency,
   dataSource,
+  isGlobal = false,
 }: RouteMapViewProps) {
   const [isClient, setIsClient] = useState(false);
   const mapRef = useRef<any>(null);
+  const { activeShipments } = useStore();
+  const { user } = useUser();
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+
+  // Layer toggles
+  const [showIncidents, setShowIncidents] = useState(true);
+  const [showActiveShipments, setShowActiveShipments] = useState(isGlobal ? true : false);
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
+    // Fetch incidents for the operations map
+    let isMounted = true;
+    const fetchIncidents = async () => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/intelligence/incidents", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isMounted) setIncidents(data.incidents || []);
+      } catch (err) {
+        console.error("Failed to fetch map incidents", err);
+      }
+    };
+    fetchIncidents();
+    return () => { isMounted = false; };
+  }, [user]);
 
   // Fix missing marker icons natively in Leaflet
   const DefaultIcon = typeof window !== 'undefined' ? (require("leaflet") as any).icon({
@@ -102,7 +131,7 @@ export function RouteMapView({
   let originCoords: [number, number] | null = null;
   let destCoords: [number, number] | null = null;
 
-  if (route.geometry && route.geometry.length > 1) {
+  if (route && route.geometry && route.geometry.length > 1) {
     originCoords = route.geometry[0];
     destCoords   = route.geometry[route.geometry.length - 1];
   }
@@ -110,9 +139,9 @@ export function RouteMapView({
   const mapCenter: [number, number] =
     originCoords && destCoords
       ? [(originCoords[0] + destCoords[0]) / 2, (originCoords[1] + destCoords[1]) / 2]
-      : [20.5937, 78.9629]; // Default India center
+      : [22.5937, 78.9629]; // Default India center
 
-  const polylinePoints: [number, number][] = route.geometry ?? [];
+  const polylinePoints: [number, number][] = route?.geometry ?? [];
 
   const isLiveData = dataSource === "mappls+openweather" || dataSource === "mappls+openweather+tomtom";
   const isFallback = dataSource === "static-fallback";
@@ -180,7 +209,50 @@ export function RouteMapView({
               </Marker>
             </>
           )}
+
+          {/* Draw active shipments if toggled */}
+          {showActiveShipments && activeShipments.map(s => {
+            if (s.originLat && s.originLng) {
+               return (
+                 <CircleMarker key={s.id} center={[s.originLat, s.originLng]} radius={6} pathOptions={{ color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.7 }}>
+                   <Popup className="text-xs">
+                     <strong>{s.shipmentCode}</strong><br/>
+                     {s.originName} → {s.destinationName}<br/>
+                     Status: {s.status}
+                   </Popup>
+                 </CircleMarker>
+               );
+            }
+            return null;
+          })}
+
+          {/* Draw incidents if toggled */}
+          {showIncidents && incidents.map(inc => (
+            <CircleMarker key={inc.incidentId} center={[inc.latitude, inc.longitude]} radius={8} pathOptions={{ color: inc.severity === "critical" ? "#ef4444" : "#f59e0b", fillColor: inc.severity === "critical" ? "#ef4444" : "#f59e0b", fillOpacity: 0.6 }}>
+              <Popup className="text-xs">
+                <strong>{inc.title}</strong><br/>
+                Severity: {inc.severity}<br/>
+                Category: {inc.category}
+              </Popup>
+            </CircleMarker>
+          ))}
         </MapContainer>
+
+        {/* Map Layers Control */}
+        <div className="absolute bottom-4 left-4 z-[1000] bg-background/90 backdrop-blur-md border border-border p-2 rounded-lg shadow-xl" style={{ boxShadow: "var(--glow-soft)" }}>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" checked={showIncidents} onChange={e => setShowIncidents(e.target.checked)} className="rounded border-muted bg-transparent accent-amber-500" />
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 group-hover:text-amber-400 transition-colors" />
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">Live Incidents</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" checked={showActiveShipments} onChange={e => setShowActiveShipments(e.target.checked)} className="rounded border-muted bg-transparent accent-blue-500" />
+              <Truck className="w-3.5 h-3.5 text-blue-500 group-hover:text-blue-400 transition-colors" />
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">Active Fleet</span>
+            </label>
+          </div>
+        </div>
 
         {/* Status badge */}
         <div className="absolute top-4 right-4 z-[1000] bg-background/90 backdrop-blur-md border border-border p-3 rounded-lg shadow-xl" style={{ boxShadow: "var(--glow-soft)" }}>
@@ -195,14 +267,15 @@ export function RouteMapView({
       </div>
 
       {/* ── Stats ─────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 divide-x divide-border border-t border-border">
-        <div className="p-4 flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Clock size={14} />
-            <span className="text-[10px] uppercase tracking-widest font-medium">ETA</span>
+      {!isGlobal && route && (
+        <div className="grid grid-cols-3 divide-x divide-border border-t border-border">
+          <div className="p-4 flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Clock size={14} />
+              <span className="text-[10px] uppercase tracking-widest font-medium">ETA</span>
+            </div>
+            <span className="text-lg font-bold text-foreground">{route.eta}</span>
           </div>
-          <span className="text-lg font-bold text-foreground">{route.eta}</span>
-        </div>
         <div className="p-4 flex flex-col gap-1">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Shield size={14} />
@@ -220,50 +293,57 @@ export function RouteMapView({
           <span className="text-lg font-bold text-foreground">{route.distance}</span>
         </div>
       </div>
+      )}
 
       {/* ── Risk breakdown — human-readable ───────────────────────────────── */}
-      <div className="px-4 py-4 border-t border-border space-y-3">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Risk factors</p>
-        {Object.entries(route.riskBreakdown).map(([key, val]) => (
-          <div key={key} className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground w-24 shrink-0 capitalize">
-              {key === "cargoSensitivity" ? "Cargo" : key}
-            </span>
-            <div className="flex-1 h-1.5 bg-muted overflow-hidden rounded-full">
-              <div
-                className={cn("h-full rounded-full", val > 60 ? "bg-red-400" : val > 35 ? "bg-amber-400" : "bg-emerald-400")}
-                style={{ width: `${val}%` }}
-              />
+      {!isGlobal && route && (
+        <div className="px-4 py-4 border-t border-border space-y-3">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Risk factors</p>
+          {Object.entries(route.riskBreakdown).map(([key, val]) => (
+            <div key={key} className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground w-24 shrink-0 capitalize">
+                {key === "cargoSensitivity" ? "Cargo" : key}
+              </span>
+              <div className="flex-1 h-1.5 bg-muted overflow-hidden rounded-full">
+                <div
+                  className={cn("h-full rounded-full", val > 60 ? "bg-red-400" : val > 35 ? "bg-amber-400" : "bg-emerald-400")}
+                  style={{ width: `${val}%` }}
+                />
+              </div>
+              <span className={cn("text-xs font-medium w-24 text-right shrink-0", breakdownColor(val))}>
+                {breakdownLabel(key, val)}
+              </span>
             </div>
-            <span className={cn("text-xs font-medium w-24 text-right shrink-0", breakdownColor(val))}>
-              {breakdownLabel(key, val)}
-            </span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Alert ─────────────────────────────────────────────────────────── */}
-      <div className="px-4 pb-4 border-t border-border pt-4">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            {route.alerts.length > 0
-              ? route.alerts[0]
-              : "Corridor analysis complete. No critical obstructions detected."}
-          </p>
+      {!isGlobal && route && (
+        <div className="px-4 pb-4 border-t border-border pt-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {route.alerts.length > 0
+                ? route.alerts[0]
+                : "Corridor analysis complete. No critical obstructions detected."}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Why this route? ────────────────────────────────────────────────── */}
       <div className="px-4 pb-5 border-t border-border pt-4">
-        <AiInsightBox
-          explanation={aiExplanation ?? null}
-          loading={aiLoading}
-          route={route}
-          cargoType={cargoType}
-          urgency={urgency}
-          allRoutes={routes}
-        />
+        {!isGlobal && route && (
+          <AiInsightBox
+            explanation={aiExplanation ?? null}
+            loading={aiLoading}
+            route={route}
+            cargoType={cargoType}
+            urgency={urgency}
+            allRoutes={routes}
+          />
+        )}
       </div>
     </div>
   );

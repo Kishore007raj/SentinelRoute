@@ -3,18 +3,49 @@
  * Route Intelligence — shows aggregated risk signals from the user's
  * actual shipment history. No hardcoded data.
  */
-import { useMemo } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CloudRain, Car, AlertTriangle, Package, ShieldCheck } from "lucide-react";
+import { CloudRain, Car, AlertTriangle, Package, ShieldCheck, Activity, Cloud, Navigation, Newspaper, Zap, Globe } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { cn, getRiskColor } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
+import { useUser } from "@/lib/auth-context";
+import { RouteMapView } from "@/components/shipment/RouteMapView";
+
+// --- Live KPI hook for Route Intelligence supplement ---
+interface RouteKPIs {
+  avgDelayProbability:      number;
+  avgDisruptionProbability: number;
+  avgEtaConfidence:         number;
+  basedOnPredictions:       number;
+  computedAt:               string;
+}
+function useLiveRouteKPIs() {
+  const { user } = useUser();
+  const [kpis, setKpis]       = useState<RouteKPIs | null>(null);
+  const mounted               = useRef(true);
+  const load = useCallback(async () => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/intelligence/kpis", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok && mounted.current) setKpis(await res.json());
+    } catch { /* silent */ }
+  }, [user]);
+  useEffect(() => {
+    mounted.current = true;
+    void load();
+    return () => { mounted.current = false; };
+  }, [load]);
+  return kpis;
+}
 
 export default function RouteIntelligencePage() {
   const { t } = useI18n();
   const { state, activeShipments, atRiskShipments } = useStore();
-  const { shipments } = state;
+  const { shipments, loading } = state;
+  const liveKPIs = useLiveRouteKPIs();
 
   const stats = useMemo(() => {
     if (shipments.length === 0) return null;
@@ -40,6 +71,30 @@ export default function RouteIntelligencePage() {
     return { avgTraffic, avgWeather, avgDisruption, avgCargo, avgRisk, avgRiskFastest, avgRiskBalanced, avgRiskSafest, atRiskAlerts };
   }, [shipments, atRiskShipments]);
 
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-10 animate-pulse">
+        <div className="space-y-4">
+          <div className="h-8 bg-muted/20 w-64 rounded" />
+          <div className="h-4 bg-muted/20 w-48 rounded" />
+        </div>
+        <div className="h-[400px] bg-muted/20 rounded-xl border border-border" />
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+          <div className="xl:col-span-2 space-y-3">
+            <div className="h-4 bg-muted/20 w-32 rounded mb-4" />
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-24 bg-muted/20 rounded-xl border border-border" />
+            ))}
+          </div>
+          <div className="space-y-3">
+            <div className="h-4 bg-muted/20 w-32 rounded mb-4" />
+            <div className="h-48 bg-muted/20 rounded-xl border border-border" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!stats) {
     return (
       <div className="max-w-6xl mx-auto">
@@ -56,7 +111,8 @@ export default function RouteIntelligencePage() {
     );
   }
 
-  const riskFactors = [
+  const { riskFactors, tradeoffRows, dominantFactor } = useMemo(() => {
+    const factors = [
     { 
       icon: Car, 
       label: t('routeIntelligencePage.trafficDensity'), 
@@ -80,24 +136,31 @@ export default function RouteIntelligencePage() {
       label: t('routeIntelligencePage.cargoSensitivity'), 
       score: stats.avgCargo, 
       detail: t('routeIntelligencePage.cargoDetail') 
-    },
+    }
   ];
+    const tradeoffs = [
+      { label: t('logistics.fastest'),  count: shipments.filter((s) => s.selectedRoute === "fastest").length,  avgRisk: stats.avgRiskFastest },
+      { label: t('logistics.balanced'), count: shipments.filter((s) => s.selectedRoute === "balanced").length, avgRisk: stats.avgRiskBalanced },
+      { label: t('logistics.safest'),   count: shipments.filter((s) => s.selectedRoute === "safest").length,   avgRisk: stats.avgRiskSafest },
+    ].filter((r) => r.count > 0);
 
-  const tradeoffRows = [
-    { label: t('logistics.fastest'),  count: shipments.filter((s) => s.selectedRoute === "fastest").length,  avgRisk: stats.avgRiskFastest },
-    { label: t('logistics.balanced'), count: shipments.filter((s) => s.selectedRoute === "balanced").length, avgRisk: stats.avgRiskBalanced },
-    { label: t('logistics.safest'),   count: shipments.filter((s) => s.selectedRoute === "safest").length,   avgRisk: stats.avgRiskSafest },
-  ].filter((r) => r.count > 0);
+    const dominant = [...factors].sort((a, b) => b.score - a.score)[0];
 
-  const dominantFactor = [...riskFactors].sort((a, b) => b.score - a.score)[0];
+    return { riskFactors: factors, tradeoffRows: tradeoffs, dominantFactor: dominant };
+  }, [stats, shipments, t]);
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto space-y-10">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground">{t('intelligence.routeIntelligence')}</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {t('intelligence.routeIntelligenceSubtitle')} · {shipments.length} {t('logistics.shipments')} · {activeShipments.length} {t('logistics.active')}
         </p>
+      </div>
+
+      {/* Global Interactive Route Map */}
+      <div className="h-[400px] rounded-xl overflow-hidden shadow-sm border border-border">
+        <RouteMapView isGlobal={true} dataSource="mappls+openweather" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
@@ -220,6 +283,76 @@ export default function RouteIntelligencePage() {
                 {t('intelligence.allFiguresDerived')}
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Intelligence Sources + Live KPI supplement */}
+      <div className="space-y-6">
+        {/* Live prediction engine supplement */}
+        {liveKPIs && liveKPIs.basedOnPredictions > 0 && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-primary/5 border border-primary/20 rounded-xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+              </span>
+              <p className="text-xs text-primary uppercase tracking-widest font-semibold">Live Prediction Engine Insights</p>
+              <p className="text-[10px] text-muted-foreground/50 ml-auto">{liveKPIs.basedOnPredictions} predictions analysed</p>
+            </div>
+            <div className="grid grid-cols-3 gap-6">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-widest">Avg Delay Probability</p>
+                <p className={cn("text-3xl font-bold tabular-nums mt-1", liveKPIs.avgDelayProbability > 40 ? "text-amber-400" : "text-emerald-400")}>
+                  {liveKPIs.avgDelayProbability}%
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-widest">Disruption Risk</p>
+                <p className={cn("text-3xl font-bold tabular-nums mt-1", liveKPIs.avgDisruptionProbability > 30 ? "text-amber-400" : "text-emerald-400")}>
+                  {liveKPIs.avgDisruptionProbability}%
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-widest">ETA Confidence</p>
+                <p className={cn("text-3xl font-bold tabular-nums mt-1", liveKPIs.avgEtaConfidence < 70 ? "text-amber-400" : "text-emerald-400")}>
+                  {liveKPIs.avgEtaConfidence}%
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Intelligence API sources */}
+        <div className="bg-card border border-border rounded-xl p-6 space-y-5">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Active Intelligence Sources</h3>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[
+              { name: "Mappls Routing",     icon: Navigation, detail: "Geocode + Distance Matrix" },
+              { name: "OpenWeather API",    icon: Cloud,      detail: "Corridor weather scoring" },
+              { name: "TomTom Traffic",     icon: Activity,   detail: "Real-time flow data" },
+              { name: "NewsAPI",            icon: Newspaper,  detail: "Disruption signal detection" },
+              { name: "Prediction Engine",  icon: Zap,        detail: liveKPIs ? `${liveKPIs.basedOnPredictions} predictions` : "Route risk ML" },
+              { name: "Festival Calendar",  icon: Globe,      detail: "India event registry" },
+            ].map(({ name, icon: Icon, detail }) => (
+              <div key={name} className="flex items-start gap-3 p-4 bg-muted/5 border border-border/50 rounded-xl">
+                <div className="w-8 h-8 rounded-lg bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center shrink-0">
+                  <Icon className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-foreground truncate">{name}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{detail}</p>
+                  <div className="flex items-center gap-1 mt-1.5">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <span className="text-[10px] uppercase tracking-widest font-medium text-emerald-400">live</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

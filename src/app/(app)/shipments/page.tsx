@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Search, AlertTriangle } from "lucide-react";
@@ -144,18 +144,40 @@ function ShipmentRow({ shipment, index }: { shipment: Shipment; index: number })
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ShipmentsPage() {
   const { state } = useStore();
-  const { shipments } = state;
+  const { shipments, loading } = state;
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
 
-  const filtered = shipments.filter((s) => {
+  const filtered = useMemo(() => shipments.filter((s) => {
     const matchesTab = tab === "all" || s.status === tab;
     const matchesSearch = !search
       || s.origin.toLowerCase().includes(search.toLowerCase())
       || s.destination.toLowerCase().includes(search.toLowerCase())
       || (s.shipmentCode ?? "").toLowerCase().includes(search.toLowerCase());
     return matchesTab && matchesSearch;
-  });
+  }), [shipments, tab, search]);
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto w-full space-y-10 animate-pulse">
+        <div className="flex flex-col sm:flex-row justify-between gap-5 pb-8 border-b border-border">
+          <div className="space-y-4">
+            <div className="h-4 bg-muted/20 w-24 rounded" />
+            <div className="h-8 bg-muted/20 w-48 rounded" />
+            <div className="h-4 bg-muted/20 w-32 rounded" />
+          </div>
+          <div className="h-11 bg-muted/20 w-36 rounded-lg" />
+        </div>
+        <div className="h-11 bg-muted/20 max-w-lg rounded-lg" />
+        <div className="h-11 bg-muted/20 w-80 rounded-lg" />
+        <div className="space-y-3 mt-8">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-24 bg-muted/20 rounded-xl border border-border" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto w-full space-y-10">

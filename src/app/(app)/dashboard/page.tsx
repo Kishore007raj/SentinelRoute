@@ -1,11 +1,12 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { PlusSquare, AlertTriangle, ArrowRight, CheckCircle, Building2, ShieldCheck } from "lucide-react";
+import { PlusSquare, AlertTriangle, ArrowRight, CheckCircle, Building2, ShieldCheck, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { useCompany } from "@/lib/company-context";
+import { useUser } from "@/lib/auth-context";
 import { cn, getRiskColor, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import Link from "next/link";
 import type { Shipment } from "@/lib/types";
@@ -95,44 +96,106 @@ function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: numbe
   );
 }
 
+// ─── Live intelligence types ─────────────────────────────────────────────────
+interface LiveKPIs {
+  highRiskShipments:        number;
+  activeAlerts:             number;
+  openIncidents:            number;
+  avgOperationalRisk:       number;
+  avgDelayProbability:      number;
+  avgDisruptionProbability: number;
+  avgEtaConfidence:         number;
+  basedOnPredictions:       number;
+  computedAt:               string;
+}
+interface LiveAlert {
+  alertId:           string;
+  reason:            string;
+  recommendedAction: string;
+  severity:          string;
+  timestamp:         string;
+  shipmentId:        string;
+}
+
+// ─── Hook: fetch intelligence KPIs + alerts ───────────────────────────────────
+function useLiveIntelligence() {
+  const { user } = useUser();
+  const [kpis, setKpis]     = useState<LiveKPIs | null>(null);
+  const [alerts, setAlerts] = useState<LiveAlert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const mounted = useRef(true);
+
+  const load = useCallback(async () => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const headers = { Authorization: `Bearer ${token}` };
+      const [kpiRes, alertRes] = await Promise.all([
+        fetch("/api/intelligence/kpis",   { headers }).then(r => r.ok ? r.json() : null),
+        fetch("/api/intelligence/alerts", { headers }).then(r => r.ok ? r.json() : null),
+      ]);
+      if (!mounted.current) return;
+      if (kpiRes)   setKpis(kpiRes);
+      if (alertRes) setAlerts(alertRes.alerts ?? []);
+    } catch {
+      // silent — never block the UI
+    } finally {
+      if (mounted.current) setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    mounted.current = true;
+    void load();
+    const id = setInterval(() => { void load(); }, 30_000);
+    return () => { mounted.current = false; clearInterval(id); };
+  }, [load]);
+
+  return { kpis, alerts, loading };
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { state, activeShipments, completedShipments, atRiskShipments } = useStore();
   const { company, isSuperAdmin } = useCompany();
   const { shipments, loading } = state;
   const router = useRouter();
+  const { kpis, alerts, loading: intelLoading } = useLiveIntelligence();
 
-  // Super admins have no company — redirect them to the admin panel
   useEffect(() => {
     if (isSuperAdmin) {
       router.replace("/admin/companies");
     }
   }, [isSuperAdmin, router]);
 
-  const totalShipments   = shipments.length;
-  const avgRisk          = totalShipments > 0
-    ? Math.round(shipments.reduce((sum, s) => sum + s.riskScore, 0) / totalShipments)
-    : 0;
-  // "High-risk avoided" = shipments where the user chose balanced/safest
-  // AND the riskScore was above the "high" threshold (> 50).
-  // Rationale: if even the chosen route scored > 50, the fastest would have been worse.
-  const highRiskAvoided = shipments.filter(
-    (s) => s.selectedRoute !== "fastest" && s.riskScore > 50
-  ).length;
-  const topAlert = shipments.find((s) => s.status === "at-risk" && getMeaningfulAlert(s.predictiveAlert))
-    ?? shipments.find((s) => getMeaningfulAlert(s.predictiveAlert));
-  const feedShipments    = [...activeShipments, ...completedShipments.slice(0, 3)];
+  const { totalShipments, avgRisk, highRiskAvoided, feedShipments } = useMemo(() => {
+    const total = shipments.length;
+    const avg = total > 0
+      ? Math.round(shipments.reduce((sum, s) => sum + s.riskScore, 0) / total)
+      : 0;
+    const avoided = shipments.filter(
+      (s) => s.selectedRoute !== "fastest" && s.riskScore > 50
+    ).length;
+    const feed = [...activeShipments, ...completedShipments.slice(0, 3)];
+    return { totalShipments: total, avgRisk: avg, highRiskAvoided: avoided, feedShipments: feed };
+  }, [shipments, activeShipments, completedShipments]);
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto w-full">
-        <div className="flex flex-col items-center justify-center py-32 gap-4">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
-            className="w-8 h-8 border-2 border-border border-t-primary rounded-full"
-          />
-          <p className="text-sm text-muted-foreground">Loading shipments...</p>
+      <div className="max-w-7xl mx-auto w-full space-y-10 animate-pulse">
+        <div className="h-20 bg-muted/20 rounded-2xl border border-border" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => <div key={i} className="h-32 bg-muted/20 rounded-xl border border-border" />)}
+        </div>
+        <div className="flex gap-8">
+          <div className="flex-1 space-y-4">
+            <div className="h-8 bg-muted/20 rounded w-48" />
+            {[1,2,3,4].map(i => <div key={i} className="h-24 bg-muted/20 rounded-xl border border-border" />)}
+          </div>
+          <div className="w-80 shrink-0 space-y-4 hidden xl:block">
+            <div className="h-8 bg-muted/20 rounded w-32" />
+            <div className="h-[400px] bg-muted/20 rounded-xl border border-border" />
+          </div>
         </div>
       </div>
     );
@@ -183,51 +246,67 @@ export default function DashboardPage() {
             {activeShipments.length} active · {atRiskShipments.length} at risk
           </p>
         </div>
-        <Link href="/create-shipment">
-          <Button className="gap-2 px-6 h-11 font-semibold rounded-lg">
-            <PlusSquare className="w-4 h-4" /> New Shipment
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/command-center">
+            <Button variant="outline" className="gap-2 px-5 h-11 font-semibold rounded-lg text-sm">
+              <Zap className="w-4 h-4" /> Command Center
+            </Button>
+          </Link>
+          <Link href="/create-shipment">
+            <Button className="gap-2 px-6 h-11 font-semibold rounded-lg">
+              <PlusSquare className="w-4 h-4" /> New Shipment
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {/* KPI strip */}
+      {/* KPI strips */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          {
-            label: "Active now",
-            value: activeShipments.length,
-            sub: atRiskShipments.length > 0 ? `${atRiskShipments.length} at risk` : "all clear",
-            subColor: atRiskShipments.length > 0 ? "text-amber-400" : "text-emerald-400",
-          },
-          {
-            label: "Avg risk",
-            value: avgRisk,
-            sub: avgRisk < 40 ? "within safe range" : "elevated",
-            subColor: avgRisk > 50 ? "text-amber-400" : "text-emerald-400",
-            valueColor: avgRisk > 60 ? "text-red-400" : avgRisk > 30 ? "text-amber-400" : "text-emerald-400",
-          },
-          {
-            label: "High-risk avoided",
-            value: highRiskAvoided,
-            sub: `of ${totalShipments} total`,
-            subColor: "text-muted-foreground",
-            valueColor: "text-emerald-400",
-          },
-          {
-            label: "Completed",
-            value: completedShipments.length,
-            sub: `${totalShipments} total shipments`,
-            subColor: "text-muted-foreground",
-          },
+          { label: "Active now", value: activeShipments.length, sub: atRiskShipments.length > 0 ? `${atRiskShipments.length} at risk` : "all clear", subColor: atRiskShipments.length > 0 ? "text-amber-400" : "text-emerald-400" },
+          { label: "Avg risk", value: avgRisk, sub: avgRisk < 40 ? "within safe range" : "elevated", subColor: avgRisk > 50 ? "text-amber-400" : "text-emerald-400", valueColor: avgRisk > 60 ? "text-red-400" : avgRisk > 30 ? "text-amber-400" : "text-emerald-400" },
+          { label: "High-risk avoided", value: highRiskAvoided, sub: `of ${totalShipments} total`, subColor: "text-muted-foreground", valueColor: "text-emerald-400" },
+          { label: "Completed", value: completedShipments.length, sub: `${totalShipments} total shipments`, subColor: "text-muted-foreground" },
         ].map(({ label, value, sub, subColor, valueColor }) => (
           <div key={label} className="bg-card border border-border rounded-xl p-6 space-y-3">
             <p className="text-xs text-muted-foreground uppercase tracking-widest">{label}</p>
-            <p className={cn("text-5xl font-bold tabular-nums leading-none", valueColor ?? "text-foreground")}>
-              {value}
-            </p>
+            <p className={cn("text-5xl font-bold tabular-nums leading-none", valueColor ?? "text-foreground")}>{value}</p>
             <p className={cn("text-sm", subColor)}>{sub}</p>
           </div>
         ))}
+      </div>
+
+      {/* Live intelligence KPI row — sourced from MongoDB via /api/intelligence/kpis */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+          </span>
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">Live Intelligence · MongoDB</p>
+          {kpis?.computedAt && (
+            <p className="text-[10px] text-muted-foreground/50 ml-auto">
+              Updated {formatRelativeTime(kpis.computedAt)}
+              {kpis.basedOnPredictions > 0 && ` · ${kpis.basedOnPredictions} predictions`}
+            </p>
+          )}
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: "High-Risk Shipments", value: loading ? "…" : String(kpis?.highRiskShipments ?? "—"), sub: kpis ? `${kpis.openIncidents} open incidents` : "loading", valueColor: (kpis?.highRiskShipments ?? 0) > 0 ? "text-red-400" : "text-emerald-400" },
+            { label: "Avg Delay Probability", value: loading ? "…" : kpis ? `${kpis.avgDelayProbability}%` : "—", sub: kpis ? `${kpis.basedOnPredictions} predictions` : "loading", valueColor: (kpis?.avgDelayProbability ?? 0) > 40 ? "text-amber-400" : "text-emerald-400" },
+            { label: "Disruption Risk", value: loading ? "…" : kpis ? `${kpis.avgDisruptionProbability}%` : "—", sub: kpis ? (kpis.avgDisruptionProbability > 30 ? "elevated" : "within range") : "loading", valueColor: (kpis?.avgDisruptionProbability ?? 0) > 30 ? "text-amber-400" : "text-emerald-400" },
+            { label: "ETA Confidence", value: loading ? "…" : kpis ? `${kpis.avgEtaConfidence}%` : "—", sub: kpis ? `${kpis.activeAlerts} active alerts` : "loading", valueColor: (kpis?.avgEtaConfidence ?? 100) < 70 ? "text-amber-400" : "text-emerald-400" },
+          ].map(({ label, value, sub, valueColor }) => (
+            <div key={label} className={cn("bg-card border border-border rounded-xl p-5 space-y-2", loading && !kpis ? "opacity-50" : "")}>
+              <p className="text-xs text-muted-foreground uppercase tracking-widest leading-tight">{label}</p>
+              <p className={cn("text-3xl font-bold tabular-nums leading-none", valueColor)}>
+                {loading && !kpis ? <span className="animate-pulse">…</span> : value}
+              </p>
+              <p className="text-xs text-muted-foreground">{sub}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Main content */}
@@ -245,7 +324,6 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {/* Column headers */}
           <div className="hidden sm:flex items-center border-b border-border/40 bg-muted/5 px-6 py-3 pl-7">
             <div className="flex items-center gap-8 flex-1 min-w-0">
               <span className="text-xs text-muted-foreground uppercase tracking-widest flex-1">Route</span>
@@ -279,14 +357,41 @@ export default function DashboardPage() {
 
         {/* Right panel */}
         <div className="xl:w-80 shrink-0 space-y-8">
-
-          {topAlert && (
+          {/* Live operational alerts — from /api/intelligence/alerts (MongoDB) */}
+          {alerts.length > 0 ? (
             <div className="bg-amber-400/5 border border-amber-400/20 rounded-xl p-6 space-y-4">
-              <p className="text-xs text-amber-400 uppercase tracking-widest">Live alert</p>
-              <p className="text-sm text-foreground leading-relaxed">{topAlert.predictiveAlert}</p>
-              <p className="text-xs font-mono text-muted-foreground">{topAlert.shipmentCode}</p>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
+                </span>
+                <p className="text-xs text-amber-400 uppercase tracking-widest">Live Alert</p>
+              </div>
+              <p className="text-sm text-foreground leading-relaxed">{alerts[0].reason}</p>
+              {alerts[0].recommendedAction && (
+                <p className="text-xs text-muted-foreground leading-relaxed">{alerts[0].recommendedAction}</p>
+              )}
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-mono text-muted-foreground">{alerts[0].shipmentId}</p>
+                {alerts.length > 1 && (
+                  <Link href="/command-center">
+                    <span className="text-xs text-primary hover:underline">+{alerts.length - 1} more →</span>
+                  </Link>
+                )}
+              </div>
             </div>
-          )}
+          ) : !loading ? (
+            <div className="bg-emerald-400/5 border border-emerald-400/20 rounded-xl p-6 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                </span>
+                <p className="text-xs text-emerald-400 uppercase tracking-widest">All Clear</p>
+              </div>
+              <p className="text-sm text-muted-foreground">No active operational alerts. All corridors nominal.</p>
+            </div>
+          ) : null}
 
           <div className="space-y-4">
             <h3 className="text-base font-semibold text-foreground">Needs Attention</h3>
@@ -308,18 +413,6 @@ export default function DashboardPage() {
                       {getMeaningfulAlert(s.predictiveAlert) && (
                         <p className="text-xs text-amber-400/80 leading-relaxed">{getMeaningfulAlert(s.predictiveAlert)}</p>
                       )}
-                    </div>
-                  </Link>
-                ))}
-                {activeShipments.filter(s => s.status !== "at-risk").slice(0, 2).map((s) => (
-                  <Link key={s.id} href={`/shipments/${s.id}`}>
-                    <div className="bg-card border border-border rounded-xl p-5 hover:border-border/80 transition-colors cursor-pointer space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono text-muted-foreground">{s.shipmentCode}</span>
-                        <span className={cn("text-base font-bold", getRiskColor(s.riskLevel))}>{s.riskScore}</span>
-                      </div>
-                      <p className="text-sm font-semibold text-foreground">{s.origin} → {s.destination}</p>
-                      <p className="text-xs text-muted-foreground">{formatRelativeTime(s.lastUpdate)} · {s.eta}</p>
                     </div>
                   </Link>
                 ))}
