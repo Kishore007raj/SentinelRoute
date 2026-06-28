@@ -4,6 +4,7 @@ import { getDb } from "@/lib/mongodb";
 import { ShipmentMessage } from "@/lib/types";
 import { addTimelineEvent } from "@/lib/timeline-service";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
+import { encryptObjectFields, decryptObjectFields } from "@/lib/encryption";
 
 export async function GET(
   req: Request,
@@ -51,7 +52,9 @@ export async function GET(
       .sort({ timestamp: 1 })
       .toArray();
 
-    return NextResponse.json({ messages: messages.map(({_id, ...rest}) => rest) });
+    return NextResponse.json({ 
+      messages: messages.map(({_id, ...rest}) => decryptObjectFields(rest, ["message", "caption", "notes", "textPayload"])) 
+    });
   } catch (err: any) {
     if (err.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -120,7 +123,9 @@ export async function POST(
       readStatus: false
     };
 
-    await db.collection("shipment_messages").insertOne(message);
+    const encryptedMessage = encryptObjectFields(message as unknown as Record<string, unknown>, ["message", "caption", "notes", "textPayload"]);
+
+    await db.collection("shipment_messages").insertOne(encryptedMessage);
 
     // Add to timeline
     await addTimelineEvent(
