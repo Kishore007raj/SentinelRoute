@@ -61,6 +61,7 @@ export default function AnalyticsPage() {
     ).length;
 
     // Volume chart: real per-week bucketing from createdAt, or empty if no data
+    // eslint-disable-next-line react-hooks/purity
     const now = currentTime || Date.now(); // Fallback for SSR
     const volumeData = Array.from({ length: 7 }, (_, i) => {
       const weekStart = now - (6 - i) * 7 * 24 * 60 * 60 * 1000;

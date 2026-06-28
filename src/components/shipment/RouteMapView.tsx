@@ -66,7 +66,7 @@ interface RouteMapViewProps {
   aiLoading?: boolean;
   cargoType?: string;
   urgency?: string;
-  /** "mappls+openweather" | "mappls+openweather+tomtom" | "static-fallback" | undefined */
+  /** "geoapify+openweather" | "geoapify+openweather+tomtom" | "static-fallback" | undefined */
   dataSource?: string;
   isGlobal?: boolean;
 }
@@ -143,7 +143,7 @@ export function RouteMapView({
 
   const polylinePoints: [number, number][] = route?.geometry ?? [];
 
-  const isLiveData = dataSource === "mappls+openweather" || dataSource === "mappls+openweather+tomtom";
+  const isLiveData = dataSource === "geoapify+openweather" || dataSource === "geoapify+openweather+tomtom";
   const isFallback = dataSource === "static-fallback";
 
   if (!isClient) {
@@ -167,8 +167,8 @@ export function RouteMapView({
             <div className="flex items-center gap-2">
               <Wifi className="w-3.5 h-3.5 shrink-0" />
               <span>
-                Live data — Mappls routing + OpenWeather
-                {dataSource === "mappls+openweather+tomtom" ? " + TomTom Traffic" : ""}
+                Live data — Geoapify routing + OpenWeather
+                {dataSource === "geoapify+openweather+tomtom" ? " + TomTom Traffic" : ""}
               </span>
             </div>
           ) : isFallback ? (

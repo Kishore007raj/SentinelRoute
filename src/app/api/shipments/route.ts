@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
     confidencePercent,
     predictiveAlert,
     riskBreakdown,
-    // Mappls coordinate fields (optional)
+    // Geoapify coordinate fields (optional)
     originName,
     originAddress,
     originLat,
@@ -231,7 +231,7 @@ export async function POST(req: NextRequest) {
                          : undefined,
     createdAt:         now,
     updatedAt:         now,
-    // Mappls location data
+    // Geoapify location data
     ...(originName       ? { originName }       : {}),
     ...(originAddress    ? { originAddress }    : {}),
     ...(typeof originLat === "number" && isFinite(originLat) ? { originLat } : {}),

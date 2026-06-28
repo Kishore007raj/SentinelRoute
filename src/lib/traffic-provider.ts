@@ -1,6 +1,6 @@
 /**
  * traffic-provider.ts — Abstraction layer for traffic data.
- * Supports switching between TomTom, Mappls, or other providers without changing the core engine.
+ * Supports switching between TomTom, Geoapify, or other providers without changing the core engine.
  */
 
 export interface TrafficResult {
@@ -25,11 +25,11 @@ export interface TrafficProvider {
 }
 
 /**
- * Stub implementation for future Mappls traffic integration.
+ * Stub implementation for future Geoapify traffic integration.
  */
-export class MapplsTrafficProvider implements TrafficProvider {
+export class GeoapifyTrafficProvider implements TrafficProvider {
   async getTrafficData(originCoords: [number, number], destCoords: [number, number]): Promise<TrafficResult> {
-    console.warn("[mappls-traffic] Stub called, returning fallback");
+    console.warn("[geoapify-traffic] Stub called, returning fallback");
     return {
       trafficScore: -1,
       incidents: [],

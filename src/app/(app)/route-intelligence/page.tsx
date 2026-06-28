@@ -71,6 +71,45 @@ export default function RouteIntelligencePage() {
     return { avgTraffic, avgWeather, avgDisruption, avgCargo, avgRisk, avgRiskFastest, avgRiskBalanced, avgRiskSafest, atRiskAlerts };
   }, [shipments, atRiskShipments]);
 
+  const { riskFactors, tradeoffRows, dominantFactor } = useMemo(() => {
+    if (!stats) return { riskFactors: [], tradeoffRows: [], dominantFactor: null };
+    const factors = [
+    { 
+      icon: Car, 
+      label: t('routeIntelligencePage.trafficDensity'), 
+      score: stats.avgTraffic, 
+      detail: t('routeIntelligencePage.trafficDetail').replace('{n}', shipments.length.toString()) 
+    },
+    { 
+      icon: CloudRain, 
+      label: t('routeIntelligencePage.weatherImpact'), 
+      score: stats.avgWeather, 
+      detail: t('routeIntelligencePage.weatherDetail') 
+    },
+    { 
+      icon: AlertTriangle, 
+      label: t('routeIntelligencePage.disruptionProbability'), 
+      score: stats.avgDisruption, 
+      detail: t('routeIntelligencePage.disruptionDetail') 
+    },
+    { 
+      icon: Package, 
+      label: t('routeIntelligencePage.cargoSensitivity'), 
+      score: stats.avgCargo, 
+      detail: t('routeIntelligencePage.cargoDetail') 
+    }
+  ];
+    const tradeoffs = [
+      { label: t('logistics.fastest'),  count: shipments.filter((s) => s.selectedRoute === "fastest").length,  avgRisk: stats.avgRiskFastest },
+      { label: t('logistics.balanced'), count: shipments.filter((s) => s.selectedRoute === "balanced").length, avgRisk: stats.avgRiskBalanced },
+      { label: t('logistics.safest'),   count: shipments.filter((s) => s.selectedRoute === "safest").length,   avgRisk: stats.avgRiskSafest },
+    ].filter((r) => r.count > 0);
+
+    const dominant = [...factors].sort((a, b) => b.score - a.score)[0];
+
+    return { riskFactors: factors, tradeoffRows: tradeoffs, dominantFactor: dominant };
+  }, [stats, shipments, t]);
+
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto space-y-10 animate-pulse">
@@ -110,44 +149,6 @@ export default function RouteIntelligencePage() {
       </div>
     );
   }
-
-  const { riskFactors, tradeoffRows, dominantFactor } = useMemo(() => {
-    const factors = [
-    { 
-      icon: Car, 
-      label: t('routeIntelligencePage.trafficDensity'), 
-      score: stats.avgTraffic, 
-      detail: t('routeIntelligencePage.trafficDetail').replace('{n}', shipments.length.toString()) 
-    },
-    { 
-      icon: CloudRain, 
-      label: t('routeIntelligencePage.weatherImpact'), 
-      score: stats.avgWeather, 
-      detail: t('routeIntelligencePage.weatherDetail') 
-    },
-    { 
-      icon: AlertTriangle, 
-      label: t('routeIntelligencePage.disruptionProbability'), 
-      score: stats.avgDisruption, 
-      detail: t('routeIntelligencePage.disruptionDetail') 
-    },
-    { 
-      icon: Package, 
-      label: t('routeIntelligencePage.cargoSensitivity'), 
-      score: stats.avgCargo, 
-      detail: t('routeIntelligencePage.cargoDetail') 
-    }
-  ];
-    const tradeoffs = [
-      { label: t('logistics.fastest'),  count: shipments.filter((s) => s.selectedRoute === "fastest").length,  avgRisk: stats.avgRiskFastest },
-      { label: t('logistics.balanced'), count: shipments.filter((s) => s.selectedRoute === "balanced").length, avgRisk: stats.avgRiskBalanced },
-      { label: t('logistics.safest'),   count: shipments.filter((s) => s.selectedRoute === "safest").length,   avgRisk: stats.avgRiskSafest },
-    ].filter((r) => r.count > 0);
-
-    const dominant = [...factors].sort((a, b) => b.score - a.score)[0];
-
-    return { riskFactors: factors, tradeoffRows: tradeoffs, dominantFactor: dominant };
-  }, [stats, shipments, t]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-10">
@@ -267,10 +268,12 @@ export default function RouteIntelligencePage() {
                   </span>
                   <span>{t('intelligence.avgRiskScore')}: <strong className="text-foreground">{stats.avgRisk}</strong> ({stats.avgRisk < 40 ? t('intelligence.withinSafeRange') : t('intelligence.elevated')})</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-400 mt-0.5">✓</span>
-                  <span>{t('intelligence.dominantRiskFactor')}: <strong className="text-foreground">{dominantFactor.label}</strong> ({dominantFactor.score})</span>
-                </li>
+                {dominantFactor && (
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-400 mt-0.5">✓</span>
+                    <span>{t('intelligence.dominantRiskFactor')}: <strong className="text-foreground">{dominantFactor.label}</strong> ({dominantFactor.score})</span>
+                  </li>
+                )}
                 {stats.atRiskAlerts.length > 0 && (
                   <li className="flex items-start gap-2">
                     <span className="text-amber-400 mt-0.5">⚠</span>

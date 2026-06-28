@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Route, AnalyzeRoutesRequest, AnalyzeRoutesResponse } from "@/lib/types";
 import { getRiskLabel } from "@/lib/utils";
-import { mapplsRoute, mapplsAutosuggest } from "@/lib/mappls";
+import { geoapifyRoute, geoapifyAutosuggest } from "@/lib/geoapify";
 import { getRouteWeather } from "@/lib/weather";
 import { computeRiskScore, selectRecommendedRoute } from "@/lib/risk";
 import { getRouteWeatherRisk } from "@/lib/weather";
@@ -62,23 +62,23 @@ export async function POST(req: NextRequest) {
   let dLat = destinationLat, dLng = destinationLng;
 
   if (!oLat || !oLng) {
-    const oSugg = await mapplsAutosuggest(origin);
+    const oSugg = await geoapifyAutosuggest(origin);
     if (oSugg[0]?.lat && oSugg[0]?.lng) { oLat = oSugg[0].lat; oLng = oSugg[0].lng; }
   }
   if (!dLat || !dLng) {
-    const dSugg = await mapplsAutosuggest(destination);
+    const dSugg = await geoapifyAutosuggest(destination);
     if (dSugg[0]?.lat && dSugg[0]?.lng) { dLat = dSugg[0].lat; dLng = dSugg[0].lng; }
   }
 
-  // ── Step 1: Mappls routing ─────────────────────────────────────────────────
-  let mapplsRoutes: Array<{ label: "fastest" | "balanced" | "safest", distanceKm: number, durationMinutes: number, geometry: [number, number][] }> = [];
+  // ── Step 1: Geoapify routing ─────────────────────────────────────────────────
+  let geoapifyRoutes: Array<{ label: "fastest" | "balanced" | "safest", distanceKm: number, durationMinutes: number, geometry: [number, number][] }> = [];
   
   if (oLat && oLng && dLat && dLng) {
-    const rawRoutes = await mapplsRoute(oLng, oLat, dLng, dLat);
+    const rawRoutes = await geoapifyRoute(oLng, oLat, dLng, dLat);
     const labels: ("fastest" | "balanced" | "safest")[] = ["fastest", "balanced", "safest"];
     // Sort by duration so fastest is first
     rawRoutes.sort((a, b) => a.durationMinutes - b.durationMinutes);
-    mapplsRoutes = rawRoutes.slice(0, 3).map((r, i) => ({
+    geoapifyRoutes = rawRoutes.slice(0, 3).map((r, i) => ({
       label: labels[i] || "balanced",
       distanceKm: r.distanceKm,
       durationMinutes: r.durationMinutes,
@@ -86,9 +86,9 @@ export async function POST(req: NextRequest) {
     }));
   }
 
-  if (mapplsRoutes.length === 0) {
+  if (geoapifyRoutes.length === 0) {
     if (oLat && oLng && dLat && dLng) {
-      console.warn(`[analyze-routes] Mappls routing failed for ${origin}→${destination} — using synthetic Mappls-sourced fallback`);
+      console.warn(`[analyze-routes] Geoapify routing failed for ${origin}→${destination} — using synthetic fallback`);
       // Fallback: use haversine distance * 1.3 routing factor
       const R = 6371; // km
       const dLatRad = (dLat - oLat) * Math.PI / 180;
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
       const dist = Math.round(R * c * 1.3);
       const dur = Math.round((dist / 40) * 60);
 
-      mapplsRoutes = [
+      geoapifyRoutes = [
         { label: "fastest", distanceKm: dist, durationMinutes: dur, geometry: [[oLng, oLat], [dLng, dLat]] },
         { label: "balanced", distanceKm: Math.round(dist * 1.05), durationMinutes: Math.round(dur * 1.1), geometry: [[oLng, oLat], [dLng, dLat]] },
         { label: "safest", distanceKm: Math.round(dist * 1.1), durationMinutes: Math.round(dur * 1.2), geometry: [[oLng, oLat], [dLng, dLat]] }
@@ -108,18 +108,18 @@ export async function POST(req: NextRequest) {
     } else {
       return NextResponse.json({ error: "Routing unavailable and geocoding failed" }, { status: 503 });
     }
-  } else if (mapplsRoutes.length < 3) {
-    const base = mapplsRoutes[0];
-    if (!mapplsRoutes.find(r => r.label === "balanced")) {
-      mapplsRoutes.push({ label: "balanced", distanceKm: Math.round(base.distanceKm * 1.05), durationMinutes: Math.round(base.durationMinutes * 1.1), geometry: base.geometry });
+  } else if (geoapifyRoutes.length < 3) {
+    const base = geoapifyRoutes[0];
+    if (!geoapifyRoutes.find(r => r.label === "balanced")) {
+      geoapifyRoutes.push({ label: "balanced", distanceKm: Math.round(base.distanceKm * 1.05), durationMinutes: Math.round(base.durationMinutes * 1.1), geometry: base.geometry });
     }
-    if (!mapplsRoutes.find(r => r.label === "safest")) {
-      mapplsRoutes.push({ label: "safest", distanceKm: Math.round(base.distanceKm * 1.1), durationMinutes: Math.round(base.durationMinutes * 1.2), geometry: base.geometry });
+    if (!geoapifyRoutes.find(r => r.label === "safest")) {
+      geoapifyRoutes.push({ label: "safest", distanceKm: Math.round(base.distanceKm * 1.1), durationMinutes: Math.round(base.durationMinutes * 1.2), geometry: base.geometry });
     }
   }
 
   // ── Step 2: Weather + TomTom Traffic + Intel (parallel) ───────────────────
-  const fastestRoute  = mapplsRoutes[0];
+  const fastestRoute  = geoapifyRoutes[0];
   const fastestCoords = fastestRoute.geometry;
 
   const tomtom = new TomTomTrafficProvider();
@@ -153,15 +153,15 @@ export async function POST(req: NextRequest) {
   const disruptionBaseScore = Math.min(100, festivalRisk.congestionScore + newsRisk.disruptionBonus);
 
   // ── Step 3 & 4: Risk scoring + Route construction ─────────────────────────
-  const scoredRoutes = mapplsRoutes.map((mRoute) => {
+  const scoredRoutes = geoapifyRoutes.map((gRoute) => {
     // Traffic score: use TomTom flow data when available.
     let trafficScore: number;
     if (tomtomTraffic.isLive && tomtomTraffic.trafficScore >= 0) {
       trafficScore = tomtomTraffic.trafficScore;
       if (tomtomTraffic.hasRoadClosure) trafficScore = Math.min(100, trafficScore + 25);
     } else {
-      // Fallback: estimate from Mappls average speed
-      const avgSpeedKmh = mRoute.distanceKm / (mRoute.durationMinutes / 60);
+      // Fallback: estimate from Geoapify average speed
+      const avgSpeedKmh = gRoute.distanceKm / (gRoute.durationMinutes / 60);
       trafficScore =
         avgSpeedKmh < 30 ? 75 :
         avgSpeedKmh < 40 ? 50 :
@@ -173,9 +173,9 @@ export async function POST(req: NextRequest) {
       trafficScore,
       weatherScore,
       warnings:          [],
-      distanceKm:        mRoute.distanceKm,
-      etaMinutes:        mRoute.durationMinutes,
-      staticEtaMinutes:  mRoute.durationMinutes, // Mappls already includes traffic in duration if route_adv
+      distanceKm:        gRoute.distanceKm,
+      etaMinutes:        gRoute.durationMinutes,
+      staticEtaMinutes:  gRoute.durationMinutes, // Geoapify may or may not include traffic based on options
       cargoType,
       urgency,
       vehicleType:       vehicleType ?? "Container Truck",
@@ -190,15 +190,15 @@ export async function POST(req: NextRequest) {
       riskResult.riskLevel = getRiskLabel(riskResult.riskScore);
     }
 
-    return { mRoute, riskResult, trafficScore };
+    return { gRoute, riskResult, trafficScore };
   });
 
   // Determine recommended label
   const recommendedLabel = selectRecommendedRoute(
-    scoredRoutes.map(({ mRoute, riskResult }) => ({
-      label:      mRoute.label,
+    scoredRoutes.map(({ gRoute, riskResult }) => ({
+      label:      gRoute.label,
       riskScore:  riskResult.riskScore,
-      etaMinutes: mRoute.durationMinutes,
+      etaMinutes: gRoute.durationMinutes,
     })),
     cargoType,
     urgency
@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
 
   // Build final Route objects with SHA-256 integrity hash per decision
   const routes: Route[] = scoredRoutes.map(
-    ({ mRoute, riskResult, trafficScore }, i): Route => {
+    ({ gRoute, riskResult, trafficScore }, i): Route => {
       const routeIndex = i + 1; // 1-based for naming
       const alerts = buildAlerts(
         trafficScore,
@@ -225,28 +225,28 @@ export async function POST(req: NextRequest) {
 
       // Compute integrity hash over the immutable decision data
       const decisionHash = createDecisionHash({
-        route:     { id: `route-${mRoute.label}`, label: mRoute.label, riskBreakdown: riskResult.riskBreakdown },
+        route:     { id: `route-${gRoute.label}`, label: gRoute.label, riskBreakdown: riskResult.riskBreakdown },
         riskScore: riskResult.riskScore,
         weather:   weatherScore,
       });
 
       return {
-        id:          `route-${mRoute.label}`,
-        label:       mRoute.label,
-        name:        `Route ${String.fromCharCode(64 + routeIndex)} — ${capitalize(mRoute.label)}`,
-        eta:         formatMinutes(mRoute.durationMinutes),
-        etaMinutes:  mRoute.durationMinutes,
-        distance:    `${mRoute.distanceKm} km`,
-        distanceKm:  mRoute.distanceKm,
+        id:          `route-${gRoute.label}`,
+        label:       gRoute.label,
+        name:        `Route ${String.fromCharCode(64 + routeIndex)} — ${capitalize(gRoute.label)}`,
+        eta:         formatMinutes(gRoute.durationMinutes),
+        etaMinutes:  gRoute.durationMinutes,
+        distance:    `${gRoute.distanceKm} km`,
+        distanceKm:  gRoute.distanceKm,
         riskScore:   Math.round(riskResult.riskScore),
         riskLevel:   riskResult.riskLevel,
-        recommended: mRoute.label === recommendedLabel,
-        summary:     buildSummary(mRoute.label, origin, destination, mRoute.durationMinutes, mRoute.distanceKm),
+        recommended: gRoute.label === recommendedLabel,
+        summary:     buildSummary(gRoute.label, origin, destination, gRoute.durationMinutes, gRoute.distanceKm),
         riskBreakdown: riskResult.riskBreakdown,
         alerts,
-        isSimulated:  false, // Mappls routes are real
-        // Convert Mappls [lng, lat] coordinates to Leaflet [lat, lng] for map rendering
-        geometry:     mRoute.geometry.map(([lng, lat]) => [lat, lng] as [number, number]),
+        isSimulated:  false, // Geoapify routes are real
+        // Convert Geoapify [lng, lat] coordinates to Leaflet [lat, lng] for map rendering
+        geometry:     gRoute.geometry.map(([lng, lat]) => [lat, lng] as [number, number]),
         decisionHash,
       };
     }
@@ -283,7 +283,7 @@ export async function POST(req: NextRequest) {
   const response: AnalyzeRoutesResponse = {
     routes,
     analyzedAt:   new Date().toISOString(),
-    source:       tomtomTraffic.isLive ? "mappls+openweather+tomtom" : "mappls+openweather",
+    source:       tomtomTraffic.isLive ? "geoapify+openweather+tomtom" : "geoapify+openweather",
     weatherScore,
   };
 

@@ -85,8 +85,8 @@ export interface Shipment {
   createdByUserId?:  string;
   createdAt?:        string;
   updatedAt?:        string;
-  // ── Mappls location data (Phase 3 — coordinate-aware shipments) ──────────
-  /** Origin display name from Mappls autosuggest */
+  // ── Geoapify location data (Phase 3 — coordinate-aware shipments) ──────────
+  /** Origin display name from Geoapify autosuggest */
   originName?:            string;
   /** Origin full address string */
   originAddress?:         string;
@@ -94,9 +94,9 @@ export interface Shipment {
   originLat?:             number;
   /** Origin longitude (WGS84) */
   originLng?:             number;
-  /** Mappls eLoc placeId for origin */
+  /** Geoapify placeId for origin */
   originPlaceId?:         string;
-  /** Destination display name from Mappls autosuggest */
+  /** Destination display name from Geoapify autosuggest */
   destinationName?:       string;
   /** Destination full address string */
   destinationAddress?:    string;
@@ -104,7 +104,7 @@ export interface Shipment {
   destinationLat?:        number;
   /** Destination longitude (WGS84) */
   destinationLng?:        number;
-  /** Mappls eLoc placeId for destination */
+  /** Geoapify placeId for destination */
   destinationPlaceId?:    string;
   // ── Cargo + schedule data (Phase 9 — Module 4 readiness) ─────────────────
   /** Gross cargo weight in kilograms */
@@ -128,7 +128,7 @@ export interface PendingShipment {
   deadline?:           string;
   insurance?:          string;
   tempSensitive?:      string;
-  // Mappls coordinate data
+  // Geoapify coordinate data
   originName?:         string;
   originAddress?:      string;
   originLat?:          number;
@@ -183,7 +183,7 @@ export interface CreateShipmentRequest {
   predictiveAlert?:    string;
   /** Full breakdown from the route analysis — stored on the shipment */
   riskBreakdown?:      RiskBreakdown;
-  // Mappls coordinate data (optional — gracefully absent for legacy shipments)
+  // Geoapify coordinate data (optional — gracefully absent for legacy shipments)
   originName?:         string;
   originAddress?:      string;
   originLat?:          number;
@@ -437,7 +437,7 @@ export interface Vehicle {
 
   // ─── Module 3/4 Future Fields ─────────────────────────────────────────────
   shipmentIds:             string[];    // default [] — Module 3 linkage
-  trackingDeviceId:        string | null; // default null — Module 4 Mappls
+  trackingDeviceId:        string | null; // default null — Module 4 tracking
 
   // ─── Timestamps ───────────────────────────────────────────────────────────
   createdAt:               string;

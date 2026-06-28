@@ -425,7 +425,7 @@ export async function getRouteWeather(
 
 /**
  * Fetches weather for both endpoints using coordinate pairs.
- * Preferred over getRouteWeather() when Mappls coordinates are available.
+ * Preferred over getRouteWeather() when Geoapify coordinates are available.
  */
 export async function getRouteWeatherByCoords(
   originLat: number,

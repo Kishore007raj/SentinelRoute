@@ -93,11 +93,11 @@ export const OPENWEATHER_API_KEY = lazyEnv("OPENWEATHER_API_KEY");
 export const GEMINI_API_KEY = lazyEnv("GEMINI_API_KEY");
 
 /**
- * Mappls API key — server-side only.
+ * Geoapify API key — server-side only.
  * Used for Autosuggest, Geocode, Reverse Geocode, and Route APIs.
- * Call MAPPLS_API_KEY() inside a request handler, never at top level.
+ * Call GEOAPIFY_API_KEY() inside a request handler, never at top level.
  */
-export const MAPPLS_API_KEY = lazyEnv("MAPPLS_API_KEY");
+export const GEOAPIFY_API_KEY = lazyEnv("GEOAPIFY_API_KEY");
 
 /**
  * NewsAPI key — server-side only.
@@ -181,7 +181,7 @@ export const SUPER_ADMIN_SEED_SECRET = lazyEnv("SUPER_ADMIN_SEED_SECRET");
  *   - FIREBASE_PROJECT_ID  — auth (Firebase Admin)
  *   - FIREBASE_CLIENT_EMAIL
  *   - FIREBASE_PRIVATE_KEY
- *   - MAPPLS_API_KEY       — location and routing
+ *   - GEOAPIFY_API_KEY       — location and routing
  *   - OPENWEATHER_API_KEY  — weather intelligence
  *   - NEWS_API_KEY         — news disruption signals
  *   - DATA_ENCRYPTION_KEY  — field encryption
@@ -192,7 +192,7 @@ export function validateStartup(): void {
     "FIREBASE_PROJECT_ID",
     "FIREBASE_CLIENT_EMAIL",
     "FIREBASE_PRIVATE_KEY",
-    "MAPPLS_API_KEY",
+    "GEOAPIFY_API_KEY",
     "OPENWEATHER_API_KEY",
     "NEWS_API_KEY",
     "TRAFFIC_API_KEY",
@@ -243,7 +243,7 @@ export function logEnvStatus(): void {
     "MONGODB_URI",
     "OPENWEATHER_API_KEY",
     "GEMINI_API_KEY",
-    "MAPPLS_API_KEY",
+    "GEOAPIFY_API_KEY",
     "NEWS_API_KEY",
     "TRAFFIC_API_KEY",
     "DATA_ENCRYPTION_KEY",

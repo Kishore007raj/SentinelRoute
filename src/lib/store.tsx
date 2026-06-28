@@ -323,7 +323,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         riskBreakdown:     route.riskBreakdown,
         // Store geometry for map rendering on shipment detail page
         geometry:          route.geometry ?? undefined,
-        // Mappls coordinate data — stored for Module 4 and route intelligence
+        // Geoapify coordinate data — stored for Module 4 and route intelligence
         originName:         pending.originName,
         originAddress:      pending.originAddress,
         originLat:          pending.originLat,

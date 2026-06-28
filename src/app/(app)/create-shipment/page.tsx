@@ -17,8 +17,8 @@ const URGENCY_OPTIONS = ["Standard", "Priority", "Critical"];
 const INSURANCE_OPTIONS = ["None", "Standard", "Full Coverage"];
 const TEMP_OPTIONS = ["None", "Low (0–10°C)", "Frozen (−18°C)"];
 
-// ─── Mappls suggestion type ───────────────────────────────────────────────────
-interface MapplsSuggestion {
+// ─── Geoapify suggestion type ───────────────────────────────────────────────────
+interface GeoapifySuggestion {
   placeId:      string;
   placeName:    string;
   placeAddress: string;
@@ -85,8 +85,8 @@ function SelectOptions({ options, value, onChange }: {
   );
 }
 
-// ─── Mappls location input ────────────────────────────────────────────────────
-function MapplsLocationInput({
+// ─── Geoapify location input ────────────────────────────────────────────────────
+function GeoapifyLocationInput({
   value,
   onConfirm,
   placeholder,
@@ -96,7 +96,7 @@ function MapplsLocationInput({
   placeholder?: string;
 }) {
   const [query, setQuery]           = useState(value?.name ?? "");
-  const [suggestions, setSuggestions] = useState<MapplsSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<GeoapifySuggestion[]>([]);
   const [open, setOpen]             = useState(false);
   const [fetching, setFetching]     = useState(false);
   const debounceRef                 = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -124,7 +124,7 @@ function MapplsLocationInput({
     abortRef.current = controller;
 
     setFetching(true);
-    fetch(`/api/mappls/autosuggest?q=${encodeURIComponent(q.trim())}`, {
+    fetch(`/api/geoapify/autosuggest?q=${encodeURIComponent(q.trim())}`, {
       signal: controller.signal,
     })
       .then((r) => r.json())
@@ -148,7 +148,7 @@ function MapplsLocationInput({
     debounceRef.current = setTimeout(() => fetchSuggestions(val), 280);
   };
 
-  const handleSelect = (s: MapplsSuggestion) => {
+  const handleSelect = (s: GeoapifySuggestion) => {
     if (s.lat == null || s.lng == null) return;
     const loc: ConfirmedLocation = {
       name:    s.placeName,
@@ -358,14 +358,14 @@ export default function CreateShipmentPage() {
           <div>
             <SectionLabel>Route</SectionLabel>
             <FieldRow label="Origin" required>
-              <MapplsLocationInput
+              <GeoapifyLocationInput
                 value={origin}
                 onConfirm={setOrigin}
                 placeholder="Search any city, hub, or address in India..."
               />
             </FieldRow>
             <FieldRow label="Destination" required>
-              <MapplsLocationInput
+              <GeoapifyLocationInput
                 value={destination}
                 onConfirm={setDestination}
                 placeholder="Search any city, hub, or address in India..."

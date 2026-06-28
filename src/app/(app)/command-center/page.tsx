@@ -257,7 +257,7 @@ function ManualIncidentForm({ onSuccess }: { onSuccess: () => void }) {
 // --- Intelligence Sources ---
 function IntelligenceSources({ kpis }: { kpis: LiveKPIs | null }) {
   const sources = [
-    { name: "Mappls Routing", icon: Navigation, status: "live", detail: "Autosuggest + Distance Matrix" },
+    { name: "Geoapify Routing", icon: Navigation, status: "live", detail: "Autosuggest + Routing" },
     { name: "OpenWeather", icon: Cloud, status: "live", detail: "Corridor + point weather scoring" },
     { name: "TomTom Traffic", icon: Activity, status: "live", detail: "Real-time flow + incident data" },
     { name: "NewsAPI", icon: Newspaper, status: "live", detail: "Disruption signal detection" },
