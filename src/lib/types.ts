@@ -504,6 +504,10 @@ export interface Incident {
   verifiedStatus:     boolean;
   impactScore:        number;
   recommendedAction:  string;
+  affectedState?:     string;
+  affectedCity?:      string;
+  logisticsImpact?:   string;
+  estimatedDelayMinutes?: number;
 }
 
 export interface RoutePrediction {
@@ -564,13 +568,26 @@ export interface CorridorStatistic {
   companyId?:            string; // Mostly global, but keep tenant-scoped for isolated intelligence? Spec says "Every logistics corridor receives intelligence. Example Chennai -> Bengaluru"
   origin:                string;
   destination:           string;
+  shipmentCount:         number;
+  completedShipments:    number;
+  delayedShipments:      number;
   averageDelay:          number; // minutes
-  riskHistory:           number[]; // Historical scores
-  weatherTrend:          "clear" | "rainy" | "stormy" | "foggy";
-  incidentDensity:       number; // 0-100
-  roadQuality:           number; // 0-100
   averageEtaVariance:    number; // minutes
-  historicalReliability: number; // 0-100
+  averageTravelTime:     number; // minutes
+  averageRiskScore:      number; // 0-100
+  weatherRisk:           number; // 0-100
+  trafficRisk:           number; // 0-100
+  festivalRisk:          number; // 0-100
+  newsRisk:              number; // 0-100
+  incidentDensity:       number; // 0-100 (incident count can be derived)
+  incidentCount:         number;
+  rerouteCount:          number;
+  historicalReliability: number; // 0-100 (reliability percentage)
+  volatilityScore:       number; // 0-100
+  operationalHealth:     number; // 0-100
+  riskHistory:           number[]; // trend over time
+  weatherTrend:          "clear" | "rainy" | "stormy" | "foggy";
+  roadQuality:           number; // 0-100
   currentOperationalStatus: "optimal" | "warning" | "disrupted";
   confidence:            number; // 0-100
 }

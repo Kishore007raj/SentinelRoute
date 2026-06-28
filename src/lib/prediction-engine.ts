@@ -5,6 +5,27 @@ import { createIntelligenceAudit } from "./intelligence-audit";
 import { getNewsRiskContribution } from "./intelligence/news-intelligence";
 import { getFestivalRiskContribution } from "./intelligence/festival-intelligence";
 
+async function getCorridorHistoricalStats(origin: string, destination: string): Promise<{ reliability: number, avgTrafficRisk: number }> {
+  const db = await getDb();
+  const result = await db.collection("shipments").aggregate([
+    { $match: { origin, destination, status: "completed" } },
+    { $lookup: { from: "risk_calculations", localField: "id", foreignField: "shipmentId", as: "risks" } },
+    { $unwind: { path: "$risks", preserveNullAndEmptyArrays: true } },
+    { $group: {
+        _id: null,
+        avgRisk: { $avg: "$riskScore" },
+        avgTrafficRisk: { $avg: "$risks.trafficRisk" }
+    }}
+  ]).toArray();
+
+  if (result.length > 0) {
+    const avgRisk = result[0].avgRisk || 0;
+    const avgTrafficRisk = result[0].avgTrafficRisk || 10;
+    return { reliability: Math.max(0, 100 - Math.round(avgRisk)), avgTrafficRisk: Math.round(avgTrafficRisk) };
+  }
+  return { reliability: 88, avgTrafficRisk: 10 }; // Default baseline
+}
+
 /**
  * Calculates deterministic probabilities and confidence for a shipment.
  * Incorporates: incidents, news intelligence, and festival calendar.
@@ -14,17 +35,19 @@ export async function calculateRoutePrediction(shipment: Shipment): Promise<Rout
   const companyId = shipment.companyId || "system";
 
   // ── Gather all intelligence sources in parallel ────────────────────────────
-  const [incidents, newsContrib, festivalContrib] = await Promise.all([
+  const [incidents, newsContrib, festivalContrib, corridorStats] = await Promise.all([
     getActiveIncidents(companyId),
     getNewsRiskContribution(companyId, shipment.id),
     getFestivalRiskContribution(companyId, shipment.id),
+    getCorridorHistoricalStats(shipment.origin, shipment.destination)
   ]);
 
-  let trafficStability      = 90;
+  let trafficStability      = Math.max(0, 100 - corridorStats.avgTrafficRisk);
   let weatherConfidence     = 85;
   let incidentDensity       = 10;
   let delayProbability      = 5;
   let disruptionProbability = 2;
+  const historicalCorridorReliability = corridorStats.reliability;
 
   const contributingFactors: string[] = ["Historical baseline route reliability"];
   const sourceApis: string[]          = ["SentinelRoute Risk Baseline"];
@@ -106,7 +129,7 @@ export async function calculateRoutePrediction(shipment: Shipment): Promise<Rout
     weatherConfidence,
     incidentDensity,
     trafficStability,
-    historicalCorridorReliability: 88,
+    historicalCorridorReliability,
     riskTrend: overallOperationalConfidence > 70 ? "stable" : "degrading",
     expectedDelayMinutes:          delayProbability > 30 ? Math.round(delayProbability * 0.5) : 0,
     recommendedRouteConfidence:    etaConfidence > 50 ? etaConfidence : 50,

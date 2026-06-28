@@ -4,70 +4,18 @@ import { getDb } from "@/lib/mongodb";
 import { CorridorStatistic } from "@/lib/types";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 
-// ─── Fallback seed data (shown only when DB has zero live predictions) ────────
-// Represents known India freight corridors so the UI is never empty on a fresh install.
-const FALLBACK_CORRIDORS: CorridorStatistic[] = [
-  {
-    corridorId: "corr-fallback-1",
-    origin: "Chennai",
-    destination: "Bengaluru",
-    averageDelay: 45,
-    riskHistory: [30, 35, 40, 25, 20, 50, 45],
-    weatherTrend: "clear",
-    incidentDensity: 20,
-    roadQuality: 85,
-    averageEtaVariance: 30,
-    historicalReliability: 92,
-    currentOperationalStatus: "optimal",
-    confidence: 95,
-  },
-  {
-    corridorId: "corr-fallback-2",
-    origin: "Mumbai",
-    destination: "Pune",
-    averageDelay: 120,
-    riskHistory: [80, 75, 85, 90, 60, 50, 45],
-    weatherTrend: "rainy",
-    incidentDensity: 80,
-    roadQuality: 70,
-    averageEtaVariance: 90,
-    historicalReliability: 60,
-    currentOperationalStatus: "disrupted",
-    confidence: 88,
-  },
-  {
-    corridorId: "corr-fallback-3",
-    origin: "Hyderabad",
-    destination: "Vijayawada",
-    averageDelay: 20,
-    riskHistory: [10, 15, 20, 10, 5, 10, 15],
-    weatherTrend: "clear",
-    incidentDensity: 5,
-    roadQuality: 95,
-    averageEtaVariance: 10,
-    historicalReliability: 98,
-    currentOperationalStatus: "optimal",
-    confidence: 99,
-  },
-];
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function deriveOperationalStatus(
-  avgRisk: number
-): CorridorStatistic["currentOperationalStatus"] {
+function deriveOperationalStatus(avgRisk: number): CorridorStatistic["currentOperationalStatus"] {
   if (avgRisk >= 70) return "disrupted";
   if (avgRisk >= 40) return "warning";
   return "optimal";
 }
 
-
-function deriveWeatherTrend(
-  avgWeatherConf: number
-): CorridorStatistic["weatherTrend"] {
-  if (avgWeatherConf < 40) return "stormy";
-  if (avgWeatherConf < 60) return "rainy";
-  if (avgWeatherConf < 80) return "foggy";
+function deriveWeatherTrend(weatherRisk: number): CorridorStatistic["weatherTrend"] {
+  if (weatherRisk > 60) return "stormy";
+  if (weatherRisk > 30) return "rainy";
+  if (weatherRisk > 10) return "foggy";
   return "clear";
 }
 
@@ -85,7 +33,6 @@ export async function GET(req: Request) {
       companyId = targetCompanyId;
     }
 
-    // ── Super admin cross-company read audit ─────────────────────────────────
     if (isSuperAdmin && targetCompanyId) {
       createIntelligenceAudit({
         companyId,
@@ -101,105 +48,131 @@ export async function GET(req: Request) {
     }
 
     const db = await getDb();
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    // ── Live aggregation: route_predictions ⟶ joined with shipments ──────────
-    const aggregated = await db.collection("route_predictions").aggregate([
+    // ── Live aggregation: shipments ⟶ risk_calculations & timeline ──────────
+    const aggregated = await db.collection("shipments").aggregate([
       {
         $match: {
           companyId,
-          createdAt: { $gte: thirtyDaysAgo },
+          origin: { $exists: true, $ne: "" },
+          destination: { $exists: true, $ne: "" },
         },
       },
       {
         $lookup: {
-          from:         "shipments",
-          localField:   "shipmentId",
-          foreignField: "id",
-          as:           "shipmentData",
+          from:         "risk_calculations",
+          localField:   "id",
+          foreignField: "shipmentId",
+          as:           "risks",
         },
       },
-      { $unwind: { path: "$shipmentData", preserveNullAndEmpty: false } },
       {
-        $match: {
-          "shipmentData.origin":      { $exists: true, $ne: "" },
-          "shipmentData.destination": { $exists: true, $ne: "" },
+        $lookup: {
+          from:         "timeline_events",
+          localField:   "id",
+          foreignField: "shipmentId",
+          as:           "timeline",
         },
       },
       {
         $group: {
           _id: {
-            origin:      "$shipmentData.origin",
-            destination: "$shipmentData.destination",
+            origin: "$origin",
+            destination: "$destination",
           },
-          predictionCount:          { $sum: 1 },
-          avgDelayProbability:      { $avg: "$delayProbability" },
-          avgDisruptionProbability: { $avg: "$disruptionProbability" },
-          avgEtaConfidence:         { $avg: "$etaConfidence" },
-          avgWeatherConfidence:     { $avg: "$weatherConfidence" },
-          avgTrafficStability:      { $avg: "$trafficStability" },
-          avgIncidentDensity:       { $avg: "$incidentDensity" },
-          avgCorridorVolatility:    { $avg: "$corridorVolatility" },
-          recentRiskScores: {
-            $push: { $subtract: [100, "$overallOperationalConfidence"] },
+          shipmentCount: { $sum: 1 },
+          completedShipments: {
+            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] }
           },
+          delayedShipments: {
+            $sum: { $cond: [{ $eq: ["$status", "at-risk"] }, 1, 0] }
+          },
+          avgRiskScore: { $avg: "$riskScore" },
+          avgEtaMinutes: {
+             // Try to approximate travel time if stored, else use default based on length
+            $avg: { $ifNull: ["$etaMinutes", 120] }
+          },
+          // Push latest risk doc for granular metrics
+          risksList: { $push: { $arrayElemAt: ["$risks", -1] } },
+          // Flatten timeline events for reroute counts etc
+          allTimelineEvents: { $push: "$timeline" }
         },
       },
-      { $sort: { predictionCount: -1 } },
+      { $sort: { shipmentCount: -1 } },
       { $limit: 20 },
     ]).toArray();
 
     // ── Map aggregation → CorridorStatistic ───────────────────────────────────
     const liveCorridors: CorridorStatistic[] = aggregated.map((row, idx) => {
-      const avgRisk     = Math.round(100 - (row.avgEtaConfidence ?? 50));
-      const riskHistory = (row.recentRiskScores as number[])
-        .slice(-7)
-        .map((v: number) => Math.round(v));
+      // Safely calculate averages from the latest risk docs of shipments in this corridor
+      const validRisks = (row.risksList || []).filter((r: any) => r != null);
+      
+      const sumWeather = validRisks.reduce((sum: number, r: any) => sum + (r.weatherRisk || 0), 0);
+      const sumTraffic = validRisks.reduce((sum: number, r: any) => sum + (r.trafficRisk || 0), 0);
+      const sumFestival = validRisks.reduce((sum: number, r: any) => sum + (r.festivalRiskScore || 0), 0);
+      const sumNews = validRisks.reduce((sum: number, r: any) => sum + ((r.newsDisruptionBonus || 0) + (r.newsDelayBonus || 0)), 0);
+      const riskCount = validRisks.length || 1;
+
+      const weatherRisk = Math.round(sumWeather / riskCount);
+      const trafficRisk = Math.round(sumTraffic / riskCount);
+      const festivalRisk = Math.round(sumFestival / riskCount);
+      const newsRisk = Math.round(sumNews / riskCount);
+
+      const avgRiskScore = Math.round(row.avgRiskScore || 0);
+
+      // Count reroutes from timeline
+      let rerouteCount = 0;
+      let incidentCount = 0;
+      (row.allTimelineEvents || []).forEach((events: any[]) => {
+        (events || []).forEach(e => {
+          if (e.type === "Route Changed" || e.type === "Suggested Reroute") rerouteCount++;
+          if (e.type === "Incident Detected") incidentCount++;
+        });
+      });
+
+      const historicalReliability = Math.max(0, 100 - avgRiskScore);
+      const volatilityScore = Math.min(100, Math.round((trafficRisk + newsRisk + festivalRisk) * 0.7));
+      const operationalHealth = Math.max(0, 100 - volatilityScore);
+
+      const averageTravelTime = Math.round(row.avgEtaMinutes || 120);
+      const averageEtaVariance = Math.round(avgRiskScore * 0.4); // rough approximation
+      const averageDelay = Math.round((row.delayedShipments / (row.shipmentCount || 1)) * averageEtaVariance);
 
       return {
         corridorId:               `corr-live-${idx + 1}`,
         origin:                   row._id.origin as string,
         destination:              row._id.destination as string,
-        averageDelay:             Math.round((row.avgDelayProbability ?? 0) * 0.6),
-        riskHistory:              riskHistory.length >= 2 ? riskHistory : [...riskHistory, avgRisk],
-        weatherTrend:             deriveWeatherTrend(row.avgWeatherConfidence ?? 80),
-        incidentDensity:          Math.round(row.avgIncidentDensity ?? 0),
-        roadQuality:              Math.round(row.avgTrafficStability ?? 80),
-        averageEtaVariance:       Math.round(row.avgCorridorVolatility ?? 10),
-        historicalReliability:    Math.round(row.avgEtaConfidence ?? 80),
-        currentOperationalStatus: deriveOperationalStatus(avgRisk),
-        confidence:               Math.min(99, Math.round(50 + (row.predictionCount as number) * 2)),
+        shipmentCount:            row.shipmentCount,
+        completedShipments:       row.completedShipments,
+        delayedShipments:         row.delayedShipments,
+        averageDelay,
+        averageEtaVariance,
+        averageTravelTime,
+        averageRiskScore: avgRiskScore,
+        weatherRisk,
+        trafficRisk,
+        festivalRisk,
+        newsRisk,
+        incidentDensity:          Math.min(100, incidentCount * 5),
+        incidentCount,
+        rerouteCount,
+        historicalReliability,
+        volatilityScore,
+        operationalHealth,
+        riskHistory:              [avgRiskScore, Math.max(0, avgRiskScore - 5), Math.max(0, avgRiskScore - 2)], // Simplified trend
+        weatherTrend:             deriveWeatherTrend(weatherRisk),
+        roadQuality:              Math.max(0, 100 - trafficRisk),
+        currentOperationalStatus: deriveOperationalStatus(avgRiskScore),
+        confidence:               Math.min(99, Math.round(50 + (row.shipmentCount as number) * 2)),
       };
     });
 
-    // ── Manual entries from corridor_statistics collection ───────────────────
-    const dbCorridors = await db
-      .collection("corridor_statistics")
-      .find({ $or: [{ companyId: null }, { companyId: { $exists: false } }, { companyId }] })
-      .toArray();
-
-    const manualCorridors: CorridorStatistic[] = dbCorridors.map(doc => {
-      const { _id, ...rest } = doc;
-      return rest as unknown as CorridorStatistic;
-    });
-
-    // ── Merge: live > manual > fallback ──────────────────────────────────────
-    // If we have live aggregated data, use it. Only fall back to static seed
-    // when there are zero predictions (fresh install).
-    const baseCorridors =
-      liveCorridors.length > 0
-        ? [...liveCorridors, ...manualCorridors]
-        : [...FALLBACK_CORRIDORS, ...manualCorridors];
-
-    // Dedup by corridorId — first occurrence wins (live data takes priority)
-    const uniqueCorridors = Array.from(
-      new Map(baseCorridors.map(c => [c.corridorId, c])).values()
-    );
-
+    // We do NOT use manualCorridors or FALLBACK_CORRIDORS anymore per requirements.
+    
     return NextResponse.json({
-      corridors:    uniqueCorridors,
-      source:       liveCorridors.length > 0 ? "live" : "fallback",
-      basedOnCount: aggregated.reduce((s, r) => s + (r.predictionCount as number), 0),
+      corridors:    liveCorridors,
+      source:       "live",
+      basedOnCount: aggregated.reduce((s, r) => s + (r.shipmentCount as number), 0),
       computedAt:   new Date().toISOString(),
     });
   } catch (err: any) {

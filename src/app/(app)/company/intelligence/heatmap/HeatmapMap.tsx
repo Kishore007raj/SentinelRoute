@@ -3,25 +3,26 @@
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import { useI18n } from "@/lib/i18n";
+import { ShieldAlert, Package, Clock, CloudRain, Car, AlertTriangle, Newspaper, AlertCircle } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
 export function HeatmapMap() {
   const { t } = useI18n();
-  const [incidents, setIncidents] = useState<any[]>([]);
+  const [heatPoints, setHeatPoints] = useState<any[]>([]);
 
   useEffect(() => {
-    async function fetchIncidents() {
+    async function fetchHeatmap() {
       try {
-        const res = await fetch("/api/intelligence/incidents");
+        const res = await fetch("/api/intelligence/heatmap");
         if (res.ok) {
           const data = await res.json();
-          setIncidents(data.incidents || []);
+          setHeatPoints(data.heatPoints || []);
         }
       } catch (err) {
         console.error(err);
       }
     }
-    fetchIncidents();
+    fetchHeatmap();
   }, []);
 
   return (
@@ -32,45 +33,81 @@ export function HeatmapMap() {
         scrollWheelZoom={true}
         className="w-full h-full"
       >
-        {/* CartoDB dark tiles — consistent with RouteMapView, no API key required */}
+        {/* CartoDB dark tiles — consistent with RouteMapView */}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
         
-        {incidents.map((incident) => {
-          const isCritical = incident.severity === "critical";
-          const isHigh = incident.severity === "high";
-          const color = isCritical ? "#ef4444" : isHigh ? "#f97316" : "#eab308";
+        {heatPoints.map((point) => {
+          const isCritical = point.intensity > 75;
+          const isHigh = point.intensity > 40;
+          const color = isCritical ? "#ef4444" : isHigh ? "#f97316" : "#3b82f6";
           
           return (
             <CircleMarker
-              key={incident.incidentId}
-              center={[incident.latitude, incident.longitude]}
+              key={point.id}
+              center={[point.lat, point.lng]}
               pathOptions={{ 
                 color: color, 
                 fillColor: color, 
-                fillOpacity: 0.5,
+                fillOpacity: 0.6,
                 weight: 1 
               }}
-              radius={incident.affectedRadiusKm * 2} // visual scaling
+              radius={Math.max(8, (point.intensity / 100) * 20 + (point.shipmentCount * 2))} // visual scaling based on intensity and density
             >
-              <Popup>
-                <div className="font-sans text-sm">
-                  <h3 className="font-bold">{incident.title}</h3>
-                  <p className="mt-1">{incident.description}</p>
-                  <p className="mt-2 font-semibold text-xs text-muted-foreground uppercase">
-                    {t('heatmap.severity')}:{" "}
-                    <span style={{ color }}>
-                      {incident.severity === "critical"
-                        ? t("logistics.critical")
-                        : incident.severity === "high"
-                        ? t("logistics.high")
-                        : incident.severity === "medium"
-                        ? t("logistics.medium")
-                        : t("logistics.low")}
+              <Popup className="min-w-[280px]">
+                <div className="font-sans text-sm p-1">
+                  <h3 className="font-bold text-base border-b pb-2 mb-2 flex items-center justify-between">
+                    <span>{point.corridor || "Unknown Route"}</span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted">
+                      Risk: {point.intensity}
                     </span>
-                  </p>
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-4">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Package className="w-4 h-4 text-blue-500" />
+                      <span className="font-semibold text-foreground">{point.shipmentCount}</span>
+                      <span className="text-xs">Shipments</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Clock className="w-4 h-4 text-amber-500" />
+                      <span className="font-semibold text-foreground">{point.averageDelay > 0 ? `+${point.averageDelay}m` : "On Time"}</span>
+                      <span className="text-xs">Avg Delay</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
+                      <ShieldAlert className="w-4 h-4 text-red-500" />
+                      <span className="font-semibold text-foreground">{point.dominantRisk}</span>
+                      <span className="text-xs">Dominant Risk</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-muted/30 p-2 rounded-md border border-border">
+                    <p className="text-xs font-bold uppercase mb-2 text-muted-foreground tracking-wider">Severity Breakdown</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1"><CloudRain className="w-3 h-3 text-blue-400" /> Weather</span>
+                        <span className="font-semibold">{point.breakdown.weather}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1"><Car className="w-3 h-3 text-orange-400" /> Traffic</span>
+                        <span className="font-semibold">{point.breakdown.traffic}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3 text-purple-400" /> Festival</span>
+                        <span className="font-semibold">{point.breakdown.festival}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1"><Newspaper className="w-3 h-3 text-gray-400" /> News</span>
+                        <span className="font-semibold">{point.breakdown.news}</span>
+                      </div>
+                      <div className="flex items-center justify-between col-span-2 border-t pt-1 mt-1">
+                        <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3 text-red-400" /> Incidents Detected</span>
+                        <span className="font-semibold text-red-500">{point.breakdown.incidents}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </Popup>
             </CircleMarker>
