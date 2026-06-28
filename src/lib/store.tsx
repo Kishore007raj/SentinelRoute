@@ -339,6 +339,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         cargoVolumeM3:      pending.cargoVolumeM3,
         plannedDeparture:   pending.plannedDeparture,
         plannedArrival:     pending.plannedArrival,
+        // Module 4 operational fields
+        priority:               pending.urgency || "Standard",
+        insuranceType:          pending.insurance,
+        temperatureRequirement: pending.tempSensitive,
+        deadline:               pending.deadline,
       };
       // Only include predictiveAlert if it's a non-empty string
       const alert = route.alerts[0];

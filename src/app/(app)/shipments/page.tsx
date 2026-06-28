@@ -15,12 +15,15 @@ const tabConfig: { value: ShipmentStatus | "all"; label: string }[] = [
   { value: "active",    label: "Active" },
   { value: "at-risk",   label: "At Risk" },
   { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 const statusConfig: Record<ShipmentStatus, { label: string; color: string; dot: string }> = {
-  active:    { label: "Active",    color: "text-primary",     dot: "bg-primary" },
-  "at-risk": { label: "At Risk",   color: "text-amber-400",   dot: "bg-amber-400" },
-  completed: { label: "Completed", color: "text-emerald-400", dot: "bg-emerald-400" },
+  active:    { label: "Active",    color: "text-primary",            dot: "bg-primary" },
+  "at-risk": { label: "At Risk",   color: "text-amber-400",          dot: "bg-amber-400" },
+  completed: { label: "Completed", color: "text-emerald-400",        dot: "bg-emerald-400" },
+  cancelled: { label: "Cancelled", color: "text-red-400",            dot: "bg-red-400" },
+  draft:     { label: "Draft",     color: "text-muted-foreground",   dot: "bg-muted-foreground" },
 };
 
 // ─── Mobile card ──────────────────────────────────────────────────────────────

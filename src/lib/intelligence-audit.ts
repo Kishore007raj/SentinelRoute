@@ -41,6 +41,7 @@ export type IntelligenceEventType =
   | "festival_risk_added"
   | "news_risk_added"
   | "shipment_channel_message"
+  | "shipment_assigned"
   // Super admin
   | "super_admin_read";
 

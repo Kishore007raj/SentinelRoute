@@ -48,7 +48,23 @@ export function AppHeader() {
   const { user } = useUser();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const segments = pathname.split("/").filter(Boolean);
-  const pageTitle = routeLabels[pathname] ?? segments[segments.length - 1] ?? "Dashboard";
+
+  // Derive a human-readable title — handle dynamic segments gracefully
+  const pageTitle = (() => {
+    // Exact match first
+    if (routeLabels[pathname]) return routeLabels[pathname];
+    // /shipments/[id] → "Shipment Detail"
+    if (segments[0] === "shipments" && segments.length >= 2) return "Shipment Detail";
+    // /workforce/drivers/[id] → "Driver Profile"
+    if (segments[0] === "workforce" && segments[1] === "drivers" && segments.length >= 3) return "Driver Profile";
+    // /workforce/vehicles/[id] → "Vehicle Profile"
+    if (segments[0] === "workforce" && segments[1] === "vehicles" && segments.length >= 3) return "Vehicle Profile";
+    // /admin/company/[id] → "Company Detail"
+    if (segments[0] === "admin" && segments[1] === "company" && segments.length >= 3) return "Company Detail";
+    // Fallback: last segment, title-cased
+    const last = segments[segments.length - 1] ?? "Dashboard";
+    return last.charAt(0).toUpperCase() + last.slice(1).replace(/-/g, " ");
+  })();
 
   const handleSignOut = async () => {
     await signOut(auth);

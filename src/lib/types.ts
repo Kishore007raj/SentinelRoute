@@ -6,8 +6,7 @@
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 export type RiskLevel      = "low" | "medium" | "high" | "critical";
-/** "pending" is intentionally excluded — all dispatched shipments start as "active" */
-export type ShipmentStatus = "active" | "at-risk" | "completed";
+export type ShipmentStatus = "draft" | "active" | "at-risk" | "completed" | "cancelled";
 export type RouteLabel     = "fastest" | "balanced" | "safest";
 
 // ─── Risk breakdown ───────────────────────────────────────────────────────────
@@ -115,6 +114,27 @@ export interface Shipment {
   plannedDeparture?:      string;
   /** ISO-8601 planned arrival datetime (UTC) */
   plannedArrival?:        string;
+  // ── Module 4 — Workforce assignment ──────────────────────────────────────
+  /** Assigned driver ID (from drivers collection) */
+  assignedDriverId?:      string;
+  /** Driver display name snapshot at assignment time */
+  assignedDriverName?:    string;
+  /** Assigned vehicle ID (from vehicles collection) */
+  assignedVehicleId?:     string;
+  /** Vehicle number snapshot at assignment time */
+  assignedVehicleNumber?: string;
+  /** Insurance type for this shipment */
+  insuranceType?:         string;
+  /** Temperature requirement */
+  temperatureRequirement?: string;
+  /** Priority level */
+  priority?:              string;
+  /** Deadline for delivery (ISO-8601) */
+  deadline?:              string;
+  /** Current GPS location of the shipment */
+  currentLocation?:       { lat: number; lng: number; updatedAt: string };
+  /** Reason for cancellation */
+  cancellationReason?:    string;
 }
 
 // ─── Pending shipment (form state before dispatch) ────────────────────────────
@@ -549,7 +569,8 @@ export type TimelineEventType =
   | "System Alert"
   | "Suggested Reroute"
   | "Route Changed"
-  | "Shipment Completed";
+  | "Shipment Completed"
+  | "Shipment Cancelled";
 
 export interface ShipmentTimelineEvent {
   eventId:          string;
@@ -629,4 +650,20 @@ export interface OperationalAlert {
   recommendedAction: string;
   status?:           string;
   severity?:         string;
+}
+
+// ─── Module 4 — Shipment Assignment ──────────────────────────────────────────
+
+export interface ShipmentAssignment {
+  assignmentId:    string;
+  shipmentId:      string;
+  companyId:       string;
+  driverId:        string;
+  driverName:      string;
+  vehicleId:       string;
+  vehicleNumber:   string;
+  assignedBy:      string;  // userId
+  assignedAt:      string;  // UTC ISO
+  unassignedAt?:   string;  // UTC ISO — set when reassigned/unassigned
+  active:          boolean;
 }

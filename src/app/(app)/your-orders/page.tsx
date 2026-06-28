@@ -12,7 +12,7 @@ import { cn, getRiskColor, formatRelativeTime } from "@/lib/utils";
 import type { Shipment, ShipmentStatus } from "@/lib/types";
 import Link from "next/link";
 
-// Canonical status config — matches ShipmentStatus: "active" | "at-risk" | "completed"
+// Canonical status config — matches all ShipmentStatus values
 const statusConfig: Record<string, { label: string; icon: typeof Zap; color: string; bg: string }> = {
   active: {
     label: "Active",
@@ -31,6 +31,18 @@ const statusConfig: Record<string, { label: string; icon: typeof Zap; color: str
     icon: CheckCircle,
     color: "text-emerald-400",
     bg: "bg-emerald-400/10 border-emerald-400/20",
+  },
+  cancelled: {
+    label: "Cancelled",
+    icon: AlertTriangle,
+    color: "text-red-400",
+    bg: "bg-red-400/10 border-red-400/20",
+  },
+  draft: {
+    label: "Draft",
+    icon: Package,
+    color: "text-muted-foreground",
+    bg: "bg-muted/30 border-border",
   },
 };
 
@@ -121,9 +133,10 @@ export default function YourOrdersPage() {
 
   useEffect(() => { setHydrated(true); }, []);
 
-  // Active = "active" or "at-risk" or "pending" — anything not completed
-  const activeShipments   = useMemo(() => shipments.filter((s) => s.status !== "completed"), [shipments]);
+  // Active = "active" or "at-risk" — in-progress shipments
+  const activeShipments    = useMemo(() => shipments.filter((s) => s.status === "active" || s.status === "at-risk"), [shipments]);
   const completedShipments = useMemo(() => shipments.filter((s) => s.status === "completed"), [shipments]);
+  const cancelledShipments = useMemo(() => shipments.filter((s) => s.status === "cancelled"), [shipments]);
 
   if (!hydrated || loading) {
     return (
@@ -150,6 +163,7 @@ export default function YourOrdersPage() {
           <h1 className="text-3xl font-bold text-foreground">Your Orders</h1>
           <p className="text-sm text-muted-foreground">
             {shipments.length} total · {activeShipments.length} active · {completedShipments.length} completed
+            {cancelledShipments.length > 0 && ` · ${cancelledShipments.length} cancelled`}
           </p>
         </div>
         <Link href="/create-shipment">
@@ -214,6 +228,24 @@ export default function YourOrdersPage() {
                 ))}
               </div>
             </section>
+          )}
+
+          {cancelledShipments.length > 0 && (
+            <>
+              <div className="py-2"><Separator className="opacity-10" /></div>
+              <section>
+                <SectionHeader
+                  title="Cancelled"
+                  count={cancelledShipments.length}
+                  color="text-red-400 border-red-400/30 bg-red-400/10"
+                />
+                <div className="space-y-4">
+                  {cancelledShipments.map((s, i) => (
+                    <OrderRow key={s.id} shipment={s} index={i} />
+                  ))}
+                </div>
+              </section>
+            </>
           )}
         </div>
       )}

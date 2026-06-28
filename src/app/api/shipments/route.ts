@@ -152,6 +152,12 @@ export async function POST(req: NextRequest) {
     plannedArrival,
   } = raw as unknown as CreateShipmentRequest;
 
+  // Module 4 optional fields
+  const priority               = typeof raw.priority               === "string" ? raw.priority               : undefined;
+  const insuranceType          = typeof raw.insuranceType          === "string" ? raw.insuranceType          : undefined;
+  const temperatureRequirement = typeof raw.temperatureRequirement === "string" ? raw.temperatureRequirement : undefined;
+  const deadline               = typeof raw.deadline               === "string" ? raw.deadline               : undefined;
+
   // Also extract weather/disruption scores for at-risk classification
   const weatherScore    = typeof (raw as Record<string, unknown>).weatherScore    === "number" ? (raw as Record<string, unknown>).weatherScore    as number : riskBreakdown?.weather    ?? 0;
   const disruptionScore = typeof (raw as Record<string, unknown>).disruptionScore === "number" ? (raw as Record<string, unknown>).disruptionScore as number : riskBreakdown?.disruption ?? 0;
@@ -247,6 +253,11 @@ export async function POST(req: NextRequest) {
     ...(typeof cargoVolumeM3 === "number" && isFinite(cargoVolumeM3) ? { cargoVolumeM3 } : {}),
     ...(plannedDeparture ? { plannedDeparture } : {}),
     ...(plannedArrival   ? { plannedArrival }   : {}),
+    // Module 4 optional fields
+    ...(priority               ? { priority }               : {}),
+    ...(insuranceType          ? { insuranceType }          : {}),
+    ...(temperatureRequirement ? { temperatureRequirement } : {}),
+    ...(deadline               ? { deadline }               : {}),
   };
 
   try {
@@ -324,6 +335,36 @@ export async function POST(req: NextRequest) {
     shipment.confidencePercent,
     ["riskScore", "eta", "distance"]
   ).catch(() => {/* fire-and-forget — never block the response */});
+
+  // Trigger prediction engine — fire-and-forget, never blocks response
+  import("@/lib/prediction-engine").then(({ calculateRoutePrediction }) => {
+    calculateRoutePrediction(shipment).catch((err) => {
+      console.error("[POST /api/shipments] prediction engine error:", err);
+    });
+  }).catch(() => {});
+
+  // Create communication channel for this shipment — fire-and-forget
+  import("@/lib/mongodb").then(async ({ getDb: getDbLazy }) => {
+    try {
+      const dbLazy = await getDbLazy();
+      const existing = await dbLazy.collection("shipment_channels").findOne({
+        shipmentId: shipment.id,
+        companyId:  shipment.companyId,
+      });
+      if (!existing) {
+        await dbLazy.collection("shipment_channels").insertOne({
+          channelId:  `ch-${shipment.id}`,
+          shipmentId: shipment.id,
+          companyId:  shipment.companyId,
+          active:     true,
+          createdAt:  shipment.createdAt,
+          updatedAt:  shipment.createdAt,
+        });
+      }
+    } catch (err) {
+      console.error("[POST /api/shipments] channel creation error:", err);
+    }
+  }).catch(() => {});
 
   return NextResponse.json({ shipment }, { status: 201 });
 }
