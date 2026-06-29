@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { DashboardCard } from "@/components/ui/dashboard-card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogFooter, DialogClose,
@@ -619,10 +621,7 @@ export default function ShipmentDetailPage({
           <p className="text-sm text-muted-foreground">{shipment.origin} → {shipment.destination}</p>
         </div>
         <div className="flex items-center gap-3">
-          <Badge className={cn("px-3 py-1 text-xs font-semibold border", statusCfg.className)}>
-            <span className={cn("w-1.5 h-1.5 rounded-full mr-1.5 inline-block", statusCfg.dot)} />
-            {statusCfg.label}
-          </Badge>
+          <StatusBadge status={shipment.status} />
           {cancelling && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Cancelling…
@@ -663,8 +662,7 @@ export default function ShipmentDetailPage({
         {/* Route */}
         <TabsContent value="route" className="mt-8">
           <div className="space-y-6">
-            <div className="panel p-6">
-              <p className="label-meta mb-4">Route Details</p>
+            <DashboardCard icon={Navigation} title="Route Details" noPadding className="p-6">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
                 <div className="space-y-1">
                   <p className="label-meta">Route</p>
@@ -683,11 +681,10 @@ export default function ShipmentDetailPage({
                   <p className="text-sm font-semibold text-foreground">{shipment.confidencePercent}%</p>
                 </div>
               </div>
-            </div>
+            </DashboardCard>
             {/* Risk breakdown */}
             {shipment.riskBreakdown && (
-              <div className="panel p-6">
-                <p className="label-meta mb-4">Risk Factors on Route</p>
+              <DashboardCard icon={AlertTriangle} title="Risk Factors on Route" noPadding className="p-6">
                 <div className="space-y-4">
                   {Object.entries(shipment.riskBreakdown).map(([key, val]) => (
                     <div key={key} className="flex items-center gap-4">
@@ -704,7 +701,7 @@ export default function ShipmentDetailPage({
                     </div>
                   ))}
                 </div>
-              </div>
+              </DashboardCard>
             )}
             {/* Map */}
             <div className="rounded-xl overflow-hidden border border-border h-[500px]">

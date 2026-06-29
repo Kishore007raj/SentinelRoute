@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/api-client";
 /**
  * /company/documents
  *
@@ -69,7 +70,7 @@ function DocumentRow({
 
       // Save to MongoDB via API
       const token = await user.getIdToken();
-      const res = await fetch("/api/company/documents", {
+      const res = await fetchApi("/api/company/documents", {
         method:  "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body:    JSON.stringify({
@@ -179,7 +180,7 @@ export default function CompanyDocumentsPage() {
     const load = async () => {
       try {
         const token = await user.getIdToken();
-        const res   = await fetch("/api/company/documents", {
+        const res   = await fetchApi("/api/company/documents", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) return;
@@ -225,7 +226,7 @@ export default function CompanyDocumentsPage() {
     setSubmitting(true);
     try {
       const token = await user.getIdToken();
-      const res   = await fetch("/api/company/submit", {
+      const res   = await fetchApi("/api/company/submit", {
         method:  "POST",
         headers: { Authorization: `Bearer ${token}` },
       });

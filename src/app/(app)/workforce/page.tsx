@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow, parseISO } from "date-fns";
@@ -163,7 +164,7 @@ export default function WorkforceDashboardPage() {
     setError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch("/api/workforce/dashboard", {
+      const res = await fetchApi("/api/workforce/dashboard", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {

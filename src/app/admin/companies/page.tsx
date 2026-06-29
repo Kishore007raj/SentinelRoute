@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/api-client";
 /**
  * /admin/companies
  *
@@ -124,7 +125,7 @@ export default function AdminCompaniesPage() {
     setLoading(true);
     try {
       const token = await user.getIdToken();
-      const res   = await fetch("/api/admin/companies", {
+      const res   = await fetchApi("/api/admin/companies", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;

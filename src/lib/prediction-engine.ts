@@ -1,3 +1,4 @@
+import { evaluateAlerts } from "./alert-service";
 import { getDb } from "./mongodb";
 import { RoutePrediction, Shipment } from "./types";
 import { getActiveIncidents } from "./intelligence-service";
@@ -38,7 +39,7 @@ export async function calculateRoutePrediction(shipment: Shipment): Promise<Rout
   const [incidents, newsContrib, festivalContrib, corridorStats] = await Promise.all([
     getActiveIncidents(companyId),
     getNewsRiskContribution(companyId, shipment.id),
-    getFestivalRiskContribution(companyId, shipment.id),
+    getFestivalRiskContribution(companyId, shipment),
     getCorridorHistoricalStats(shipment.origin, shipment.destination)
   ]);
 
@@ -332,6 +333,7 @@ export async function calculateRoutePrediction(shipment: Shipment): Promise<Rout
     }).catch(() => {});
   }
 
+  await evaluateAlerts(shipment, prediction);
   return prediction;
 }
 

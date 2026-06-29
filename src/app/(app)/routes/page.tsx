@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/api-client";
 import { useState, useEffect, useRef } from "react";
 import { motion, LayoutGroup } from "framer-motion";
 import { ArrowRight, ChevronLeft, CheckCircle, AlertTriangle } from "lucide-react";
@@ -251,7 +252,7 @@ export default function RoutesPage() {
       try {
         console.log("ROUTE INPUT:", shipmentData.origin, "→", shipmentData.destination);
         const token = user ? await user.getIdToken() : null;
-        const res = await fetch("/api/analyze-routes", {
+        const res = await fetchApi("/api/analyze-routes", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -317,7 +318,7 @@ export default function RoutesPage() {
     }, 10_000);
 
     user?.getIdToken().then((token) => {
-      fetch("/api/ai-insight", {
+      fetchApi("/api/ai-insight", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -412,7 +413,7 @@ export default function RoutesPage() {
       setLoadingRoutes(true);
 
       const token = user ? await user.getIdToken() : null;
-      fetch("/api/analyze-routes", {
+      fetchApi("/api/analyze-routes", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

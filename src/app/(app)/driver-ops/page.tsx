@@ -1,10 +1,13 @@
 "use client";
+import { fetchApi } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { DashboardCard } from "@/components/ui/dashboard-card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useCompany } from "@/lib/company-context";
 import type { Shipment, DriverLocation, ShipmentExecution, ShipmentCheckpoint } from "@/lib/types";
-import { Play, Pause, Square, CheckSquare, MapPin } from "lucide-react";
+import { Play, Pause, Square, CheckSquare, MapPin, Truck } from "lucide-react";
 import { toast } from "sonner";
 
 export default function DriverOpsPage() {
@@ -21,7 +24,7 @@ export default function DriverOpsPage() {
     if (!company) return;
     
     // Fetch shipments assigned to drivers (status active/draft with assignedDriverId)
-    fetch(`/api/shipments?companyId=${company.companyId}`)
+    fetchApi(`/api/shipments?companyId=${company.companyId}`)
       .then(res => res.json())
       .then(data => {
         if (data.shipments) {
@@ -33,7 +36,7 @@ export default function DriverOpsPage() {
 
   const fetchExecution = async () => {
     try {
-      const res = await fetch(`/api/execution/${selectedShipmentId}`);
+      const res = await fetchApi(`/api/execution/${selectedShipmentId}`);
       if (res.ok) {
         const data = await res.json();
         setExecution(data.execution);
@@ -67,7 +70,7 @@ export default function DriverOpsPage() {
   const handleAction = async (action: string) => {
     if (!selectedShipmentId) return;
     try {
-      const res = await fetch(`/api/execution/${selectedShipmentId}/workflow`, {
+      const res = await fetchApi(`/api/execution/${selectedShipmentId}/workflow`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, notes: `Driver action: ${action}` })
@@ -85,7 +88,7 @@ export default function DriverOpsPage() {
 
   const handleCheckpoint = async (checkpointId: string, action: string) => {
     try {
-      const res = await fetch(`/api/execution/${selectedShipmentId}/checkpoint`, {
+      const res = await fetchApi(`/api/execution/${selectedShipmentId}/checkpoint`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ checkpointId, action, notes: `Checkpoint ${action}` })
@@ -103,7 +106,7 @@ export default function DriverOpsPage() {
 
   const handlePingLocation = async () => {
     try {
-      const res = await fetch(`/api/execution/${selectedShipmentId}/location`, {
+      const res = await fetchApi(`/api/execution/${selectedShipmentId}/location`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -136,10 +139,9 @@ export default function DriverOpsPage() {
         <p className="text-muted-foreground">Simulate driver app actions for assigned shipments.</p>
       </div>
 
-      <div className="bg-card border border-border/50 rounded-xl p-6 shadow-sm">
-        <h2 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wider">Select Assigned Shipment</h2>
-        <select 
-          className="w-full bg-background border border-border/50 focus:border-primary/50 outline-none p-3 rounded-lg font-mono text-sm"
+      <DashboardCard title="Select Assigned Shipment" icon={Truck}>
+        <select
+          className="w-full bg-background border border-border focus:border-primary/50 outline-none p-3 rounded-lg font-mono text-sm"
           value={selectedShipmentId}
           onChange={(e) => setSelectedShipmentId(e.target.value)}
         >
@@ -150,17 +152,15 @@ export default function DriverOpsPage() {
             </option>
           ))}
         </select>
-      </div>
+      </DashboardCard>
 
       {selectedShipment && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-          <div className="bg-card border border-border/50 rounded-xl p-6 flex flex-col gap-6 shadow-sm">
+          <DashboardCard title={selectedShipment.shipmentCode} icon={Truck} action={execution ? <StatusBadge status={execution.status} /> : undefined}>
             <div className="flex justify-between items-center flex-wrap gap-4">
               <div>
-                <h3 className="text-2xl font-light tracking-tight">{selectedShipment.shipmentCode}</h3>
-                <p className="text-sm text-muted-foreground uppercase tracking-wider mt-1">Status: <span className="text-foreground">{execution?.status || "Not Started"}</span></p>
                 {execution?.currentETA && (
-                  <p className="text-sm text-emerald-400 mt-1 uppercase tracking-wider">Live ETA: {execution.currentETA}</p>
+                  <p className="text-sm text-emerald-400 uppercase tracking-wider">Live ETA: {execution.currentETA}</p>
                 )}
               </div>
               <div className="flex gap-2 flex-wrap">
@@ -202,8 +202,14 @@ export default function DriverOpsPage() {
               <div className="border-t border-border/20 pt-6">
                 <h4 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wider">Checkpoints</h4>
                 <div className="space-y-2">
-                  {execution.checkpoints.map((cp: ShipmentCheckpoint) => (
-                    <div key={cp.id} className="flex justify-between items-center p-4 bg-muted/10 border border-border/30 rounded-lg">
+                  {execution.checkpoints.map((cp: ShipmentCheckpoint, idx: number) => (
+                    <motion.div 
+                      key={cp.id} 
+                      initial={{ opacity: 0, x: -10 }} 
+                      animate={{ opacity: 1, x: 0 }} 
+                      transition={{ delay: idx * 0.1 }}
+                      className="flex justify-between items-center p-4 bg-muted/10 border border-border/30 rounded-lg"
+                    >
                       <div>
                         <p className="font-medium text-sm">{cp.name}</p>
                         <p className="text-xs text-muted-foreground font-mono mt-1">Status: {cp.status}</p>
@@ -216,12 +222,12 @@ export default function DriverOpsPage() {
                           Depart
                         </Button>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               </div>
             )}
-          </div>
+          </DashboardCard>
         </motion.div>
       )}
     </div>

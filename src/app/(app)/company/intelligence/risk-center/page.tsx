@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { DashboardCard } from "@/components/ui/dashboard-card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Activity, AlertTriangle, ShieldAlert, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -135,52 +137,28 @@ export default function RiskCenterPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Company Risk Score */}
-        <div className="bg-card border border-border p-5 rounded-xl shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-destructive/10 text-destructive rounded-lg">
-              <ShieldAlert className="w-5 h-5" />
-            </div>
-            <h3 className="font-semibold text-sm">Company Risk Score</h3>
-          </div>
-          <p className={cn("text-3xl font-bold", kpisLoading ? "text-muted-foreground" : riskColor)}>
+        <DashboardCard icon={ShieldAlert} title="Company Risk Score" noPadding className="p-5">
+          <p className={cn("text-3xl font-bold mt-2", kpisLoading ? "text-muted-foreground" : riskColor)}>
             {kpisLoading ? "…" : riskScore}
           </p>
           <p className="text-xs text-muted-foreground mt-1">{riskLabel} risk level</p>
-        </div>
+        </DashboardCard>
 
         {/* Active Alerts */}
-        <div className="bg-card border border-border p-5 rounded-xl shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
-              <Activity className="w-5 h-5" />
-            </div>
-            <h3 className="font-semibold text-sm">Active Alerts</h3>
-          </div>
-          <p className="text-3xl font-bold">{kpisLoading ? "…" : kpis?.activeAlerts ?? 0}</p>
+        <DashboardCard icon={Activity} title="Active Alerts" noPadding className="p-5">
+          <p className="text-3xl font-bold mt-2">{kpisLoading ? "…" : kpis?.activeAlerts ?? 0}</p>
           <p className="text-xs text-muted-foreground mt-1">across corridors</p>
-        </div>
+        </DashboardCard>
 
         {/* Critical Shipments */}
-        <div className="bg-card border border-border p-5 rounded-xl shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <h3 className="font-semibold text-sm">High Risk Shipments</h3>
-          </div>
-          <p className="text-3xl font-bold">{kpisLoading ? "…" : kpis?.highRiskShipments ?? 0}</p>
+        <DashboardCard icon={AlertTriangle} title="High Risk Shipments" noPadding className="p-5">
+          <p className="text-3xl font-bold mt-2">{kpisLoading ? "…" : kpis?.highRiskShipments ?? 0}</p>
           <p className="text-xs text-muted-foreground mt-1">require attention</p>
-        </div>
+        </DashboardCard>
 
         {/* Risk Trend — computed from real data */}
-        <div className="bg-card border border-border p-5 rounded-xl shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-purple-500/10 text-purple-500 rounded-lg">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-            <h3 className="font-semibold text-sm">Risk Trend</h3>
-          </div>
-          <div className="text-2xl font-bold">
+        <DashboardCard icon={TrendingUp} title="Risk Trend" noPadding className="p-5">
+          <div className="text-2xl font-bold mt-2">
             {kpisLoading ? (
               <span className="text-muted-foreground text-3xl">…</span>
             ) : (
@@ -192,7 +170,7 @@ export default function RiskCenterPage() {
               ? `Based on ${kpis.basedOnPredictions} predictions`
               : "Computed from live predictions"}
           </p>
-        </div>
+        </DashboardCard>
       </div>
 
       {/* Secondary KPI strip — avg delay, disruption, ETA confidence */}
@@ -203,23 +181,20 @@ export default function RiskCenterPage() {
             { label: "Disruption Probability", value: `${kpis.avgDisruptionProbability}%`, color: kpis.avgDisruptionProbability > 40 ? "text-orange-500" : "text-emerald-500" },
             { label: "ETA Confidence", value: `${kpis.avgEtaConfidence}%`, color: kpis.avgEtaConfidence < 60 ? "text-red-500" : kpis.avgEtaConfidence < 80 ? "text-amber-500" : "text-emerald-500" },
           ].map(({ label, value, color }) => (
-            <div key={label} className="bg-card border border-border rounded-xl p-4">
+            <DashboardCard key={label} noPadding className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
               <p className={cn("text-2xl font-bold", color)}>{value}</p>
-            </div>
+            </DashboardCard>
           ))}
         </div>
       )}
 
-      {/* Operational Alerts */}
-      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-border bg-muted/30 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Operational Alerts</h2>
-          <span className="text-xs text-muted-foreground">
-            {alerts.filter((a) => a.status === "active").length} active
-          </span>
-        </div>
-        <div className="p-0">
+      <DashboardCard
+        icon={AlertTriangle}
+        title="Operational Alerts"
+        action={<span className="text-xs text-muted-foreground">{alerts.filter((a) => a.status === "active").length} active</span>}
+        noPadding
+      >
           {loading ? (
             <div className="p-8 text-center text-muted-foreground animate-pulse">Loading alerts…</div>
           ) : alerts.length === 0 ? (
@@ -234,26 +209,8 @@ export default function RiskCenterPage() {
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-foreground">{alert.reason}</p>
-                      <span className={cn(
-                        "text-[10px] uppercase font-bold px-2 py-0.5 rounded",
-                        alert.status === "active"
-                          ? "bg-destructive/10 text-destructive"
-                          : alert.status === "acknowledged"
-                          ? "bg-amber-500/10 text-amber-500"
-                          : "bg-green-600/10 text-green-600"
-                      )}>
-                        {alert.status}
-                      </span>
-                      {alert.severity && (
-                        <span className={cn(
-                          "text-[10px] uppercase font-bold px-2 py-0.5 rounded",
-                          alert.severity === "critical" ? "bg-red-600/10 text-red-600" :
-                          alert.severity === "high"     ? "bg-orange-500/10 text-orange-500" :
-                                                          "bg-blue-500/10 text-blue-500"
-                        )}>
-                          {alert.severity}
-                        </span>
-                      )}
+                      <StatusBadge status={alert.status} />
+                      {alert.severity && <StatusBadge status={alert.severity} />}
                     </div>
                     <p className="text-sm text-muted-foreground">Action: {alert.recommendedAction}</p>
                     {alert.shipmentId && (
@@ -296,8 +253,7 @@ export default function RiskCenterPage() {
               ))}
             </div>
           )}
-        </div>
-      </div>
+      </DashboardCard>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/api-client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, Zap, CheckCircle, ChevronRight, ArrowRight, MapPin, Loader2 } from "lucide-react";
@@ -124,7 +125,7 @@ function GeoapifyLocationInput({
     abortRef.current = controller;
 
     setFetching(true);
-    fetch(`/api/geoapify/autosuggest?q=${encodeURIComponent(q.trim())}`, {
+    fetchApi(`/api/geoapify/autosuggest?q=${encodeURIComponent(q.trim())}`, {
       signal: controller.signal,
     })
       .then((r) => r.json())
@@ -260,7 +261,7 @@ export default function CreateShipmentPage() {
     const timer = setTimeout(async () => {
       try {
         const token = user ? await user.getIdToken() : null;
-        const res = await fetch("/api/analyze-routes", {
+        const res = await fetchApi("/api/analyze-routes", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

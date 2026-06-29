@@ -1,3 +1,4 @@
+import { dispatchEvent } from "@/lib/event-dispatcher";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getDb } from "@/lib/mongodb";
@@ -169,6 +170,7 @@ export async function PATCH(
             { $set: { assignedVehicleId: null, status: "suspended", updatedAt: now } },
             { session }
           );
+    if (body.status) dispatchEvent({ type: "DRIVER_UPDATED", companyId, payload: { driverId: id, status: body.status } });
 
           // Clear the vehicle's reference back to this driver
           if (currentVehicleId) {

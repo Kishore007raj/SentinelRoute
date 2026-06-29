@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchApi } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import { useI18n } from "@/lib/i18n";
@@ -13,7 +14,7 @@ export function HeatmapMap() {
   useEffect(() => {
     async function fetchHeatmap() {
       try {
-        const res = await fetch("/api/intelligence/heatmap");
+        const res = await fetchApi("/api/intelligence/heatmap");
         if (res.ok) {
           const data = await res.json();
           setHeatPoints(data.heatPoints || []);

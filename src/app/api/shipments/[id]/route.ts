@@ -1,3 +1,4 @@
+import { dispatchEvent } from "@/lib/event-dispatcher";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";

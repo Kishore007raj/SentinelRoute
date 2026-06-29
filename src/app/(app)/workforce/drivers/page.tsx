@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchApi } from "@/lib/api-client";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { UserCheck, AlertTriangle, RefreshCw, Plus } from "lucide-react";
@@ -78,7 +79,7 @@ export default function DriverManagementPage() {
     setError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch("/api/workforce/drivers", {
+      const res = await fetchApi("/api/workforce/drivers", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -103,7 +104,7 @@ export default function DriverManagementPage() {
     if (!user) return;
     try {
       const token = await user.getIdToken();
-      await fetch(`/api/workforce/drivers/${driver.driverId}`, {
+      await fetchApi(`/api/workforce/drivers/${driver.driverId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: "suspended" }),
@@ -115,7 +116,7 @@ export default function DriverManagementPage() {
     if (!user) return;
     try {
       const token = await user.getIdToken();
-      await fetch(`/api/workforce/drivers/${driver.driverId}`, {
+      await fetchApi(`/api/workforce/drivers/${driver.driverId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: "active" }),

@@ -213,9 +213,14 @@ async function fetchWeatherByCoords(
   const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
 
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+
     const res = await fetch(url, {
       next: { revalidate: 1800 }, // cache for 30 minutes
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
     if (!res.ok) {
       console.error(`[weather] API error ${res.status} for (${lat.toFixed(3)},${lon.toFixed(3)})`);
@@ -240,9 +245,14 @@ async function fetchWeatherByCityName(city: string): Promise<OWCurrentWeather | 
   const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)},IN&appid=${apiKey}&units=metric`;
 
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+
     const res = await fetch(url, {
       next: { revalidate: 1800 },
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
     if (!res.ok) {
       console.error(`[weather] API error ${res.status} for ${city}`);
@@ -270,9 +280,14 @@ export async function fetchForecastByCoords(
   const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&cnt=40`;
 
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+
     const res = await fetch(url, {
       next: { revalidate: 3600 }, // cache for 1 hour — forecast data
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
     if (!res.ok) {
       console.error(`[weather] Forecast API error ${res.status} for (${lat.toFixed(3)},${lon.toFixed(3)})`);
@@ -540,7 +555,11 @@ export async function getRouteWeatherRisk(coordinates: [number, number][]): Prom
   for (const [lng, lat] of pointsToFetch) {
     try {
       const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${apiKey}&units=metric`;
-      const response = await fetch(url);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      
       if (!response.ok) continue;
 
       const data = await response.json();

@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/api-client";
 /**
  * /company/register
  *
@@ -241,7 +242,7 @@ export default function CompanyRegisterPage() {
     setSaving(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch("/api/company/register", {
+      const res = await fetchApi("/api/company/register", {
         method:  "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({

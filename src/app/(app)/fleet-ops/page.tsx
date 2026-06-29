@@ -1,9 +1,12 @@
 "use client";
+import { fetchApi } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useCompany } from "@/lib/company-context";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Activity, Map, Navigation, ShieldCheck } from "lucide-react";
+import { DashboardCard } from "@/components/ui/dashboard-card";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { ArrowRight, Activity, Map, Navigation, ShieldCheck, Truck } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +16,7 @@ export default function FleetOpsPage() {
 
   useEffect(() => {
     if (!company) return;
-    fetch(`/api/execution/active`)
+    fetchApi(`/api/execution/active`)
       .then(res => res.json())
       .then(data => {
         if (data.executions) {
@@ -41,8 +44,7 @@ export default function FleetOpsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* KPI Summary */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-card border border-border/50 rounded-xl p-6 shadow-sm">
-            <h3 className="text-sm font-medium text-muted-foreground mb-6 uppercase tracking-wider">Fleet Status</h3>
+          <DashboardCard title="Fleet Status" icon={Truck}>
             <div className="space-y-6">
               <div>
                 <p className="text-4xl font-light tracking-tight">{activeExecutions.length}</p>
@@ -59,10 +61,9 @@ export default function FleetOpsPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </DashboardCard>
           
-          <div className="bg-card border border-border/50 rounded-xl p-6 shadow-sm">
-             <h3 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wider">Quick Actions</h3>
+          <DashboardCard title="Quick Actions" icon={Navigation}>
              <div className="space-y-3">
                <Link href="/driver-ops" className="block">
                  <Button variant="secondary" className="w-full justify-start font-normal bg-muted/30">
@@ -70,17 +71,12 @@ export default function FleetOpsPage() {
                  </Button>
                </Link>
              </div>
-          </div>
+          </DashboardCard>
         </div>
 
         {/* Live Trips List */}
         <div className="lg:col-span-2">
-          <div className="bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm">
-            <div className="p-6 border-b border-border/20 flex justify-between items-center">
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Live Executions</h3>
-              <Activity className="w-4 h-4 text-emerald-400" />
-            </div>
-            
+          <DashboardCard title="Live Executions" icon={Activity} action={<Activity className="w-4 h-4 text-emerald-400" />} noPadding>
             {activeExecutions.length === 0 ? (
               <div className="p-12 text-center text-muted-foreground font-mono text-sm">
                 No active executions found.
@@ -88,7 +84,7 @@ export default function FleetOpsPage() {
             ) : (
               <div className="divide-y divide-border/20">
                 {activeExecutions.map((exec, idx) => (
-                  <motion.div 
+                  <motion.div
                     key={exec.shipmentId}
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -102,17 +98,9 @@ export default function FleetOpsPage() {
                         </Link>
                         <p className="text-sm text-muted-foreground">Driver: {exec.driverId} | Vehicle: {exec.vehicleId}</p>
                       </div>
-                      <div className="text-right">
-                        <span className={cn(
-                          "px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider rounded-full border",
-                          exec.status === "driving" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : 
-                          "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                        )}>
-                          {exec.status}
-                        </span>
-                      </div>
+                      <StatusBadge status={exec.status} />
                     </div>
-                    
+
                     <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <div>
                         <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Live ETA</p>
@@ -137,7 +125,7 @@ export default function FleetOpsPage() {
                 ))}
               </div>
             )}
-          </div>
+          </DashboardCard>
         </div>
       </div>
     </div>

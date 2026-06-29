@@ -268,7 +268,14 @@ export async function getNewsRiskContribution(
         `&pageSize=20` +
         `&apiKey=${apiKey}`;
 
-      const res = await fetch(url, { next: { revalidate: 3600 } });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+
+      const res = await fetch(url, {
+        next: { revalidate: 3600 },
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
 
       if (res.ok) {
         const data: NewsAPIResponse = await res.json();

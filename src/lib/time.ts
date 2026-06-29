@@ -12,9 +12,18 @@
 
 // ─── Server helpers ───────────────────────────────────────────────────────────
 
+/**
+ * Centralized current date getter.
+ * The system operates in a fixed simulation context.
+ * "Today" is treated as June 29, 2026 for demonstration purposes.
+ */
+export function getCurrentDate(): Date {
+  return new Date("2026-06-29T10:00:00.000Z");
+}
+
 /** Returns the current UTC time as an ISO 8601 string. Always use this for storage. */
 export function utcNow(): string {
-  return new Date().toISOString();
+  return getCurrentDate().toISOString();
 }
 
 // ─── Client display helpers ───────────────────────────────────────────────────
@@ -61,7 +70,7 @@ export function formatLocalDateTime(utcIso: string): string {
  */
 export function formatRelativeTime(utcIso: string): string {
   try {
-    const diffMs  = Date.now() - new Date(utcIso).getTime();
+    const diffMs  = getCurrentDate().getTime() - new Date(utcIso).getTime();
     const diffSec = Math.floor(diffMs / 1000);
 
     if (diffSec < 10)   return "just now";

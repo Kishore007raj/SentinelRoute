@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -98,7 +99,7 @@ export default function VehicleProfilePage() {
     setError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch(`/api/workforce/vehicles/${id}`, {
+      const res = await fetchApi(`/api/workforce/vehicles/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -119,7 +120,7 @@ export default function VehicleProfilePage() {
     setAuditsLoading(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch(`/api/workforce/audits?targetId=${encodeURIComponent(id)}`, {
+      const res = await fetchApi(`/api/workforce/audits?targetId=${encodeURIComponent(id)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;

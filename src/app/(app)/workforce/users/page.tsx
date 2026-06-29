@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchApi } from "@/lib/api-client";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { UserCog, AlertTriangle, RefreshCw, UserPlus } from "lucide-react";
@@ -74,7 +75,7 @@ export default function UserManagementPage() {
     setError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch("/api/workforce/users", {
+      const res = await fetchApi("/api/workforce/users", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -103,7 +104,7 @@ export default function UserManagementPage() {
       if (!user) return;
       try {
         const token = await user.getIdToken();
-        const res = await fetch(`/api/workforce/users/${userId}`, {
+        const res = await fetchApi(`/api/workforce/users/${userId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify(body),

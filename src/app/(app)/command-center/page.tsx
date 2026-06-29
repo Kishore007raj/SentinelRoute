@@ -7,6 +7,8 @@ import {
   ChevronDown, ArrowRight, Clock, TrendingUp, MapPin, Truck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DashboardCard } from "@/components/ui/dashboard-card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useStore } from "@/lib/store";
 import { useUser } from "@/lib/auth-context";
 import { cn, getRiskColor, formatRelativeTime } from "@/lib/utils";
@@ -130,14 +132,14 @@ function GaugeCard({ label, value, sub, valueColor, icon: Icon }: {
   label: string; value: string; sub: string; valueColor: string; icon: React.ElementType;
 }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+    <DashboardCard className="space-y-4 h-full" glowOnHover delay={0.1}>
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest">{label}</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">{label}</p>
         <Icon className="w-4 h-4 text-muted-foreground/40" />
       </div>
       <p className={cn("text-4xl font-bold tabular-nums leading-none", valueColor)}>{value}</p>
       <p className="text-xs text-muted-foreground">{sub}</p>
-    </div>
+    </DashboardCard>
   );
 }
 
@@ -265,30 +267,25 @@ function IntelligenceSources({ kpis }: { kpis: LiveKPIs | null }) {
     { name: "Festival Calendar", icon: Globe, status: "live", detail: "India-wide event registry" },
   ];
   return (
-    <div className="bg-card border border-border rounded-xl p-6 space-y-5">
-      <div className="flex items-center gap-2">
-        <Activity className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-semibold text-foreground">Intelligence Sources</h3>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    <DashboardCard className="space-y-5" title="Intelligence Sources" icon={Activity}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {sources.map(({ name, icon: Icon, status, detail }) => (
-          <div key={name} className="flex items-start gap-3 p-4 bg-muted/5 border border-border/50 rounded-xl">
-            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+          <div key={name} className="flex items-start gap-4 p-4 bg-muted/5 border border-border/50 rounded-xl hover:bg-muted/10 transition-colors">
+            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
               status === "live" ? "bg-emerald-400/10 border border-emerald-400/20" : "bg-muted/20 border border-border")}>
-              <Icon className={cn("w-4 h-4", status === "live" ? "text-emerald-400" : "text-muted-foreground")} />
+              <Icon className={cn("w-5 h-5", status === "live" ? "text-emerald-400" : "text-muted-foreground")} />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-foreground truncate">{name}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{detail}</p>
-              <div className="flex items-center gap-1 mt-1.5">
-                <span className={cn("inline-block w-1.5 h-1.5 rounded-full", status === "live" ? "bg-emerald-400" : "bg-muted-foreground")} />
-                <span className={cn("text-[10px] uppercase tracking-widest font-medium", status === "live" ? "text-emerald-400" : "text-muted-foreground")}>{status}</span>
+              <p className="text-sm font-semibold text-foreground truncate">{name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{detail}</p>
+              <div className="mt-2.5">
+                <StatusBadge status={status} variant={status === "live" ? "success" : "inactive"} />
               </div>
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </DashboardCard>
   );
 }
 
@@ -401,80 +398,68 @@ export default function CommandCenterPage() {
       {/* Analytics Summary Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Top Risky Corridors */}
-        <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-amber-500" />
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-widest">Top Risky Corridors</h3>
-          </div>
+        <DashboardCard className="space-y-4" title="Top Risky Corridors" icon={TrendingUp}>
           {topCorridors.length === 0 ? (
             <p className="text-xs text-muted-foreground">No active corridors</p>
           ) : (
             <div className="space-y-3">
               {topCorridors.map((c, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg border border-border/50">
+                <div key={i} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg border border-border/50 hover:border-border transition-colors">
                   <div className="flex items-center gap-2 min-w-0">
                     <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-xs font-semibold text-foreground truncate">{c.name}</span>
+                    <span className="text-sm font-semibold text-foreground truncate">{c.name}</span>
                   </div>
                   <span className={cn("text-xs font-bold shrink-0", c.avgRisk > 30 ? "text-amber-400" : "text-emerald-400")}>
-                    Avg Risk: {c.avgRisk}
+                    Risk: {c.avgRisk}
                   </span>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </DashboardCard>
 
         {/* Most Delayed Shipments */}
-        <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-red-500" />
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-widest">Most Delayed Shipments</h3>
-          </div>
+        <DashboardCard className="space-y-4" title="Most Delayed Shipments" icon={Clock}>
           {delayedShipments.length === 0 ? (
             <p className="text-xs text-muted-foreground">No delayed shipments</p>
           ) : (
             <div className="space-y-3">
               {delayedShipments.map((s, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg border border-border/50">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Truck className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-xs font-semibold text-foreground font-mono">{s.shipmentCode}</span>
+                <div key={i} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg border border-border/50 hover:border-border transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Truck className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm font-semibold text-foreground font-mono">{s.shipmentCode}</span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{s.origin}</span>
+                  <span className="text-xs text-muted-foreground truncate max-w-[120px]">{s.origin}</span>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </DashboardCard>
 
         {/* Weather/Traffic Summary */}
-        <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <Cloud className="w-4 h-4 text-blue-500" />
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-widest">Weather & Traffic Summary</h3>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg border border-border/50">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                <span className="text-xs font-medium text-foreground">Traffic Congestion</span>
+        <DashboardCard className="space-y-4" title="Weather & Traffic Summary" icon={Cloud}>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-4 bg-muted/10 rounded-xl border border-border/50">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                <span className="text-sm font-medium text-foreground">Traffic Congestion</span>
               </div>
-              <span className="text-xs font-bold text-foreground">
+              <span className={cn("text-xs font-bold uppercase tracking-widest px-2 py-1 rounded-full", (kpis?.avgDelayProbability ?? 0) > 30 ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500")}>
                 {kpisLoading ? "..." : (kpis?.avgDelayProbability ?? 0) > 30 ? "Elevated" : "Normal"}
               </span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg border border-border/50">
-              <div className="flex items-center gap-2">
-                <Cloud className="w-3.5 h-3.5 text-blue-500" />
-                <span className="text-xs font-medium text-foreground">Weather Disruptions</span>
+            <div className="flex items-center justify-between p-4 bg-muted/10 rounded-xl border border-border/50">
+              <div className="flex items-center gap-3">
+                <Cloud className="w-4 h-4 text-blue-500" />
+                <span className="text-sm font-medium text-foreground">Weather Disruptions</span>
               </div>
-              <span className="text-xs font-bold text-foreground">
+              <span className={cn("text-xs font-bold uppercase tracking-widest px-2 py-1 rounded-full", (kpis?.avgDisruptionProbability ?? 0) > 30 ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500")}>
                 {kpisLoading ? "..." : (kpis?.avgDisruptionProbability ?? 0) > 30 ? "High Risk" : "Clear"}
               </span>
             </div>
           </div>
-        </div>
+        </DashboardCard>
       </div>
 
       {/* Main split */}
@@ -515,7 +500,7 @@ export default function CommandCenterPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-semibold text-foreground">{t.title}</p>
-                          <span className={cn("text-[10px] uppercase tracking-widest font-bold", c.text)}>{t.severity}</span>
+                          <StatusBadge status={t.severity} />
                           <span className="text-[10px] text-muted-foreground/60 ml-auto capitalize">{t.sub}</span>
                         </div>
                       </div>

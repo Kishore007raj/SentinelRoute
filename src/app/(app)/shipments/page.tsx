@@ -6,6 +6,7 @@ import { ArrowRight, Search, AlertTriangle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useStore } from "@/lib/store";
 import { cn, getRiskColor, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import type { Shipment, ShipmentStatus } from "@/lib/types";
@@ -44,10 +45,7 @@ function ShipmentCard({ shipment, index }: { shipment: Shipment; index: number }
             <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
             <span className="truncate">{shipment.destination}</span>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <div className={cn("w-2 h-2 rounded-full", status.dot)} />
-            <span className={cn("text-sm font-medium", status.color)}>{status.label}</span>
-          </div>
+          <StatusBadge status={shipment.status} className="shrink-0" />
         </div>
         <div className="grid grid-cols-3 gap-5">
           <div className="space-y-1.5">
@@ -103,9 +101,8 @@ function ShipmentRow({ shipment, index }: { shipment: Shipment; index: number })
           </div>
 
           {/* Status */}
-          <div className="flex items-center gap-2 shrink-0 w-28">
-            <div className={cn("w-2 h-2 rounded-full shrink-0", status.dot)} />
-            <span className={cn("text-sm font-medium", status.color)}>{status.label}</span>
+          <div className="shrink-0 w-28">
+            <StatusBadge status={shipment.status} />
           </div>
 
           {/* Risk */}

@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { PlusSquare, AlertTriangle, ArrowRight, CheckCircle, Building2, ShieldCheck, Zap, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DashboardCard } from "@/components/ui/dashboard-card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useStore } from "@/lib/store";
 import { useCompany } from "@/lib/company-context";
 import { useUser } from "@/lib/auth-context";
@@ -70,15 +72,10 @@ function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: numbe
                 <p className="text-xs text-muted-foreground truncate">{shipment.vehicleType}</p>
               </div>
 
-              {/* Time */}
+              {/* Status */}
               <div className="shrink-0 hidden sm:block w-24 text-right space-y-1">
                 <p className="text-xs text-muted-foreground">{formatRelativeTime(shipment.lastUpdate)}</p>
-                <p className={cn(
-                  "text-[10px] uppercase tracking-widest font-medium",
-                  isAtRisk ? "text-amber-400" : isCompleted ? "text-emerald-400" : "text-primary",
-                )}>
-                  {isAtRisk ? "at risk" : isCompleted ? "done" : "active"}
-                </p>
+                <StatusBadge status={isAtRisk ? "at risk" : isCompleted ? "completed" : "active"} />
               </div>
             </div>
 
@@ -273,11 +270,11 @@ export default function DashboardPage() {
           { label: "High-risk avoided", value: highRiskAvoided, sub: `of ${totalShipments} total`, subColor: "text-muted-foreground", valueColor: "text-emerald-400" },
           { label: "Completed", value: completedShipments.length, sub: `${totalShipments} total shipments`, subColor: "text-muted-foreground" },
         ].map(({ label, value, sub, subColor, valueColor }) => (
-          <div key={label} className="bg-card border border-border rounded-xl p-6 space-y-3">
+          <DashboardCard key={label} noPadding className="p-6 space-y-3">
             <p className="text-xs text-muted-foreground uppercase tracking-widest">{label}</p>
             <p className={cn("text-5xl font-bold tabular-nums leading-none", valueColor ?? "text-foreground")}>{value}</p>
             <p className={cn("text-sm", subColor)}>{sub}</p>
-          </div>
+          </DashboardCard>
         ))}
       </div>
 
@@ -303,13 +300,13 @@ export default function DashboardPage() {
             { label: "Disruption Risk", value: loading ? "…" : kpis ? `${kpis.avgDisruptionProbability}%` : "—", sub: kpis ? (kpis.avgDisruptionProbability > 30 ? "elevated" : "within range") : "loading", valueColor: (kpis?.avgDisruptionProbability ?? 0) > 30 ? "text-amber-400" : "text-emerald-400" },
             { label: "ETA Confidence", value: loading ? "…" : kpis ? `${kpis.avgEtaConfidence}%` : "—", sub: kpis ? `${kpis.activeAlerts} active alerts` : "loading", valueColor: (kpis?.avgEtaConfidence ?? 100) < 70 ? "text-amber-400" : "text-emerald-400" },
           ].map(({ label, value, sub, valueColor }) => (
-            <div key={label} className={cn("bg-card border border-border rounded-xl p-5 space-y-2", loading && !kpis ? "opacity-50" : "")}>
+            <DashboardCard key={label} noPadding className={cn("p-5 space-y-2", loading && !kpis ? "opacity-50" : "")}>
               <p className="text-xs text-muted-foreground uppercase tracking-widest leading-tight">{label}</p>
               <p className={cn("text-3xl font-bold tabular-nums leading-none", valueColor)}>
                 {loading && !kpis ? <span className="animate-pulse">…</span> : value}
               </p>
               <p className="text-xs text-muted-foreground">{sub}</p>
-            </div>
+            </DashboardCard>
           ))}
         </div>
       </div>
@@ -398,10 +395,9 @@ export default function DashboardPage() {
             </div>
           ) : null}
 
-          <div className="space-y-4">
-            <h3 className="text-base font-semibold text-foreground">Needs Attention</h3>
+          <DashboardCard title="Needs Attention" icon={AlertTriangle}>
             {atRiskShipments.length === 0 && activeShipments.length === 0 ? (
-              <div className="flex items-center gap-3 py-5">
+              <div className="flex items-center gap-3 py-2">
                 <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
                 <p className="text-sm text-muted-foreground">No action required</p>
               </div>
@@ -409,7 +405,7 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {atRiskShipments.map((s) => (
                   <Link key={s.id} href={`/shipments/${s.id}`}>
-                    <div className="bg-card border border-border rounded-xl p-5 hover:border-amber-400/30 transition-colors cursor-pointer space-y-3">
+                    <div className="bg-muted/5 border border-border rounded-lg p-4 hover:border-amber-400/30 transition-colors cursor-pointer space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-mono text-muted-foreground">{s.shipmentCode}</span>
                         <span className="text-base font-bold text-amber-400">{s.riskScore}</span>
@@ -423,13 +419,12 @@ export default function DashboardPage() {
                 ))}
               </div>
             )}
-          </div>
+          </DashboardCard>
 
-          <div className="space-y-4">
-            <h3 className="text-base font-semibold text-foreground">Recent Decisions</h3>
-            <div className="space-y-0">
+          <DashboardCard title="Recent Decisions" icon={Activity}>
+            <div className="divide-y divide-border/30">
               {shipments.slice(0, 4).map((s) => (
-                <div key={s.id} className="flex items-center justify-between py-3 border-b border-border/30 last:border-0">
+                <div key={s.id} className="flex items-center justify-between py-3">
                   <span className="text-xs font-mono text-muted-foreground">{s.shipmentCode}</span>
                   <span className={cn(
                     "text-xs font-semibold",
@@ -441,7 +436,7 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </DashboardCard>
         </div>
       </div>
     </div>

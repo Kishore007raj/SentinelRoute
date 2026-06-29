@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/api-client";
 /**
  * /admin/company/[id]
  * Full company review page for super admin.
@@ -50,7 +51,7 @@ export default function AdminCompanyReviewPage() {
     setLoading(true);
     try {
       const token = await user.getIdToken();
-      const res   = await fetch(`/api/admin/companies/${companyId}`, {
+      const res   = await fetchApi(`/api/admin/companies/${companyId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) { toast.error("Company not found"); router.push("/admin/companies"); return; }
@@ -72,7 +73,7 @@ export default function AdminCompanyReviewPage() {
     setActing(action);
     try {
       const token = await user.getIdToken();
-      const res = await fetch(`/api/admin/companies/${companyId}`, {
+      const res = await fetchApi(`/api/admin/companies/${companyId}`, {
         method:  "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ action, note: note || undefined }),

@@ -85,7 +85,7 @@ export function AppHeader() {
     <>
       <MobileNav open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
-      <header className="h-14 flex items-center gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8 border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-30">
+      <header className="h-14 flex items-center gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8 border-b border-border bg-background/95 backdrop-blur-md shadow-sm sticky top-0 z-30">
         {/* Mobile hamburger — only on small screens */}
         <button
           className="md:hidden text-muted-foreground hover:text-foreground p-1.5 -ml-1 rounded-md hover:bg-accent transition-colors"

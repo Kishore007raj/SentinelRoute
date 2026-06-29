@@ -7,48 +7,24 @@ import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { CloudRain, Car, AlertTriangle, Package, ShieldCheck, Activity, Cloud, Navigation, Newspaper, Zap, Globe, Route as RouteIcon, MapPin, Clock, Search, Info, Leaf, Droplet, ArrowRight, Play, CheckCircle2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { DashboardCard } from "@/components/ui/dashboard-card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { cn, getRiskColor } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import { useUser } from "@/lib/auth-context";
+import { useIntelligence } from "@/hooks/use-intelligence";
 import { RouteMapView } from "@/components/shipment/RouteMapView";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { Route, AnalyzeRoutesResponse } from "@/lib/types";
 
-// --- Live KPI hook for Route Intelligence supplement ---
-interface RouteKPIs {
-  avgDelayProbability:      number;
-  avgDisruptionProbability: number;
-  avgEtaConfidence:         number;
-  basedOnPredictions:       number;
-  computedAt:               string;
-}
-function useLiveRouteKPIs() {
-  const { user } = useUser();
-  const [kpis, setKpis]       = useState<RouteKPIs | null>(null);
-  const mounted               = useRef(true);
-  const load = useCallback(async () => {
-    if (!user) return;
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch("/api/intelligence/kpis", { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok && mounted.current) setKpis(await res.json());
-    } catch { /* silent */ }
-  }, [user]);
-  useEffect(() => {
-    mounted.current = true;
-    void load();
-    return () => { mounted.current = false; };
-  }, [load]);
-  return kpis;
-}
 
 export default function RouteIntelligencePage() {
   const { t } = useI18n();
   const { user } = useUser();
   const { state, activeShipments, atRiskShipments } = useStore();
   const { shipments, loading } = state;
-  const liveKPIs = useLiveRouteKPIs();
+  const { kpis: liveKPIs } = useIntelligence({ fetchKpis: true, pollingIntervalMs: 30000 });
 
   // --- Route Analysis Form State ---
   const [origin, setOrigin] = useState("Mumbai, Maharashtra");

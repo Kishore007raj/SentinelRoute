@@ -37,255 +37,72 @@ export interface FestivalRiskContribution {
   riskLevel:        "low" | "medium" | "high" | "critical";
 }
 
-// ─── Static festival calendar ─────────────────────────────────────────────────
-// Dates as "MM-DD" — evaluated against current calendar year.
-// National festivals use state: "national", affectedStates: ["all"].
 
-const FESTIVAL_CALENDAR: FestivalEntry[] = [
-  // ── National ──────────────────────────────────────────────────────────────
-  {
-    id: "republic-day",
-    name: "Republic Day",
-    state: "national",
-    startDate: "01-26",
-    endDate: "01-26",
-    congestionMultiplier: 1.8,
-    riskLevel: "high",
-    affectedStates: ["all"],
-  },
-  {
-    id: "independence-day",
-    name: "Independence Day",
-    state: "national",
-    startDate: "08-15",
-    endDate: "08-15",
-    congestionMultiplier: 1.7,
-    riskLevel: "high",
-    affectedStates: ["all"],
-  },
-  {
-    id: "gandhi-jayanti",
-    name: "Gandhi Jayanti",
-    state: "national",
-    startDate: "10-02",
-    endDate: "10-02",
-    congestionMultiplier: 1.3,
-    riskLevel: "medium",
-    affectedStates: ["all"],
-  },
-  // ── Major Religious ────────────────────────────────────────────────────────
-  {
-    id: "diwali",
-    name: "Diwali",
-    state: "national",
-    startDate: "10-20",
-    endDate: "10-24",
-    congestionMultiplier: 2.2,
-    riskLevel: "critical",
-    affectedStates: ["all"],
-  },
-  {
-    id: "dussehra",
-    name: "Dussehra",
-    state: "national",
-    startDate: "10-12",
-    endDate: "10-12",
-    congestionMultiplier: 1.9,
-    riskLevel: "high",
-    affectedStates: ["all"],
-  },
-  {
-    id: "eid-ul-fitr",
-    name: "Eid ul-Fitr",
-    state: "national",
-    startDate: "04-10",
-    endDate: "04-11",
-    congestionMultiplier: 2.0,
-    riskLevel: "high",
-    affectedStates: ["all"],
-  },
-  {
-    id: "christmas",
-    name: "Christmas",
-    state: "national",
-    startDate: "12-24",
-    endDate: "12-26",
-    congestionMultiplier: 1.6,
-    riskLevel: "high",
-    affectedStates: ["all"],
-  },
-  // ── South India / Regional ─────────────────────────────────────────────────
-  {
-    id: "pongal",
-    name: "Pongal",
-    state: "TN",
-    startDate: "01-14",
-    endDate: "01-17",
-    congestionMultiplier: 2.0,
-    riskLevel: "high",
-    affectedStates: ["TN"],
-  },
-  {
-    id: "onam",
-    name: "Onam",
-    state: "KL",
-    startDate: "09-01",
-    endDate: "09-13",
-    congestionMultiplier: 1.9,
-    riskLevel: "high",
-    affectedStates: ["KL"],
-  },
-  {
-    id: "ganesh-chaturthi",
-    name: "Ganesh Chaturthi",
-    state: "MH",
-    startDate: "09-07",
-    endDate: "09-17",
-    congestionMultiplier: 2.1,
-    riskLevel: "critical",
-    affectedStates: ["MH", "KA", "TS", "AP"],
-  },
-  {
-    id: "durga-puja",
-    name: "Durga Puja",
-    state: "WB",
-    startDate: "10-01",
-    endDate: "10-05",
-    congestionMultiplier: 2.3,
-    riskLevel: "critical",
-    affectedStates: ["WB", "OR", "JH", "BR"],
-  },
-  {
-    id: "holi",
-    name: "Holi",
-    state: "national",
-    startDate: "03-24",
-    endDate: "03-25",
-    congestionMultiplier: 1.8,
-    riskLevel: "high",
-    affectedStates: ["all"],
-  },
-  {
-    id: "navratri",
-    name: "Navratri",
-    state: "national",
-    startDate: "10-03",
-    endDate: "10-11",
-    congestionMultiplier: 1.7,
-    riskLevel: "high",
-    affectedStates: ["all"],
-  },
-  {
-    id: "ugadi",
-    name: "Ugadi",
-    state: "national",
-    startDate: "04-09",
-    endDate: "04-09",
-    congestionMultiplier: 1.6,
-    riskLevel: "medium",
-    affectedStates: ["KA", "AP", "TS"],
-  },
-  {
-    id: "bihu",
-    name: "Bihu",
-    state: "AS",
-    startDate: "04-14",
-    endDate: "04-15",
-    congestionMultiplier: 1.5,
-    riskLevel: "medium",
-    affectedStates: ["AS"],
-  },
-  {
-    id: "baisakhi",
-    name: "Baisakhi",
-    state: "PB",
-    startDate: "04-13",
-    endDate: "04-14",
-    congestionMultiplier: 1.6,
-    riskLevel: "medium",
-    affectedStates: ["PB", "HR"],
-  },
-  {
-    id: "vishu",
-    name: "Vishu",
-    state: "KL",
-    startDate: "04-14",
-    endDate: "04-14",
-    congestionMultiplier: 1.6,
-    riskLevel: "medium",
-    affectedStates: ["KL"],
-  },
-  {
-    id: "puthandu",
-    name: "Puthandu",
-    state: "TN",
-    startDate: "04-14",
-    endDate: "04-14",
-    congestionMultiplier: 1.6,
-    riskLevel: "medium",
-    affectedStates: ["TN"],
-  },
-];
-
-// ─── Date helpers ─────────────────────────────────────────────────────────────
-
-function toMMDD(date: Date): string {
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${m}-${d}`;
-}
-
-function isDateInRange(dateMMDD: string, startMMDD: string, endMMDD: string): boolean {
-  return dateMMDD >= startMMDD && dateMMDD <= endMMDD;
-}
 
 // ─── Main function ────────────────────────────────────────────────────────────
 
 /**
- * Returns festival risk contribution for the current date.
- * Optionally scoped to specific Indian states (ISO 3166-2:IN).
+ * Returns festival risk contribution based on shipment dates and states.
  *
  * @param companyId  For audit logging
- * @param shipmentId Optional shipment context
- * @param states     Optional: filter to specific states (e.g. ["TN", "KA"])
+ * @param shipment   Shipment context for dates and locations
  * @param referenceDate Optional: override current date for testing
  */
 export async function getFestivalRiskContribution(
   companyId:     string,
-  shipmentId?:   string,
-  states?:       string[],
+  shipment?:     any,
   referenceDate?: Date
 ): Promise<FestivalRiskContribution> {
   const now = referenceDate ?? new Date();
-  const todayMMDD = toMMDD(now);
+  
+  // Determine date window based on shipment or fallback to now
+  let startDateStr = now.toISOString().split('T')[0];
+  let endDateStr = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  // Window: check festivals starting within +3 days (upcoming congestion)
-  const windowEnd = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-  const windowEndMMDD = toMMDD(windowEnd);
-
-  const db = await getDb();
-  const col = db.collection<FestivalEntry>("festival_calendar");
-  let allFestivals = await col.find({}).toArray();
-
-  if (allFestivals.length === 0) {
-    // Seed database if empty
-    await Promise.all(
-      FESTIVAL_CALENDAR.map((f) =>
-        col.updateOne({ id: f.id }, { $set: f }, { upsert: true })
-      )
-    );
-    allFestivals = await col.find({}).toArray();
+  if (shipment && shipment.plannedDeparture) {
+    startDateStr = shipment.plannedDeparture.split('T')[0];
+    if (shipment.plannedArrival) {
+      endDateStr = shipment.plannedArrival.split('T')[0];
+    } else {
+      endDateStr = new Date(new Date(shipment.plannedDeparture).getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    }
   }
 
-  const activeFestivals: FestivalEntry[] = allFestivals.filter((fest) => {
-    // Is the festival currently active OR starting within 3 days?
-    const isCurrentlyActive = isDateInRange(todayMMDD, fest.startDate, fest.endDate);
-    const isUpcoming        = todayMMDD <= windowEndMMDD && windowEndMMDD >= fest.startDate;
+  // Extract states from origin/destination if possible (assuming format "City, ST")
+  const states: string[] = [];
+  if (shipment) {
+    if (shipment.origin && shipment.origin.includes(',')) {
+      const parts = shipment.origin.split(',');
+      states.push(parts[parts.length - 1].trim().substring(0, 2).toUpperCase());
+    }
+    if (shipment.destination && shipment.destination.includes(',')) {
+      const parts = shipment.destination.split(',');
+      states.push(parts[parts.length - 1].trim().substring(0, 2).toUpperCase());
+    }
+  }
 
-    if (!isCurrentlyActive && !isUpcoming) return false;
+  const db = await getDb();
+  const col = db.collection<FestivalEntry>("festivals");
+  
+  // Find festivals that overlap with the date window
+  // For a festival to overlap, its startDate must be <= our endDate, and its endDate >= our startDate
+  // Since dates in DB might be full YYYY-MM-DD or MM-DD, let's just fetch all active festivals
+  // Wait, if we seeded full dates for 2026, we can do a query.
+  // Actually, to support both MM-DD and YYYY-MM-DD, let's fetch all and filter in memory.
+  const allFestivals = await col.find({}).toArray();
+
+  const activeFestivals: FestivalEntry[] = allFestivals.filter((fest) => {
+    // Is the festival overlapping?
+    // Handle YYYY-MM-DD or MM-DD. If MM-DD, append the year from startDateStr
+    const festStart = fest.startDate.length === 5 ? `${startDateStr.substring(0, 4)}-${fest.startDate}` : fest.startDate;
+    const festEnd = fest.endDate.length === 5 ? `${startDateStr.substring(0, 4)}-${fest.endDate}` : fest.endDate;
+
+    const isOverlapping = startDateStr <= festEnd && endDateStr >= festStart;
+
+    if (!isOverlapping) return false;
 
     // State filter
-    if (states && states.length > 0) {
+    if (states.length > 0) {
       return (
         fest.affectedStates.includes("all") ||
         states.some((s) => fest.affectedStates.includes(s))
@@ -324,8 +141,7 @@ export async function getFestivalRiskContribution(
       activeFestivals.map((f) =>
         col.updateOne(
           { id: f.id },
-          { $set: { ...f, lastChecked: new Date().toISOString() } },
-          { upsert: true }
+          { $set: { ...f, lastChecked: new Date().toISOString() } }
         )
       )
     );
@@ -336,7 +152,7 @@ export async function getFestivalRiskContribution(
   // ── Audit: festival_risk_added ─────────────────────────────────────────────
   createIntelligenceAudit({
     companyId,
-    shipmentId,
+    shipmentId: shipment?.id,
     eventType: "festival_risk_added",
     source:    "FestivalIntelligence",
     metadata: {
@@ -357,15 +173,15 @@ export async function getFestivalRiskContribution(
 
 /**
  * Returns the full festival calendar from the database (for API exposure / admin view).
- * Falls back to static list if DB is not available.
  */
 export async function getFestivalCalendar(): Promise<FestivalEntry[]> {
   try {
     const db = await getDb();
-    const festivals = await db.collection<FestivalEntry>("festival_calendar").find({}).toArray();
-    if (festivals.length > 0) return festivals;
+    const festivals = await db.collection<FestivalEntry>("festivals").find({}).toArray();
+    return festivals;
   } catch (err) {
-    console.error("[festival-intelligence] DB fetch failed, returning static list");
+    console.error("[festival-intelligence] DB fetch failed");
+    return [];
   }
-  return FESTIVAL_CALENDAR;
 }
+

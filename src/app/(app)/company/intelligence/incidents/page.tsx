@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchApi } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { AlertTriangle, MapPin, Calendar, Activity, Info, Plus, X, Check, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -71,7 +72,7 @@ function CreateIncidentDialog({
     setError(null);
     setSaving(true);
     try {
-      const res = await fetch("/api/intelligence/incidents", {
+      const res = await fetchApi("/api/intelligence/incidents", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
@@ -255,7 +256,7 @@ export default function IncidentsPage() {
 
   const fetchIncidents = async () => {
     try {
-      const res = await fetch("/api/intelligence/incidents");
+      const res = await fetchApi("/api/intelligence/incidents");
       if (res.ok) {
         const data = await res.json();
         setIncidents(data.incidents || []);

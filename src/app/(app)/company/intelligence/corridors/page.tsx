@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchApi } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { TrendingUp, Activity, MapPin, ArrowRight, Package, AlertTriangle, AlertCircle, Clock, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,7 +14,7 @@ export default function CorridorsPage() {
   useEffect(() => {
     async function fetchCorridors() {
       try {
-        const res = await fetch("/api/intelligence/corridors");
+        const res = await fetchApi("/api/intelligence/corridors");
         if (res.ok) {
           const data = await res.json();
           setCorridors(data.corridors || []);

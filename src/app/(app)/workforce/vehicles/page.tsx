@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/api-client";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, AlertTriangle, RefreshCw } from "lucide-react";
@@ -74,7 +75,7 @@ export default function VehicleManagementPage() {
     setError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch("/api/workforce/vehicles", {
+      const res = await fetchApi("/api/workforce/vehicles", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -100,7 +101,7 @@ export default function VehicleManagementPage() {
       if (!user) return;
       try {
         const token = await user.getIdToken();
-        const res = await fetch(`/api/workforce/vehicles/${vehicleId}`, {
+        const res = await fetchApi(`/api/workforce/vehicles/${vehicleId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ status: newStatus }),

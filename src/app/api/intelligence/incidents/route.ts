@@ -1,3 +1,4 @@
+import { dispatchEvent } from "@/lib/event-dispatcher";
 import { NextResponse } from "next/server";
 import { requireCompany } from "@/lib/auth-helpers";
 import { getActiveIncidents, storeIncident } from "@/lib/intelligence-service";
@@ -90,6 +91,7 @@ export async function POST(req: Request) {
     };
 
     await storeIncident(incident);
+    dispatchEvent({ type: "INCIDENT_REPORTED", companyId, payload: { incidentId: incident.incidentId } });
 
     createIntelligenceAudit({
       companyId,

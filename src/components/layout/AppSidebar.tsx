@@ -95,11 +95,12 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
               return (
                 <Link key={item.href + item.label} href={item.href} onClick={onClose}>
                   <div className={cn(
-                    "flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg",
+                    "relative flex items-center gap-3 px-3 py-3 text-sm font-medium transition-all duration-200 rounded-lg overflow-hidden",
                     isActive
-                      ? "bg-primary/10 text-primary border border-primary/20"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                      ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20 shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                   )}>
+                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                     <item.icon className="w-4 h-4 shrink-0" />
                     {item.label}
                     {isActive && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
@@ -110,11 +111,12 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
             {isSuperAdmin && (
               <Link href="/admin/companies" onClick={onClose}>
                 <div className={cn(
-                  "flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg mt-2",
+                  "relative flex items-center gap-3 px-3 py-3 text-sm font-medium transition-all duration-200 rounded-lg mt-2 overflow-hidden",
                   pathname.startsWith("/admin")
-                    ? "bg-amber-400/10 text-amber-400 border border-amber-400/20"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                    ? "bg-amber-400/10 text-amber-500 font-semibold ring-1 ring-amber-400/20 shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                 )}>
+                  {pathname.startsWith("/admin") && <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />}
                   <Shield className="w-4 h-4 shrink-0" />
                   Admin Panel
                   {pathname.startsWith("/admin") && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
@@ -148,11 +150,12 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
                       return (
                         <Link key={item.href} href={item.href} onClick={onClose}>
                           <div className={cn(
-                            "flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg",
+                            "relative flex items-center gap-3 px-3 py-3 text-sm font-medium transition-all duration-200 rounded-lg overflow-hidden",
                             isActive
-                              ? "bg-primary/10 text-primary border border-primary/20"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                              ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20 shadow-sm"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                           )}>
+                            {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                             <item.icon className="w-4 h-4 shrink-0" />
                             {item.label}
                             {isActive && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
@@ -163,11 +166,12 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
                     {canSeeUsers && (
                       <Link href="/workforce/users" onClick={onClose}>
                         <div className={cn(
-                          "flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg",
+                          "relative flex items-center gap-3 px-3 py-3 text-sm font-medium transition-all duration-200 rounded-lg overflow-hidden",
                           pathname.startsWith("/workforce/users")
-                            ? "bg-primary/10 text-primary border border-primary/20"
-                            : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                            ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20 shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                         )}>
+                          {pathname.startsWith("/workforce/users") && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                           <UserCog className="w-4 h-4 shrink-0" />
                           Users
                           {pathname.startsWith("/workforce/users") && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
@@ -197,11 +201,12 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
                       return (
                         <Link key={item.href} href={item.href}>
                           <div className={cn(
-                            "flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg",
+                            "relative flex items-center gap-3 px-3 py-3 text-sm font-medium transition-all duration-200 rounded-lg overflow-hidden",
                             isActive
-                              ? "bg-primary/10 text-primary border border-primary/20"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                              ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20 shadow-sm"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                           )}>
+                            {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                             <item.icon className="w-4 h-4 shrink-0" />
                             {item.label}
                             {isActive && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
@@ -284,12 +289,13 @@ export function AppSidebar() {
                       isActive={isActive}
                       tooltip={item.label}
                       className={cn(
-                        "relative rounded-lg transition-all duration-150 py-3",
+                        "relative rounded-lg transition-all duration-200 py-3 overflow-hidden",
                         isActive
-                          ? "bg-primary/10 text-primary border border-primary/20"
-                          : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                          ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20 shadow-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                       )}
                     >
+                      {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                       <item.icon className="w-4 h-4 shrink-0" />
                       <span className="text-sm font-medium">{item.label}</span>
                       {isActive && (
@@ -306,12 +312,13 @@ export function AppSidebar() {
                     isActive={pathname.startsWith("/admin")}
                     tooltip="Admin Panel"
                     className={cn(
-                      "relative rounded-lg transition-all duration-150 py-3 mt-2",
+                      "relative rounded-lg transition-all duration-200 py-3 mt-2 overflow-hidden",
                       pathname.startsWith("/admin")
-                        ? "bg-amber-400/10 text-amber-400 border border-amber-400/20"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                        ? "bg-amber-400/10 text-amber-500 font-semibold ring-1 ring-amber-400/20 shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                     )}
                   >
+                    {pathname.startsWith("/admin") && <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />}
                     <Shield className="w-4 h-4 shrink-0" />
                     <span className="text-sm font-medium">Admin Panel</span>
                     {pathname.startsWith("/admin") && (
@@ -356,12 +363,13 @@ export function AppSidebar() {
                           isActive={isActive}
                           tooltip={item.label}
                           className={cn(
-                            "relative rounded-lg transition-all duration-150 py-3",
+                            "relative rounded-lg transition-all duration-200 py-3 overflow-hidden",
                             isActive
-                              ? "bg-primary/10 text-primary border border-primary/20"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                              ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20 shadow-sm"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                           )}
                         >
+                          {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                           <item.icon className="w-4 h-4 shrink-0" />
                           <span className="text-sm font-medium">{item.label}</span>
                           {isActive && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
@@ -376,12 +384,13 @@ export function AppSidebar() {
                         isActive={pathname === "/workforce/users" || pathname.startsWith("/workforce/users/")}
                         tooltip="Users"
                         className={cn(
-                          "relative rounded-lg transition-all duration-150 py-3",
+                          "relative rounded-lg transition-all duration-200 py-3 overflow-hidden",
                           pathname.startsWith("/workforce/users")
-                            ? "bg-primary/10 text-primary border border-primary/20"
-                            : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                            ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20 shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                         )}
                       >
+                        {pathname.startsWith("/workforce/users") && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                         <UserCog className="w-4 h-4 shrink-0" />
                         <span className="text-sm font-medium">Users</span>
                         {pathname.startsWith("/workforce/users") && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
@@ -417,12 +426,13 @@ export function AppSidebar() {
                           isActive={isActive}
                           tooltip={item.label}
                           className={cn(
-                            "relative rounded-lg transition-all duration-150 py-3",
+                            "relative rounded-lg transition-all duration-200 py-3 overflow-hidden",
                             isActive
-                              ? "bg-primary/10 text-primary border border-primary/20"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                              ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20 shadow-sm"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                           )}
                         >
+                          {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                           <item.icon className="w-4 h-4 shrink-0" />
                           <span className="text-sm font-medium">{item.label}</span>
                           {isActive && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}

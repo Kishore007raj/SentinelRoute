@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -94,7 +95,7 @@ export default function DriverProfilePage() {
   const fetchAudits = async (token: string) => {
     setAuditsLoading(true);
     try {
-      const res = await fetch(`/api/workforce/audits?targetId=${encodeURIComponent(driverId)}`, {
+      const res = await fetchApi(`/api/workforce/audits?targetId=${encodeURIComponent(driverId)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
@@ -114,7 +115,7 @@ export default function DriverProfilePage() {
     setError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch(`/api/workforce/drivers/${driverId}`, {
+      const res = await fetchApi(`/api/workforce/drivers/${driverId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
