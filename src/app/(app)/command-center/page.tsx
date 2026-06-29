@@ -366,6 +366,11 @@ export default function CommandCenterPage() {
           <button onClick={handleRefresh} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground px-4 py-2.5 border border-border rounded-lg hover:bg-accent transition-colors">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
+          <Link href="/fleet-ops">
+            <Button variant="outline" className="gap-2 h-10">
+              <Activity className="w-4 h-4" /> Fleet Ops
+            </Button>
+          </Link>
           <Link href="/company/intelligence/incidents">
             <Button variant="outline" className="gap-2 h-10">
               <AlertTriangle className="w-4 h-4" /> Incident Center

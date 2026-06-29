@@ -16,6 +16,12 @@ export interface RiskBreakdown {
   weather:          number;
   disruption:       number;
   cargoSensitivity: number;
+  // Module 5 requirements
+  festival?:        number;
+  news?:            number;
+  historical?:      number;
+  road?:            number;
+  operational?:     number;
 }
 
 // ─── Route ────────────────────────────────────────────────────────────────────
@@ -51,6 +57,19 @@ export interface Route {
    * Used to detect tampering of route recommendations.
    */
   decisionHash?: string;
+  
+  // Module 5 Route Intelligence fields
+  averageSpeed?: number;
+  trafficDelay?: number;
+  weatherSummary?: string;
+  roadIncidents?: number;
+  confidenceScore?: number;
+  predictionConfidence?: number;
+  historicalReliability?: number;
+  historicalShipments?: number;
+  fuelEstimate?: number;
+  carbonEstimate?: number;
+  expectedDelay?: number;
 }
 
 // ─── Shipment ─────────────────────────────────────────────────────────────────
@@ -178,6 +197,9 @@ export interface AnalyzeRoutesRequest {
   originLng?:          number;
   destinationLat?:     number;
   destinationLng?:     number;
+  // Module 5
+  priority?:           string;
+  deadline?:           string;
 }
 
 export interface AnalyzeRoutesResponse {
@@ -395,7 +417,18 @@ export type AuditEventType =
   | "shipment_created"
   | "shipment_completed"
   | "shipment_delayed"
-  | "shipment_incident";
+  | "shipment_incident"
+  // Module 5B Audit Events
+  | "trip_started"
+  | "trip_paused"
+  | "trip_resumed"
+  | "checkpoint_arrived"
+  | "checkpoint_departed"
+  | "driver_changed"
+  | "vehicle_changed"
+  | "eta_changed"
+  | "route_deviation"
+  | "trip_cancelled";
 
 // ─── Module 2 — Workforce Management types ───────────────────────────────────
 
@@ -419,6 +452,7 @@ export interface Driver {
 
   // ─── Status ───────────────────────────────────────────────────────────────
   status:                  "active" | "inactive" | "suspended";
+  operationalStatus?:      "Available" | "Assigned" | "Driving" | "Paused" | "Offline" | "Completed";
   assignedVehicleId:       string | null;
 
   // ─── Module 3/4/5 Future Fields ───────────────────────────────────────────
@@ -453,6 +487,7 @@ export interface Vehicle {
 
   // ─── Status ───────────────────────────────────────────────────────────────
   status:                  "available" | "assigned" | "maintenance" | "inactive";
+  operationalStatus?:      "Available" | "Assigned" | "In Transit" | "Maintenance" | "Offline";
   currentDriverId:         string | null;
 
   // ─── Module 3/4 Future Fields ─────────────────────────────────────────────
@@ -570,7 +605,14 @@ export type TimelineEventType =
   | "Suggested Reroute"
   | "Route Changed"
   | "Shipment Completed"
-  | "Shipment Cancelled";
+  | "Shipment Cancelled"
+  // Module 5B Timeline Events
+  | "Trip Started"
+  | "Trip Paused"
+  | "Trip Resumed"
+  | "Checkpoint Arrived"
+  | "Checkpoint Departed"
+  | "Route Deviation";
 
 export interface ShipmentTimelineEvent {
   eventId:          string;
@@ -666,4 +708,65 @@ export interface ShipmentAssignment {
   assignedAt:      string;  // UTC ISO
   unassignedAt?:   string;  // UTC ISO — set when reassigned/unassigned
   active:          boolean;
+}
+
+// ─── Module 5B — Active Fleet Operations & Execution ───────────────────────
+
+export type ShipmentExecutionStatus = "pending" | "driving" | "paused" | "completed" | "cancelled";
+export type ShipmentCheckpointStatus = "pending" | "arrived" | "departed" | "skipped";
+
+export interface ShipmentCheckpoint {
+  id:            string;
+  name:          string;
+  latitude:      number;
+  longitude:     number;
+  arrivalETA?:   string;
+  arrivalTime?:  string;
+  departureTime?: string;
+  status:        ShipmentCheckpointStatus;
+}
+
+export interface DriverLocation {
+  latitude:  number;
+  longitude: number;
+  heading?:  number;
+  speed?:    number;
+  accuracy?: number;
+  timestamp: string;
+}
+
+export interface ShipmentExecution {
+  shipmentId:            string; // unique across active executions
+  companyId:             string;
+  driverId:              string;
+  vehicleId:             string;
+  
+  plannedRoute:          Route;
+  currentRoute:          Route;
+  routeVersion:          number;
+  
+  tripStartTime?:        string;
+  tripEndTime?:          string;
+  
+  lastKnownLocation?:    DriverLocation;
+  historicalLocations:   DriverLocation[]; // Keep last 100
+  lastUpdated:           string;
+  
+  currentCheckpoint?:    string; // checkpoint id
+  completedCheckpoints:  number;
+  remainingCheckpoints:  number;
+  checkpoints:           ShipmentCheckpoint[];
+  
+  currentETA?:           string;
+  remainingDistance?:    number; // in meters or km
+  travelledDistance:     number; // in meters or km
+  
+  averageSpeed:          number;
+  maximumSpeed:          number;
+  
+  idleDuration:          number; // seconds
+  drivingDuration:       number; // seconds
+  
+  fuelEstimate:          number;
+  status:                ShipmentExecutionStatus;
 }

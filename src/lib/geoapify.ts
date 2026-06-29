@@ -250,6 +250,7 @@ export async function geoapifyRoute(
     `?waypoints=${waypoints}` +
     `&mode=drive` +
     `&details=instruction_details` + 
+    `&alternatives=3` +
     `&apiKey=${apiKey}`;
 
   const data = await geoapifyFetch<GeoapifyRoutingResponse>(url);

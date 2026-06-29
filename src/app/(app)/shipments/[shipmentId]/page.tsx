@@ -31,7 +31,7 @@ const RouteMapView = dynamic(
 
 import { getRiskColor, cn, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import { useStore } from "@/lib/store";
-import type { Shipment } from "@/lib/types";
+import type { Shipment, ShipmentExecution } from "@/lib/types";
 import { ShipmentRiskPanel } from "@/components/shipment/ShipmentRiskPanel";
 import { ShipmentTimeline } from "@/components/shipment/ShipmentTimeline";
 import { ShipmentCommunication } from "@/components/shipment/ShipmentCommunication";
@@ -218,12 +218,14 @@ function OverviewTab({
   onOpenCancel,
   onAssigned,
   isCrossCompany,
+  execution,
 }: {
   shipment: Shipment;
   onComplete:   () => void;
   onOpenCancel: () => void;
   onAssigned:   (updated: Shipment) => void;
   isCrossCompany: boolean;
+  execution?: ShipmentExecution | null;
 }) {
   const { t } = useI18n();
   const hasBreakdown = !!shipment.riskBreakdown;
@@ -462,6 +464,7 @@ function OverviewTab({
           status={shipment.status === "completed" ? "completed" : "active"}
           origin={shipment.origin}
           destination={shipment.destination}
+          execution={execution}
         />
       </div>
     </div>
@@ -485,6 +488,7 @@ export default function ShipmentDetailPage({
 
   const { state, completeShipment, refreshShipments } = useStore();
   const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [execution, setExecution] = useState<ShipmentExecution | null>(null);
   const [loading, setLoading]   = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -512,6 +516,17 @@ export default function ShipmentDetailPage({
       if (!res.ok) { setShipment(null); setLoading(false); return; }
       const data = await res.json();
       setShipment(data.shipment ?? null);
+
+      // Also try to load execution data
+      if (data.shipment && (data.shipment.status === "in_transit" || data.shipment.status === "paused" || data.shipment.status === "active")) {
+        const execRes = await fetch(`/api/execution/${shipmentId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (execRes.ok) {
+          const execData = await execRes.json();
+          setExecution(execData.execution ?? null);
+        }
+      }
     } catch {
       setShipment(null);
     } finally {
@@ -641,6 +656,7 @@ export default function ShipmentDetailPage({
             onOpenCancel={() => setCancelOpen(true)}
             onAssigned={handleAssignmentChange}
             isCrossCompany={isCrossCompany}
+            execution={execution}
           />
         </TabsContent>
 
@@ -713,6 +729,7 @@ export default function ShipmentDetailPage({
                 status={shipment.status === "completed" ? "completed" : "active"}
                 origin={shipment.origin}
                 destination={shipment.destination}
+                execution={execution}
               />
             </div>
           </div>

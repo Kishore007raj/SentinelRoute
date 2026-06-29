@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Shield, Clock, MapPin, AlertTriangle, Wifi, WifiOff, Layers, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Route, Incident } from "@/lib/types";
+import type { Route, Incident, ShipmentExecution } from "@/lib/types";
 import { AiInsightBox } from "./AiInsightBox";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -59,9 +59,10 @@ function breakdownColor(score: number): string {
 interface RouteMapViewProps {
   route?: Route;
   routes?: Route[];
-  status?: "active" | "at-risk" | "dispatched" | "completed";
+  status?: "active" | "at-risk" | "dispatched" | "completed" | "in_transit" | "paused" | "cancelled" | "pending";
   origin?: string;
   destination?: string;
+  execution?: ShipmentExecution | null;
   aiExplanation?: string | null;
   aiLoading?: boolean;
   cargoType?: string;
@@ -85,6 +86,7 @@ export function RouteMapView({
   urgency,
   dataSource,
   isGlobal = false,
+  execution,
 }: RouteMapViewProps) {
   const [isClient, setIsClient] = useState(false);
   const mapRef = useRef<any>(null);
@@ -198,16 +200,73 @@ export function RouteMapView({
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           />
-          {polylinePoints.length >= 2 && (
-            <>
-              <Polyline positions={polylinePoints} color="#5eadd4" weight={4} opacity={0.85} />
-              <Marker position={polylinePoints[0]} icon={DefaultIcon}>
-                <Popup>Origin: {origin}</Popup>
-              </Marker>
-              <Marker position={polylinePoints[polylinePoints.length - 1]} icon={DefaultIcon}>
-                <Popup>Destination: {destination}</Popup>
-              </Marker>
-            </>
+          {routes && routes.length > 0 ? (
+            routes.map((r, i) => {
+              const isSelected = r.id === route?.id;
+              const pts = r.geometry ?? [];
+              if (pts.length < 2) return null;
+              
+              let color = "#5eadd4";
+              if (r.label === "fastest") color = "#3b82f6";
+              else if (r.label === "balanced") color = "#10b981";
+              else if (r.label === "safest") color = "#f59e0b";
+
+              return (
+                <Polyline 
+                  key={r.id} 
+                  positions={pts} 
+                  color={isSelected ? color : "#64748b"} 
+                  weight={isSelected ? 5 : 3} 
+                  opacity={isSelected ? 0.9 : 0.4} 
+                  dashArray={isSelected ? undefined : "5, 10"}
+                />
+              );
+            })
+          ) : polylinePoints.length >= 2 ? (
+            <Polyline positions={polylinePoints} color="#5eadd4" weight={4} opacity={0.85} />
+          ) : null}
+
+          {(route?.geometry || (routes && routes[0]?.geometry)) && (() => {
+             const pts = route?.geometry || (routes && routes[0]?.geometry) || [];
+             if (pts.length < 2) return null;
+             return (
+               <>
+                 <Marker position={pts[0]} icon={DefaultIcon}>
+                   <Popup>Origin: {origin}</Popup>
+                 </Marker>
+                 <Marker position={pts[pts.length - 1]} icon={DefaultIcon}>
+                   <Popup>Destination: {destination}</Popup>
+                 </Marker>
+               </>
+             );
+          })()}
+
+          {/* Draw Execution History Path */}
+          {execution && execution.historicalLocations && execution.historicalLocations.length > 0 && (
+            <Polyline 
+              positions={execution.historicalLocations.map(loc => [loc.latitude, loc.longitude])}
+              color="#ef4444" // red to show actual path taken
+              weight={4} 
+              opacity={0.9} 
+              dashArray="5, 10"
+            />
+          )}
+
+          {/* Current Driver Location Marker */}
+          {execution && execution.lastKnownLocation && (
+             <CircleMarker 
+               center={[execution.lastKnownLocation.latitude, execution.lastKnownLocation.longitude]} 
+               radius={8} 
+               pathOptions={{ color: "#ef4444", fillColor: "#ef4444", fillOpacity: 1 }}
+             >
+               <Popup className="text-xs">
+                 <strong>Driver Location</strong><br/>
+                 Lat: {execution.lastKnownLocation.latitude.toFixed(4)}<br/>
+                 Lng: {execution.lastKnownLocation.longitude.toFixed(4)}<br/>
+                 Speed: {execution.lastKnownLocation.speed} km/h<br/>
+                 Updated: {new Date(execution.lastKnownLocation.timestamp).toLocaleTimeString()}
+               </Popup>
+             </CircleMarker>
           )}
 
           {/* Draw active shipments if toggled */}

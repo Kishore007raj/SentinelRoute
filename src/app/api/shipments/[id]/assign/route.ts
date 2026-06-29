@@ -187,6 +187,7 @@ export async function POST(
         {
           $set: {
             status:          "assigned",
+            operationalStatus: "Assigned",
             currentDriverId: driverDoc?.driverId ?? vehicleDoc.currentDriverId,
             updatedAt:       now,
           },
@@ -198,7 +199,7 @@ export async function POST(
     if (driverDoc && vehicleDoc) {
       await db.collection("drivers").updateOne(
         { driverId: driverDoc.driverId, companyId },
-        { $set: { assignedVehicleId: vehicleDoc.vehicleId, updatedAt: now } }
+        { $set: { assignedVehicleId: vehicleDoc.vehicleId, operationalStatus: "Assigned", updatedAt: now } }
       );
     }
 

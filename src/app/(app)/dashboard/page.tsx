@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { PlusSquare, AlertTriangle, ArrowRight, CheckCircle, Building2, ShieldCheck, Zap } from "lucide-react";
+import { PlusSquare, AlertTriangle, ArrowRight, CheckCircle, Building2, ShieldCheck, Zap, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { useCompany } from "@/lib/company-context";
@@ -250,6 +250,11 @@ export default function DashboardPage() {
           <Link href="/command-center">
             <Button variant="outline" className="gap-2 px-5 h-11 font-semibold rounded-lg text-sm">
               <Zap className="w-4 h-4" /> Command Center
+            </Button>
+          </Link>
+          <Link href="/fleet-ops">
+            <Button variant="outline" className="gap-2 px-5 h-11 font-semibold rounded-lg text-sm">
+              <Activity className="w-4 h-4" /> Fleet Ops
             </Button>
           </Link>
           <Link href="/create-shipment">
