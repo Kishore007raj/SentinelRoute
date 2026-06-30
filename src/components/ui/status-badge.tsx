@@ -62,11 +62,11 @@ export function StatusBadge({
     else activeVariant = 'inactive'
   }
 
-  const Icon = showIcon ? getStatusIcon(activeVariant) : null
+  const iconComponent = showIcon ? getStatusIcon(activeVariant) : null
 
   return (
     <div className={cn(badgeVariants({ variant: activeVariant }), className)} {...props}>
-      {Icon && <Icon className="w-3 h-3" />}
+      {iconComponent && React.createElement(iconComponent, { className: "w-3 h-3" })}
       {status}
     </div>
   )

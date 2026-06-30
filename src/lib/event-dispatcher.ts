@@ -1,6 +1,6 @@
-import { calculateRoutePrediction } from "./prediction-engine";
 import { getDb } from "./mongodb";
 import { createWorkforceAuditEvent } from "./workforce-audit";
+import { OperationalEngine } from "./intelligence/operational-engine";
 
 type EventType = 
   | "SHIPMENT_UPDATED"
@@ -37,25 +37,12 @@ async function handleEvent(event: DomainEvent) {
 
   switch (type) {
     case "SHIPMENT_UPDATED": {
-      // Re-run prediction engine for this shipment
-      const shipmentId = payload.shipmentId;
-      const shipment = await db.collection("shipments").findOne({ id: shipmentId, companyId });
-      if (shipment && shipment.status !== "completed") {
-        await calculateRoutePrediction(shipment as any);
-      }
+      // Handled by OperationalEngine below
       break;
     }
     
     case "INCIDENT_REPORTED": {
-      // Find all active shipments in the affected area or just all active shipments and recalculate predictions
-      const activeShipments = await db.collection("shipments").find({ 
-        companyId, 
-        status: { $in: ["planned", "in_transit"] } 
-      }).toArray();
-      
-      for (const shipment of activeShipments) {
-        await calculateRoutePrediction(shipment as any);
-      }
+      // Handled by OperationalEngine below
       break;
     }
 
@@ -121,4 +108,7 @@ async function handleEvent(event: DomainEvent) {
       break;
     }
   }
+
+  // ── Operational Intelligence Platform (Module 6) ──
+  await OperationalEngine.processEvent(event as any);
 }

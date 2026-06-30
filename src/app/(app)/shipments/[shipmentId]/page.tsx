@@ -31,6 +31,11 @@ const RouteMapView = dynamic(
   { ssr: false }
 );
 
+const DecisionWorkspace = dynamic(
+  () => import("@/components/operational/DecisionWorkspace").then((m) => m.DecisionWorkspace),
+  { ssr: false }
+);
+
 import { getRiskColor, cn, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import type { Shipment, ShipmentExecution } from "@/lib/types";
@@ -460,12 +465,9 @@ function OverviewTab({
             {t("shipmentDetail.riskBreakdownUnavailable")}
           </p>
         )}
-        <RouteMapView
-          route={routeForMap}
-          routes={[routeForMap]}
-          status={shipment.status === "completed" ? "completed" : "active"}
-          origin={shipment.origin}
-          destination={shipment.destination}
+        <DecisionWorkspace
+          shipment={shipment}
+          routeForMap={routeForMap}
           execution={execution}
         />
       </div>

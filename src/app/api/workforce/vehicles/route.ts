@@ -3,6 +3,7 @@ import type { Vehicle } from "@/lib/types";
 import { getDb } from "@/lib/mongodb";
 import { requireWorkforceRead, requireWorkforceWrite, handleAuthError } from "@/lib/auth-helpers";
 import { createWorkforceAuditEvent } from "@/lib/workforce-audit";
+import { dispatchEvent } from "@/lib/event-dispatcher";
 
 /**
  * GET /api/workforce/vehicles
@@ -157,6 +158,12 @@ export async function POST(req: NextRequest) {
         capacity:      vehicle.capacity,
       },
     }).catch(() => {/* audit failures never crash the caller */});
+
+    dispatchEvent({
+      type: "VEHICLE_UPDATED",
+      companyId,
+      payload: { vehicleId, action: "created", vehicle }
+    });
 
     return NextResponse.json({ vehicle }, { status: 201 });
   } catch (err) {

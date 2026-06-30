@@ -117,6 +117,8 @@ interface StoreState {
   shipments:       Shipment[];
   pendingShipment: PendingShipment | null;
   loading:         boolean;
+  operationalFeed: any | null;
+  operationalHealth: any | null;
 }
 
 type Action =
@@ -125,12 +127,15 @@ type Action =
   | { type: "SET_PENDING";    payload: PendingShipment }
   | { type: "CLEAR_PENDING" }
   | { type: "ADD_SHIPMENT";   payload: Shipment }
-  | { type: "UPDATE_STATUS";  payload: { id: string; status: ShipmentStatus; lastUpdate: string } };
+  | { type: "UPDATE_STATUS";  payload: { id: string; status: ShipmentStatus; lastUpdate: string } }
+  | { type: "SET_OPERATIONAL_DATA"; payload: { feed: any; health: any } };
 
 const initialState: StoreState = {
   shipments:       [],
   pendingShipment: null,
   loading:         true,
+  operationalFeed: null,
+  operationalHealth: null,
 };
 
 function reducer(state: StoreState, action: Action): StoreState {
@@ -172,6 +177,8 @@ function reducer(state: StoreState, action: Action): StoreState {
             : s
         ),
       };
+    case "SET_OPERATIONAL_DATA":
+      return { ...state, operationalFeed: action.payload.feed, operationalHealth: action.payload.health };
     default:
       return state;
   }
@@ -189,6 +196,8 @@ interface StoreContextValue {
   activeShipments:     Shipment[];
   completedShipments:  Shipment[];
   atRiskShipments:     Shipment[];
+  operationalFeed:     any | null;
+  operationalHealth:   any | null;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -247,7 +256,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, getToken, refreshToken, handleAuthFailure]);
 
-  useEffect(() => { fetchShipments(); }, [fetchShipments]);
+  const fetchOperationalData = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [feedRes, healthRes] = await Promise.all([
+        fetchWithAuth("/api/operational/feed", { method: "GET" }, getToken, refreshToken, handleAuthFailure),
+        fetchWithAuth("/api/operational/health", { method: "GET" }, getToken, refreshToken, handleAuthFailure)
+      ]);
+      const feedJson = feedRes.ok ? await feedRes.json() : null;
+      const healthJson = healthRes.ok ? await healthRes.json() : null;
+      dispatch({ 
+        type: "SET_OPERATIONAL_DATA", 
+        payload: { feed: feedJson?.data || null, health: healthJson?.data || null } 
+      });
+    } catch (err) {
+      console.error("[store] fetchOperationalData:", err);
+    }
+  }, [user, getToken, refreshToken, handleAuthFailure]);
+
+  useEffect(() => { 
+    fetchShipments(); 
+    fetchOperationalData();
+    const interval = setInterval(fetchOperationalData, 30000);
+    return () => clearInterval(interval);
+  }, [fetchShipments, fetchOperationalData]);
 
   const refreshShipments = useCallback(async () => { await fetchShipments(); }, [fetchShipments]);
 
@@ -406,6 +438,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       state, setPendingShipment, clearPendingShipment,
       dispatchShipment, completeShipment, refreshShipments,
       activeShipments, completedShipments, atRiskShipments,
+      operationalFeed: state.operationalFeed,
+      operationalHealth: state.operationalHealth,
     }}>
       {children}
     </StoreContext.Provider>

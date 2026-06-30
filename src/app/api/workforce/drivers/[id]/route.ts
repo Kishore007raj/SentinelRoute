@@ -245,6 +245,12 @@ export async function PATCH(
       console.error(`[PATCH /api/workforce/drivers/${id}] Audit error (ignored):`, err)
     );
 
+    dispatchEvent({
+      type: "DRIVER_UPDATED",
+      companyId,
+      payload: { driverId: id, status: newStatus || existing.status }
+    });
+
     return NextResponse.json({ driver: updatedDoc as Driver });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
@@ -310,6 +316,12 @@ export async function DELETE(
     }).catch((err) =>
       console.error(`[DELETE /api/workforce/drivers/${id}] Audit error (ignored):`, err)
     );
+
+    dispatchEvent({
+      type: "DRIVER_UPDATED",
+      companyId,
+      payload: { driverId: id, status: "inactive" }
+    });
 
     return NextResponse.json({ driver: updatedDoc as Driver });
   } catch (err) {

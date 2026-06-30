@@ -612,7 +612,27 @@ export type TimelineEventType =
   | "Trip Resumed"
   | "Checkpoint Arrived"
   | "Checkpoint Departed"
-  | "Route Deviation";
+  | "Route Deviation"
+  // Module 6 Operational Intelligence Events
+  | "Recommendation Generated"
+  | "Recommendation Accepted"
+  | "Recommendation Rejected"
+  | "Risk Escalated"
+  | "Shipment Assigned"
+  | "Driver Assigned"
+  | "Vehicle Assigned"
+  | "Vehicle Maintenance"
+  | "Driver Suspension"
+  | "Incident Reported"
+  | "Risk Increased"
+  | "Risk Decreased"
+  | "Risk Reduced"
+  | "Auto Reroute"
+  | "Auto ETA Update"
+  | "Driver Reassignment"
+  | "Vehicle Replacement"
+  | "Priority Escalated"
+  | "System Decision";
 
 export interface ShipmentTimelineEvent {
   eventId:          string;
@@ -682,16 +702,74 @@ export interface ShipmentMessage {
   readStatus:  boolean;
 }
 
+export type AlertCategory = "Weather" | "Traffic" | "Incident" | "Driver" | "Vehicle" | "Compliance" | "Route" | "Execution" | "Delay" | "Prediction";
+
 export interface OperationalAlert {
   alertId:           string;
-  shipmentId?:       string;
   companyId:         string;
+  title?:            string;
+  description?:      string;
+  category?:         AlertCategory;
+  severity:          "low" | "medium" | "high" | "critical";
+  confidence:        number;
+  source?:           string;
+  status?:           "active" | "resolved" | "acknowledged";
+  reason?:           string;
+  recommendedAction?: string;
+  shipmentId?:       string;
+  driverId?:         string;
+  vehicleId?:        string;
+  corridorId?:       string;
+  incidentId?:       string;
+  suggestedAction?:  string;
+  acknowledged?:     boolean;
+  resolved?:         boolean;
+  escalated?:        boolean;
+  timestamp:         string;
+}
+
+export type RecommendationType = 
+  | "Reassign Driver"
+  | "Replace Vehicle"
+  | "Delay Dispatch"
+  | "Advance Dispatch"
+  | "Change Route"
+  | "Increase Monitoring"
+  | "Pause Shipment"
+  | "Continue Normally"
+  | "Split Cargo"
+  | "Escalate to Operations Manager";
+
+export interface OperationalRecommendation {
+  recommendationId:  string;
+  shipmentId:        string;
+  companyId:         string;
+  type:              RecommendationType;
   reason:            string;
   confidence:        number;
-  timestamp:         string;
-  recommendedAction: string;
-  status?:           string;
-  severity?:         string;
+  affectedMetrics:   string[];
+  tradeoffs:         string[];
+  estimatedImpact:   string;
+  severity:          "low" | "medium" | "high" | "critical";
+  status:            "pending" | "accepted" | "rejected" | "resolved";
+  createdAt:         string;
+  resolvedAt?:       string;
+  resolvedBy?:       string;
+}
+
+export interface OperationalHealthScore {
+  companyId:         string;
+  score:             number; // 0-100
+  status:            "Excellent" | "Good" | "Fair" | "Poor" | "Critical";
+  activeShipments:   number;
+  averageRisk:       number;
+  driverAvailability: number;
+  vehicleAvailability: number;
+  incidentDensity:   number;
+  routeConfidence:   number;
+  delayedShipments:  number;
+  complianceScore:   number;
+  calculatedAt:      string;
 }
 
 // ─── Module 4 — Shipment Assignment ──────────────────────────────────────────

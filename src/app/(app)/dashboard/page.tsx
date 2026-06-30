@@ -12,6 +12,7 @@ import { useUser } from "@/lib/auth-context";
 import { cn, getRiskColor, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import Link from "next/link";
 import type { Shipment } from "@/lib/types";
+import { OperationalFeed } from "@/components/operational/OperationalFeed";
 
 // ─── Feed row ─────────────────────────────────────────────────────────────────
 function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: number }) {
@@ -359,41 +360,8 @@ export default function DashboardPage() {
 
         {/* Right panel */}
         <div className="xl:w-80 shrink-0 space-y-8">
-          {/* Live operational alerts — from /api/intelligence/alerts (MongoDB) */}
-          {alerts.length > 0 ? (
-            <div className="bg-amber-400/5 border border-amber-400/20 rounded-xl p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
-                </span>
-                <p className="text-xs text-amber-400 uppercase tracking-widest">Live Alert</p>
-              </div>
-              <p className="text-sm text-foreground leading-relaxed">{alerts[0].reason}</p>
-              {alerts[0].recommendedAction && (
-                <p className="text-xs text-muted-foreground leading-relaxed">{alerts[0].recommendedAction}</p>
-              )}
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-mono text-muted-foreground">{alerts[0].shipmentId}</p>
-                {alerts.length > 1 && (
-                  <Link href="/command-center">
-                    <span className="text-xs text-primary hover:underline">+{alerts.length - 1} more →</span>
-                  </Link>
-                )}
-              </div>
-            </div>
-          ) : !loading ? (
-            <div className="bg-emerald-400/5 border border-emerald-400/20 rounded-xl p-6 space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-                </span>
-                <p className="text-xs text-emerald-400 uppercase tracking-widest">All Clear</p>
-              </div>
-              <p className="text-sm text-muted-foreground">No active operational alerts. All corridors nominal.</p>
-            </div>
-          ) : null}
+          {/* Operational Feed Component (Module 6) */}
+          <OperationalFeed />
 
           <DashboardCard title="Needs Attention" icon={AlertTriangle}>
             {atRiskShipments.length === 0 && activeShipments.length === 0 ? (

@@ -46,6 +46,9 @@ export async function ensureIndexes(db: Db): Promise<void> {
       // Pre-Module-4 Sprint Additions
       ensureRouteAnalysesIndexes(db),
       ensureWeatherSnapshotsIndexes(db),
+      // Module 6
+      ensureOperationalRecommendationsIndexes(db),
+      ensureOperationalMetricsIndexes(db),
     ]);
     console.log("[mongodb-indexes] All indexes ensured.");
   } catch (err) {
@@ -142,12 +145,31 @@ async function ensureOperationalAlertsIndexes(db: Db): Promise<void> {
     col.createIndex({ alertId: 1 }, { unique: true, name: "alerts_id_unique", background: true }),
     col.createIndex({ shipmentId: 1 }, { name: "alerts_shipmentId", background: true }),
     col.createIndex({ companyId: 1, timestamp: -1 }, { name: "alerts_companyId_timestamp", background: true }),
-    col.createIndex({ status: 1 }, { name: "alerts_status", background: true }),
+    col.createIndex({ category: 1 }, { name: "alerts_category", background: true }),
     col.createIndex({ severity: 1 }, { name: "alerts_severity", background: true }),
     col.createIndex(
-      { companyId: 1, status: 1, severity: 1 },
-      { name: "alerts_company_status_severity", background: true }
+      { companyId: 1, category: 1, severity: 1 },
+      { name: "alerts_company_category_severity", background: true }
     ),
+  ]);
+}
+
+async function ensureOperationalRecommendationsIndexes(db: Db): Promise<void> {
+  const col = db.collection("operational_recommendations");
+  await Promise.all([
+    col.createIndex({ recommendationId: 1 }, { unique: true, name: "recs_id_unique", background: true }),
+    col.createIndex({ shipmentId: 1 }, { name: "recs_shipmentId", background: true }),
+    col.createIndex({ companyId: 1, createdAt: -1 }, { name: "recs_companyId_createdAt", background: true }),
+    col.createIndex({ companyId: 1, status: 1 }, { name: "recs_companyId_status", background: true }),
+    col.createIndex({ type: 1 }, { name: "recs_type", background: true }),
+  ]);
+}
+
+async function ensureOperationalMetricsIndexes(db: Db): Promise<void> {
+  const col = db.collection("operational_metrics");
+  await Promise.all([
+    col.createIndex({ companyId: 1, calculatedAt: -1 }, { name: "metrics_companyId_time", background: true }),
+    col.createIndex({ companyId: 1, type: 1, calculatedAt: -1 }, { name: "metrics_companyId_type_time", background: true }),
   ]);
 }
 

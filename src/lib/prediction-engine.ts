@@ -102,6 +102,36 @@ export async function calculateRoutePrediction(shipment: Shipment): Promise<Rout
     sourceApis.push("Festival Calendar");
   }
 
+  // ── Operational & Workforce factors (Module 6) ───────────────────────────
+  const currentHour = new Date().getUTCHours();
+  if (currentHour >= 18 || currentHour <= 4) { // Night travel roughly
+    delayProbability += 5;
+    contributingFactors.push("Night travel conditions");
+  }
+
+  if (shipment.cargoType && (shipment.cargoType.toLowerCase().includes("fragile") || shipment.cargoType.toLowerCase().includes("hazardous"))) {
+    disruptionProbability += 5;
+    contributingFactors.push(`Sensitive cargo type (${shipment.cargoType})`);
+  }
+
+  if (shipment.assignedDriverId || shipment.assignedVehicleId) {
+    const db = await getDb();
+    if (shipment.assignedDriverId) {
+      const driver = await db.collection("drivers").findOne({ driverId: shipment.assignedDriverId, companyId });
+      if (driver && driver.status === "suspended") {
+        delayProbability += 30;
+        contributingFactors.push("Driver suspended");
+      }
+    }
+    if (shipment.assignedVehicleId) {
+      const vehicle = await db.collection("vehicles").findOne({ vehicleId: shipment.assignedVehicleId, companyId });
+      if (vehicle && vehicle.status === "maintenance") {
+        disruptionProbability += 50;
+        contributingFactors.push("Vehicle in maintenance");
+      }
+    }
+  }
+
   // ── Cap all values ─────────────────────────────────────────────────────────
   delayProbability      = Math.min(100, Math.max(0, delayProbability));
   disruptionProbability = Math.min(100, Math.max(0, disruptionProbability));

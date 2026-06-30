@@ -9,6 +9,7 @@ import {
   handleAuthError,
 } from "@/lib/auth-helpers";
 import { createWorkforceAuditEvent } from "@/lib/workforce-audit";
+import { dispatchEvent } from "@/lib/event-dispatcher";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -194,7 +195,15 @@ export async function PATCH(
       }).catch(() => {/* audit failures never crash the caller */});
 
       const updated = await db.collection("vehicles").findOne({ vehicleId: id, companyId });
-      return NextResponse.json({ vehicle: stripId(updated) });
+      const updatedVehicle = stripId(updated);
+      
+      dispatchEvent({
+        type: "VEHICLE_UPDATED",
+        companyId,
+        payload: { vehicleId: id, action: "assigned", vehicle: updatedVehicle }
+      });
+
+      return NextResponse.json({ vehicle: updatedVehicle });
     }
 
     // ── Case 2: Unassign (currentDriverId explicitly null) ────────────────
@@ -220,7 +229,15 @@ export async function PATCH(
       }).catch(() => {/* audit failures never crash the caller */});
 
       const updated = await db.collection("vehicles").findOne({ vehicleId: id, companyId });
-      return NextResponse.json({ vehicle: stripId(updated) });
+      const updatedVehicle = stripId(updated);
+      
+      dispatchEvent({
+        type: "VEHICLE_UPDATED",
+        companyId,
+        payload: { vehicleId: id, action: "unassigned", vehicle: updatedVehicle }
+      });
+
+      return NextResponse.json({ vehicle: updatedVehicle });
     }
 
     // ── Case 3: Maintenance ───────────────────────────────────────────────
@@ -251,7 +268,15 @@ export async function PATCH(
       }).catch(() => {/* audit failures never crash the caller */});
 
       const updated = await db.collection("vehicles").findOne({ vehicleId: id, companyId });
-      return NextResponse.json({ vehicle: stripId(updated) });
+      const updatedVehicle = stripId(updated);
+      
+      dispatchEvent({
+        type: "VEHICLE_UPDATED",
+        companyId,
+        payload: { vehicleId: id, action: "maintenance", vehicle: updatedVehicle }
+      });
+
+      return NextResponse.json({ vehicle: updatedVehicle });
     }
 
     // ── Case 4: General field update ──────────────────────────────────────
@@ -280,7 +305,15 @@ export async function PATCH(
     }).catch(() => {/* audit failures never crash the caller */});
 
     const updated = await db.collection("vehicles").findOne({ vehicleId: id, companyId });
-    return NextResponse.json({ vehicle: stripId(updated) });
+    const updatedVehicle = stripId(updated);
+    
+    dispatchEvent({
+      type: "VEHICLE_UPDATED",
+      companyId,
+      payload: { vehicleId: id, action: "updated", vehicle: updatedVehicle }
+    });
+
+    return NextResponse.json({ vehicle: updatedVehicle });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error(`[PATCH /api/workforce/vehicles/${id}] error:`, detail);
@@ -348,7 +381,15 @@ export async function DELETE(
     }).catch(() => {/* audit failures never crash the caller */});
 
     const updated = await db.collection("vehicles").findOne({ vehicleId: id, companyId });
-    return NextResponse.json({ vehicle: stripId(updated) });
+    const updatedVehicle = stripId(updated);
+    
+    dispatchEvent({
+      type: "VEHICLE_UPDATED",
+      companyId,
+      payload: { vehicleId: id, action: "deactivated", vehicle: updatedVehicle }
+    });
+
+    return NextResponse.json({ vehicle: updatedVehicle });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error(`[DELETE /api/workforce/vehicles/${id}] error:`, detail);
