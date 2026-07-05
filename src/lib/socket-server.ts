@@ -36,3 +36,27 @@ export function emitToAll(event: string, data: unknown): void {
   if (!io) return;
   io.emit(event, data);
 }
+
+/**
+ * Emit an event to all sockets in a company's room.
+ * Room name: `company:<companyId>`
+ */
+export function emitToCompany(
+  companyId: string,
+  event: string,
+  data: unknown
+): void {
+  const io = getIO();
+  if (!io) return;
+  io.to(`company:${companyId}`).emit(event, data);
+}
+
+/**
+ * Emit a presence update for a user in a company's room.
+ */
+export function emitPresenceUpdate(
+  companyId: string,
+  presenceData: { userId: string; status: "online" | "offline"; role?: string }
+): void {
+  emitToCompany(companyId, "presence:updated", presenceData);
+}

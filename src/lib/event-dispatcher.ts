@@ -1,12 +1,21 @@
 import { getDb } from "./mongodb";
 import { createWorkforceAuditEvent } from "./workforce-audit";
 import { OperationalEngine } from "./intelligence/operational-engine";
+import { emitToCompany } from "./socket-server";
 
 type EventType = 
+  | "SHIPMENT_CREATED"
   | "SHIPMENT_UPDATED"
+  | "SHIPMENT_STATUS"
   | "INCIDENT_REPORTED"
+  | "INCIDENT_UPDATED"
   | "VEHICLE_UPDATED"
-  | "DRIVER_UPDATED";
+  | "DRIVER_UPDATED"
+  | "WORKFORCE_UPDATED"
+  | "KPI_UPDATED"
+  | "FEED_UPDATED"
+  | "HEALTH_UPDATED"
+  | "LOCATION_UPDATED";
 
 interface DomainEvent {
   type: EventType;
@@ -111,4 +120,12 @@ async function handleEvent(event: DomainEvent) {
 
   // ── Operational Intelligence Platform (Module 6) ──
   await OperationalEngine.processEvent(event as any);
+
+  // ── Real-Time Operations Platform (Module 7) ──
+  // Broadcast the domain event to all clients in the company
+  const eventName = type.toLowerCase().replace(/_/g, ":");
+  emitToCompany(companyId, eventName, payload);
+  
+  // Also tell clients to refresh feed/health if something changed
+  emitToCompany(companyId, "sync:refresh_feed", {});
 }

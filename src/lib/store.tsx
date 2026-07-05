@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
 } from "react";
 import { signOut } from "firebase/auth";
 import { usePathname } from "next/navigation";
@@ -15,8 +16,16 @@ import { useUser } from "./auth-context";
 import { auth } from "./firebase";
 import { useSocket } from "@/hooks/use-socket";
 import { utcNow } from "./time";
+import { useCompany } from "./company-context";
 
 export type { PendingShipment } from "./types";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+export interface PresenceUser {
+  userId: string;
+  status: "online" | "offline";
+  role?: string;
+}
 
 // ─── API resilience helpers ───────────────────────────────────────────────────
 
@@ -119,6 +128,9 @@ interface StoreState {
   loading:         boolean;
   operationalFeed: any | null;
   operationalHealth: any | null;
+  presence: Record<string, PresenceUser>;
+  kpis: any | null;
+  lastSync: number;
 }
 
 type Action =
@@ -128,7 +140,10 @@ type Action =
   | { type: "CLEAR_PENDING" }
   | { type: "ADD_SHIPMENT";   payload: Shipment }
   | { type: "UPDATE_STATUS";  payload: { id: string; status: ShipmentStatus; lastUpdate: string } }
-  | { type: "SET_OPERATIONAL_DATA"; payload: { feed: any; health: any } };
+  | { type: "SET_OPERATIONAL_DATA"; payload: { feed: any; health: any } }
+  | { type: "PRESENCE_UPDATE"; payload: PresenceUser }
+  | { type: "PRESENCE_SYNC"; payload: Record<string, PresenceUser> }
+  | { type: "KPI_UPDATE"; payload: any };
 
 const initialState: StoreState = {
   shipments:       [],
@@ -136,6 +151,9 @@ const initialState: StoreState = {
   loading:         true,
   operationalFeed: null,
   operationalHealth: null,
+  presence: {},
+  kpis: null,
+  lastSync: Date.now(),
 };
 
 function reducer(state: StoreState, action: Action): StoreState {
@@ -178,7 +196,19 @@ function reducer(state: StoreState, action: Action): StoreState {
         ),
       };
     case "SET_OPERATIONAL_DATA":
-      return { ...state, operationalFeed: action.payload.feed, operationalHealth: action.payload.health };
+      return { ...state, operationalFeed: action.payload.feed, operationalHealth: action.payload.health, lastSync: Date.now() };
+    case "PRESENCE_UPDATE":
+      return {
+        ...state,
+        presence: {
+          ...state.presence,
+          [action.payload.userId]: action.payload,
+        },
+      };
+    case "PRESENCE_SYNC":
+      return { ...state, presence: action.payload };
+    case "KPI_UPDATE":
+      return { ...state, kpis: action.payload, lastSync: Date.now() };
     default:
       return state;
   }
@@ -198,6 +228,8 @@ interface StoreContextValue {
   atRiskShipments:     Shipment[];
   operationalFeed:     any | null;
   operationalHealth:   any | null;
+  presence:            Record<string, PresenceUser>;
+  kpis:                any | null;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -207,6 +239,7 @@ const StoreContext = createContext<StoreContextValue | null>(null);
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { user, refreshToken } = useUser();
+  const { company, userRecord } = useCompany();
   const pathname = usePathname();
 
   // Clear pendingShipment when navigating away from /routes
@@ -277,8 +310,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { 
     fetchShipments(); 
     fetchOperationalData();
-    const interval = setInterval(fetchOperationalData, 30000);
-    return () => clearInterval(interval);
+    if (process.env.NEXT_PUBLIC_ENABLE_WEBSOCKET !== "true") {
+      const interval = setInterval(fetchOperationalData, 30000);
+      return () => clearInterval(interval);
+    }
   }, [fetchShipments, fetchOperationalData]);
 
   const refreshShipments = useCallback(async () => { await fetchShipments(); }, [fetchShipments]);
@@ -291,6 +326,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const interval = setInterval(() => { fetchShipments(); }, 30_000);
     return () => clearInterval(interval);
   }, [user, fetchShipments]);
+
+  // Ref to latest operational data — avoids stale closure in socketHandlers
+  const latestOperational = useRef({ feed: state.operationalFeed, health: state.operationalHealth });
+  useEffect(() => {
+    latestOperational.current = { feed: state.operationalFeed, health: state.operationalHealth };
+  }, [state.operationalFeed, state.operationalHealth]);
 
   // ── Real-time socket updates ───────────────────────────────────────────────
   // Handlers are memoised so useSocket doesn't re-subscribe on every render
@@ -320,9 +361,57 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }});
       }
     },
-  }), []);
+    // Module 7: presence
+    "presence:updated": (data: unknown) => {
+      dispatch({ type: "PRESENCE_UPDATE", payload: data as PresenceUser });
+    },
+    "presence:sync": (data: unknown) => {
+      dispatch({ type: "PRESENCE_SYNC", payload: data as Record<string, PresenceUser> });
+    },
+    // Module 7: operational feed
+    "feed:updated": (data: unknown) => {
+      dispatch({ type: "SET_OPERATIONAL_DATA", payload: { feed: data, health: latestOperational.current.health } });
+    },
+    "health:updated": (data: unknown) => {
+      dispatch({ type: "SET_OPERATIONAL_DATA", payload: { feed: latestOperational.current.feed, health: data } });
+    },
+    // Module 7: KPIs
+    "kpi:updated": (data: unknown) => {
+      dispatch({ type: "KPI_UPDATE", payload: data });
+    },
+    // Module 7: Auto-refresh trigger
+    "sync:refresh_feed": () => {
+      fetchShipments();
+      fetchOperationalData();
+    }
+  }), [fetchShipments, fetchOperationalData]);
 
-  useSocket({ on: socketHandlers });
+  const { emit, reconnect } = useSocket({
+    on: socketHandlers,
+    onConnect: () => {
+      if (company?.companyId) {
+        emit("join:company", {
+          companyId: company.companyId,
+          userId:    user?.uid ?? "",
+          role:      userRecord?.role ?? "user",
+        });
+        // Force a full refresh when reconnecting to get any missed events
+        fetchShipments();
+        fetchOperationalData();
+      }
+    }
+  });
+
+  // Re-join if company changes after initial connection
+  useEffect(() => {
+    if (company?.companyId) {
+      emit("join:company", {
+        companyId: company.companyId,
+        userId:    user?.uid ?? "",
+        role:      userRecord?.role ?? "user",
+      });
+    }
+  }, [company?.companyId, user?.uid, userRecord?.role, emit]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -440,6 +529,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       activeShipments, completedShipments, atRiskShipments,
       operationalFeed: state.operationalFeed,
       operationalHealth: state.operationalHealth,
+      presence: state.presence,
+      kpis: state.kpis,
     }}>
       {children}
     </StoreContext.Provider>

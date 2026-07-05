@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShieldAlert, AlertTriangle, Activity, Zap, Globe, Cloud,
@@ -13,6 +13,7 @@ import { useStore } from "@/lib/store";
 import { useUser } from "@/lib/auth-context";
 import { cn, getRiskColor, formatRelativeTime } from "@/lib/utils";
 import Link from "next/link";
+import { useIntelligence } from "@/hooks/use-intelligence";
 
 // --- Types ---
 interface LiveKPIs {
@@ -25,28 +26,6 @@ interface LiveKPIs {
   avgEtaConfidence:         number;
   basedOnPredictions:       number;
   computedAt:               string;
-}
-interface LiveIncident {
-  incidentId:       string;
-  title:            string;
-  description:      string;
-  category:         string;
-  severity:         "low" | "medium" | "high" | "critical";
-  latitude:         number;
-  longitude:        number;
-  startTime:        string;
-  lastUpdated:      string;
-  source:           string;
-  impactScore:      number;
-  recommendedAction?: string;
-}
-interface LiveAlert {
-  alertId:           string;
-  reason:            string;
-  recommendedAction: string;
-  severity:          string;
-  timestamp:         string;
-  shipmentId:        string;
 }
 type IncidentCategory = "weather" | "traffic" | "security" | "infrastructure" | "political" | "festival" | "other";
 
@@ -77,55 +56,7 @@ function useAuthFetch() {
   }, [user]);
 }
 
-// --- KPI hook ---
-function useLiveKPIs() {
-  const authFetch = useAuthFetch();
-  const [kpis, setKpis]       = useState<LiveKPIs | null>(null);
-  const [loading, setLoading] = useState(true);
-  const mounted               = useRef(true);
-  const load = useCallback(async () => {
-    try {
-      const res = await authFetch("/api/intelligence/kpis");
-      if (res.ok && mounted.current) setKpis(await res.json());
-    } catch { /* silent */ }
-    finally { if (mounted.current) setLoading(false); }
-  }, [authFetch]);
-  useEffect(() => {
-    mounted.current = true;
-    void load();
-    const id = setInterval(() => { void load(); }, 90_000);
-    return () => { mounted.current = false; clearInterval(id); };
-  }, [load]);
-  return { kpis, loading, refresh: load };
-}
-
-// --- Incidents + alerts hook ---
-function useLiveIncidents() {
-  const authFetch = useAuthFetch();
-  const [incidents, setIncidents] = useState<LiveIncident[]>([]);
-  const [alerts, setAlerts]       = useState<LiveAlert[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const mounted                   = useRef(true);
-  const load = useCallback(async () => {
-    try {
-      const [incRes, alertRes] = await Promise.all([
-        authFetch("/api/intelligence/incidents"),
-        authFetch("/api/intelligence/alerts"),
-      ]);
-      if (!mounted.current) return;
-      if (incRes.ok)   { const d = await incRes.json();   setIncidents(d.incidents ?? []); }
-      if (alertRes.ok) { const d = await alertRes.json(); setAlerts(d.alerts ?? []); }
-    } catch { /* silent */ }
-    finally { if (mounted.current) setLoading(false); }
-  }, [authFetch]);
-  useEffect(() => {
-    mounted.current = true;
-    void load();
-    const id = setInterval(() => { void load(); }, 60_000);
-    return () => { mounted.current = false; clearInterval(id); };
-  }, [load]);
-  return { incidents, alerts, loading, refresh: load };
-}
+// (Removed inline useLiveKPIs and useLiveIncidents in favor of useIntelligence)
 
 // --- KPI Gauge Card ---
 function GaugeCard({ label, value, sub, valueColor, icon: Icon }: {
@@ -291,8 +222,13 @@ function IntelligenceSources({ kpis }: { kpis: LiveKPIs | null }) {
 
 // --- Page ---
 export default function CommandCenterPage() {
-  const { kpis, loading: kpisLoading, refresh: refreshKPIs } = useLiveKPIs();
-  const { incidents, alerts, loading: threatLoading, refresh: refreshThreats } = useLiveIncidents();
+  const { kpis, incidents, alerts, loadingKpis, loadingIncidents, loadingAlerts, refresh } = useIntelligence({
+    fetchKpis: true,
+    fetchAlerts: true,
+    fetchIncidents: true
+  });
+  const kpisLoading = loadingKpis;
+  const threatLoading = loadingIncidents || loadingAlerts;
   const { atRiskShipments, activeShipments } = useStore();
 
   const { threatFeed, criticalCount, highCount } = useMemo(() => {
@@ -308,7 +244,7 @@ export default function CommandCenterPage() {
     return { threatFeed: feed, criticalCount: crit, highCount: high };
   }, [incidents, alerts]);
 
-  function handleRefresh() { refreshKPIs(); refreshThreats(); }
+  function handleRefresh() { refresh(); }
 
   // Derived Analytics
   const { topCorridors, delayedShipments } = useMemo(() => {
@@ -353,7 +289,7 @@ export default function CommandCenterPage() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
               </span>
-              Live data - refreshes every 60-90s
+              Live data - event-driven updates
             </div>
             {criticalCount > 0 && <span className="text-red-400 font-semibold">{criticalCount} CRITICAL</span>}
             {highCount > 0 && <span className="text-amber-400 font-semibold">{highCount} HIGH</span>}
@@ -514,7 +450,7 @@ export default function CommandCenterPage() {
           )}
 
           <div className="pt-4">
-            <ManualIncidentForm onSuccess={() => { refreshThreats(); refreshKPIs(); }} />
+            <ManualIncidentForm onSuccess={() => { refresh(); }} />
           </div>
         </div>
 

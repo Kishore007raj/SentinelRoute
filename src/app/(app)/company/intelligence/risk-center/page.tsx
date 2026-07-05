@@ -1,32 +1,11 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { DashboardCard } from "@/components/ui/dashboard-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Activity, AlertTriangle, ShieldAlert, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface KPIData {
-  avgOperationalRisk:       number;
-  activeAlerts:             number;
-  highRiskShipments:        number;
-  avgDelayProbability:      number;
-  avgDisruptionProbability: number;
-  avgEtaConfidence:         number;
-  basedOnPredictions:       number;
-  computedAt:               string;
-}
-
-interface Alert {
-  alertId:           string;
-  shipmentId?:       string;
-  reason:            string;
-  recommendedAction: string;
-  confidence:        number;
-  timestamp:         string;
-  status:            string;
-  severity?:         string;
-}
+import { useIntelligence } from "@/hooks/use-intelligence";
+import { fetchApi } from "@/lib/api-client";
 
 function RiskTrendBadge({ current, previous }: { current: number; previous: number | null }) {
   if (previous === null) {
@@ -63,60 +42,34 @@ function RiskTrendBadge({ current, previous }: { current: number; previous: numb
 }
 
 export default function RiskCenterPage() {
-  const [alerts, setAlerts]         = useState<Alert[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [kpis, setKpis]             = useState<KPIData | null>(null);
-  const [kpisLoading, setKpisLoading] = useState(true);
-  // Store two consecutive KPI snapshots to compute trend
-  const [prevRisk, setPrevRisk]     = useState<number | null>(null);
-
-  const fetchKpis = useCallback(async () => {
-    try {
-      const res = await fetch("/api/intelligence/kpis");
-      if (res.ok) {
-        const data: KPIData = await res.json();
-        setKpis((prev) => {
-          // Keep the previous risk score for trend computation
-          if (prev !== null) setPrevRisk(prev.avgOperationalRisk);
-          return data;
-        });
-      }
-    } finally {
-      setKpisLoading(false);
-    }
-  }, []);
-
-  const fetchAlerts = useCallback(async () => {
-    try {
-      const res = await fetch("/api/intelligence/alerts");
-      if (res.ok) {
-        const data = await res.json();
-        setAlerts(data.alerts || []);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    Promise.all([fetchKpis(), fetchAlerts()]);
-    // Refresh KPIs every 60 seconds
-    const interval = setInterval(fetchKpis, 60_000);
-    return () => clearInterval(interval);
-  }, [fetchKpis, fetchAlerts]);
+  // Single source of truth — useIntelligence owns kpis, alerts, loading states, and prevRisk.
+  const {
+    kpis,
+    alerts,
+    loadingKpis,
+    loadingAlerts,
+    prevRisk,
+    refresh,
+    setAlerts,
+  } = useIntelligence({ fetchKpis: true, fetchAlerts: true });
 
   const handleUpdateAlertStatus = async (alertId: string, status: "acknowledged" | "resolved") => {
+    // Optimistic update
+    setAlerts((prev) => prev.map((a) => (a.alertId === alertId ? { ...a, status } : a)));
     try {
-      const res = await fetch(`/api/intelligence/alerts/${alertId}`, {
+      const res = await fetchApi(`/api/intelligence/alerts/${alertId}`, {
         method:  "PATCH",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ status }),
       });
-      if (res.ok) {
-        setAlerts((prev) => prev.map((a) => (a.alertId === alertId ? { ...a, status } : a)));
-        fetchKpis();
+      if (!res.ok) {
+        setAlerts((prev) => prev.map((a) => (a.alertId === alertId ? { ...a, status: "active" } : a)));
+        console.error("Error updating alert status:", res.status);
+      } else {
+        refresh();
       }
     } catch (err) {
+      setAlerts((prev) => prev.map((a) => (a.alertId === alertId ? { ...a, status: "active" } : a)));
       console.error("Error updating alert status:", err);
     }
   };
@@ -134,33 +87,28 @@ export default function RiskCenterPage() {
         </p>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Company Risk Score */}
         <DashboardCard icon={ShieldAlert} title="Company Risk Score" noPadding className="p-5">
-          <p className={cn("text-3xl font-bold mt-2", kpisLoading ? "text-muted-foreground" : riskColor)}>
-            {kpisLoading ? "…" : riskScore}
+          <p className={cn("text-3xl font-bold mt-2", loadingKpis ? "text-muted-foreground" : riskColor)}>
+            {loadingKpis ? "..." : riskScore}
           </p>
           <p className="text-xs text-muted-foreground mt-1">{riskLabel} risk level</p>
         </DashboardCard>
 
-        {/* Active Alerts */}
         <DashboardCard icon={Activity} title="Active Alerts" noPadding className="p-5">
-          <p className="text-3xl font-bold mt-2">{kpisLoading ? "…" : kpis?.activeAlerts ?? 0}</p>
+          <p className="text-3xl font-bold mt-2">{loadingKpis ? "..." : kpis?.activeAlerts ?? 0}</p>
           <p className="text-xs text-muted-foreground mt-1">across corridors</p>
         </DashboardCard>
 
-        {/* Critical Shipments */}
         <DashboardCard icon={AlertTriangle} title="High Risk Shipments" noPadding className="p-5">
-          <p className="text-3xl font-bold mt-2">{kpisLoading ? "…" : kpis?.highRiskShipments ?? 0}</p>
+          <p className="text-3xl font-bold mt-2">{loadingKpis ? "..." : kpis?.highRiskShipments ?? 0}</p>
           <p className="text-xs text-muted-foreground mt-1">require attention</p>
         </DashboardCard>
 
-        {/* Risk Trend — computed from real data */}
         <DashboardCard icon={TrendingUp} title="Risk Trend" noPadding className="p-5">
           <div className="text-2xl font-bold mt-2">
-            {kpisLoading ? (
-              <span className="text-muted-foreground text-3xl">…</span>
+            {loadingKpis ? (
+              <span className="text-muted-foreground text-3xl">...</span>
             ) : (
               <RiskTrendBadge current={riskScore} previous={prevRisk} />
             )}
@@ -173,7 +121,6 @@ export default function RiskCenterPage() {
         </DashboardCard>
       </div>
 
-      {/* Secondary KPI strip — avg delay, disruption, ETA confidence */}
       {kpis && kpis.basedOnPredictions > 0 && (
         <div className="grid grid-cols-3 gap-4">
           {[
@@ -195,10 +142,10 @@ export default function RiskCenterPage() {
         action={<span className="text-xs text-muted-foreground">{alerts.filter((a) => a.status === "active").length} active</span>}
         noPadding
       >
-          {loading ? (
-            <div className="p-8 text-center text-muted-foreground animate-pulse">Loading alerts…</div>
+          {loadingAlerts ? (
+            <div className="p-8 text-center text-muted-foreground animate-pulse">Loading alerts...</div>
           ) : alerts.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">No active alerts — all corridors nominal.</div>
+            <div className="p-8 text-center text-muted-foreground">No active alerts - all corridors nominal.</div>
           ) : (
             <div className="divide-y divide-border">
               {alerts.map((alert) => (
@@ -209,7 +156,7 @@ export default function RiskCenterPage() {
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-foreground">{alert.reason}</p>
-                      <StatusBadge status={alert.status} />
+                      <StatusBadge status={alert.status ?? "active"} />
                       {alert.severity && <StatusBadge status={alert.severity} />}
                     </div>
                     <p className="text-sm text-muted-foreground">Action: {alert.recommendedAction}</p>
@@ -218,9 +165,11 @@ export default function RiskCenterPage() {
                     )}
                   </div>
                   <div className="text-right flex flex-col items-end gap-2 shrink-0">
-                    <span className="text-xs font-semibold bg-primary/10 text-primary px-2 py-1 rounded-full">
-                      {alert.confidence}% confidence
-                    </span>
+                    {alert.confidence !== undefined && (
+                      <span className="text-xs font-semibold bg-primary/10 text-primary px-2 py-1 rounded-full">
+                        {alert.confidence}% confidence
+                      </span>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       {new Date(alert.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </p>

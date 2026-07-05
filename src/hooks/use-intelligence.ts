@@ -1,6 +1,7 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { fetchApi } from "@/lib/api-client";
 import { useUser } from "@/lib/auth-context";
+import { useSocket } from "@/hooks/use-socket";
 
 export interface LiveKPIs {
   avgOperationalRisk:       number;
@@ -130,11 +131,20 @@ export function useIntelligence(options: IntelligenceOptions = {}) {
     }
   }, [user, shouldFetchKpis, shouldFetchAlerts, shouldFetchIncidents]);
 
+  const socketHandlers = useMemo(() => ({
+    "kpi:updated": () => { if (shouldFetchKpis) void load(); },
+    "alert:updated": () => { if (shouldFetchAlerts) void load(); },
+    "incident:reported": () => { if (shouldFetchIncidents) void load(); },
+    "incident:updated": () => { if (shouldFetchIncidents) void load(); },
+  }), [load, shouldFetchKpis, shouldFetchAlerts, shouldFetchIncidents]);
+
+  useSocket({ on: socketHandlers });
+
   useEffect(() => {
     mounted.current = true;
     void load();
     let id: NodeJS.Timeout | undefined;
-    if (pollingIntervalMs > 0) {
+    if (pollingIntervalMs > 0 && process.env.NEXT_PUBLIC_ENABLE_WEBSOCKET !== "true") {
       id = setInterval(() => { void load(); }, pollingIntervalMs);
     }
     return () => { 

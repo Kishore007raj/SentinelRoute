@@ -26,8 +26,6 @@ export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
     }
     
     fetchTimeline();
-    const interval = setInterval(fetchTimeline, 30000);
-    return () => clearInterval(interval);
   }, [shipmentId]);
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground animate-pulse border border-border rounded-xl">{t('shipmentDetail.loadingTimeline')}</div>;

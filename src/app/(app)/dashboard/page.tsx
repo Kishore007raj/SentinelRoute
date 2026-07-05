@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { PlusSquare, AlertTriangle, ArrowRight, CheckCircle, Building2, ShieldCheck, Zap, Activity } from "lucide-react";
@@ -8,11 +8,11 @@ import { DashboardCard } from "@/components/ui/dashboard-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useStore } from "@/lib/store";
 import { useCompany } from "@/lib/company-context";
-import { useUser } from "@/lib/auth-context";
 import { cn, getRiskColor, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import Link from "next/link";
 import type { Shipment } from "@/lib/types";
 import { OperationalFeed } from "@/components/operational/OperationalFeed";
+import { useIntelligence } from "@/hooks/use-intelligence";
 
 // ─── Feed row ─────────────────────────────────────────────────────────────────
 function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: number }) {
@@ -94,71 +94,16 @@ function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: numbe
   );
 }
 
-// ─── Live intelligence types ─────────────────────────────────────────────────
-interface LiveKPIs {
-  highRiskShipments:        number;
-  activeAlerts:             number;
-  openIncidents:            number;
-  avgOperationalRisk:       number;
-  avgDelayProbability:      number;
-  avgDisruptionProbability: number;
-  avgEtaConfidence:         number;
-  basedOnPredictions:       number;
-  computedAt:               string;
-}
-interface LiveAlert {
-  alertId:           string;
-  reason:            string;
-  recommendedAction: string;
-  severity:          string;
-  timestamp:         string;
-  shipmentId:        string;
-}
-
-// ─── Hook: fetch intelligence KPIs + alerts ───────────────────────────────────
-function useLiveIntelligence() {
-  const { user } = useUser();
-  const [kpis, setKpis]     = useState<LiveKPIs | null>(null);
-  const [alerts, setAlerts] = useState<LiveAlert[]>([]);
-  const [loading, setLoading] = useState(true);
-  const mounted = useRef(true);
-
-  const load = useCallback(async () => {
-    if (!user) return;
-    try {
-      const token = await user.getIdToken();
-      const headers = { Authorization: `Bearer ${token}` };
-      const [kpiRes, alertRes] = await Promise.all([
-        fetch("/api/intelligence/kpis",   { headers }).then(r => r.ok ? r.json() : null),
-        fetch("/api/intelligence/alerts", { headers }).then(r => r.ok ? r.json() : null),
-      ]);
-      if (!mounted.current) return;
-      if (kpiRes)   setKpis(kpiRes);
-      if (alertRes) setAlerts(alertRes.alerts ?? []);
-    } catch {
-      // silent — never block the UI
-    } finally {
-      if (mounted.current) setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    mounted.current = true;
-    void load();
-    const id = setInterval(() => { void load(); }, 30_000);
-    return () => { mounted.current = false; clearInterval(id); };
-  }, [load]);
-
-  return { kpis, alerts, loading };
-}
+// (Removed inline useLiveIntelligence hook to use shared useIntelligence hook)
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { state, activeShipments, completedShipments, atRiskShipments } = useStore();
   const { company, isSuperAdmin } = useCompany();
-  const { shipments, loading } = state;
+  const { shipments, loading: storeLoading } = state;
   const router = useRouter();
-  const { kpis, alerts, loading: intelLoading } = useLiveIntelligence();
+  const { kpis } = useIntelligence({ fetchKpis: true });
+  const loading = storeLoading;
 
   useEffect(() => {
     if (isSuperAdmin) {

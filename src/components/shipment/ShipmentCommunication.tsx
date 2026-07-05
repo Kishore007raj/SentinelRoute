@@ -32,8 +32,6 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
     }
     
     fetchMessages();
-    const interval = setInterval(fetchMessages, 10000); // Simple polling
-    return () => clearInterval(interval);
   }, [shipmentId, targetCompanyId]);
 
   const handleSend = async (e: React.FormEvent) => {

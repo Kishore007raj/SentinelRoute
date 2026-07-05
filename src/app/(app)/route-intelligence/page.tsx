@@ -67,28 +67,7 @@ export default function RouteIntelligencePage() {
     }
   };
 
-  // 30-second polling logic for live intelligence updates
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (analysisResult && user && !analyzing) {
-      interval = setInterval(async () => {
-        try {
-          const token = await user.getIdToken();
-          const res = await fetch("/api/analyze-routes", {
-             method: "POST",
-             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-             body: JSON.stringify({ origin, destination, cargoType, vehicleType, urgency })
-          });
-          if (res.ok) {
-            const data: AnalyzeRoutesResponse = await res.json();
-            setAnalysisResult(data);
-            setEvents(prev => [{ time: new Date().toLocaleTimeString(), msg: "Live intelligence refreshed." }, ...prev].slice(0, 10));
-          }
-        } catch(e) {}
-      }, 30000);
-    }
-    return () => clearInterval(interval);
-  }, [analysisResult, user, origin, destination, cargoType, vehicleType, urgency, analyzing]);
+  // Route analysis relies on manual trigger instead of 30-second polling.
 
   const selectedRoute = analysisResult?.routes.find(r => r.id === selectedRouteId) ?? null;
 
