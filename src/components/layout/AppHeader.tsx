@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Bell, ChevronRight, Menu } from "lucide-react";
+import { Bell, ChevronRight, Menu, Users, Radio } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -24,6 +24,7 @@ import { MobileNav } from "@/components/layout/AppSidebar";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useUser } from "@/lib/auth-context";
+import { useStore } from "@/lib/store";
 
 const routeLabels: Record<string, string> = {
   "/dashboard":          "Dashboard",
@@ -46,8 +47,13 @@ export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useUser();
+  const { presence } = useStore();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const segments = pathname.split("/").filter(Boolean);
+
+  // Calculate total online users globally across the platform
+  const onlineUsers = Object.values(presence).filter((p: any) => p.status === "online");
+  const onlineCount = onlineUsers.length;
 
   // Derive a human-readable title — handle dynamic segments gracefully
   const pageTitle = (() => {
@@ -107,6 +113,37 @@ export function AppHeader() {
         </div>
 
         <div className="flex-1" />
+
+        {/* Global Presence & Live Connection Indicator */}
+        <Tooltip>
+          <TooltipTrigger className="hidden md:flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-muted/20 text-muted-foreground text-sm hover:bg-muted/40 transition-colors">
+            <div className="relative flex h-2 w-2 items-center justify-center">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+            </div>
+            <span className="text-xs font-medium">Live</span>
+            <Separator orientation="vertical" className="h-4 mx-1" />
+            <Users className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">{onlineCount}</span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[200px] text-xs">
+            <p className="font-semibold mb-1">Active Collaborators</p>
+            {onlineCount > 0 ? (
+              <ul className="space-y-1">
+                {onlineUsers.slice(0, 5).map((u: any) => (
+                  <li key={u.userId} className="truncate text-muted-foreground">
+                    {u.userId} {u.role ? `(${u.role})` : ""}
+                  </li>
+                ))}
+                {onlineCount > 5 && (
+                  <li className="text-muted-foreground italic">+{onlineCount - 5} more...</li>
+                )}
+              </ul>
+            ) : (
+              <p className="text-muted-foreground">Only you are currently online</p>
+            )}
+          </TooltipContent>
+        </Tooltip>
 
         {/* Shipments quick-link — navigates to shipments list */}
         <Link

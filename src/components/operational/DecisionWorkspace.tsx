@@ -88,17 +88,15 @@ export function DecisionWorkspace({ shipment, prediction, routeForMap, execution
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 p-0 overflow-hidden">
-          <ScrollArea className="h-full p-4">
-            {loading ? (
-              <div className="space-y-4">
-                {[1, 2].map(i => (
-                  <div key={i} className="animate-pulse bg-muted h-32 rounded-lg" />
-                ))}
-              </div>
-            ) : (
-              <CommandActionPanel recommendations={recommendations} />
-            )}
-          </ScrollArea>
+          {loading ? (
+            <div className="space-y-4 p-4">
+              {[1, 2].map(i => (
+                <div key={i} className="animate-pulse bg-muted h-32 rounded-lg" />
+              ))}
+            </div>
+          ) : (
+            <CommandActionPanel recommendations={recommendations} />
+          )}
         </CardContent>
       </Card>
     </div>

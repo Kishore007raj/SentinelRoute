@@ -14,6 +14,7 @@ import { useUser } from "@/lib/auth-context";
 import { cn, getRiskColor, formatRelativeTime } from "@/lib/utils";
 import Link from "next/link";
 import { useIntelligence } from "@/hooks/use-intelligence";
+import { OperationalRecommendation } from "@/lib/types";
 
 // --- Types ---
 interface LiveKPIs {
@@ -229,7 +230,14 @@ export default function CommandCenterPage() {
   });
   const kpisLoading = loadingKpis;
   const threatLoading = loadingIncidents || loadingAlerts;
-  const { atRiskShipments, activeShipments } = useStore();
+  const { atRiskShipments, activeShipments, operationalFeed } = useStore();
+
+  const activeRecommendations = useMemo(() => {
+    if (!operationalFeed?.recommendations) return [];
+    return operationalFeed.recommendations
+      .filter((r: OperationalRecommendation) => r.lifecycleStatus === "generated" || r.status === "pending" || r.lifecycleStatus === "viewed")
+      .sort((a: OperationalRecommendation, b: OperationalRecommendation) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [operationalFeed]);
 
   const { threatFeed, criticalCount, highCount } = useMemo(() => {
     const feed = [
@@ -401,9 +409,70 @@ export default function CommandCenterPage() {
       {/* Main split */}
       <div className="flex flex-col xl:flex-row gap-8">
 
-        {/* Threat feed */}
-        <div className="flex-1 min-w-0 space-y-4">
-          <div className="flex items-center gap-3">
+        {/* Action & Threat Feed Column */}
+        <div className="flex-1 min-w-0 space-y-8">
+          
+          {/* Pending Decisions */}
+          {activeRecommendations.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                  </span>
+                  <h2 className="text-sm font-semibold text-foreground uppercase tracking-widest">Pending Decisions</h2>
+                </div>
+                <span className="text-xs text-muted-foreground ml-auto">{activeRecommendations.length} required</span>
+              </div>
+              <div className="space-y-3">
+                {activeRecommendations.map((rec: OperationalRecommendation, i: number) => {
+                  const c = severityColors(rec.severity);
+                  return (
+                    <motion.div key={rec.recommendationId} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                      className={cn("rounded-xl border p-5 space-y-3 bg-card hover:bg-muted/10 transition-colors shadow-sm", c.border)}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", c.bg)}>
+                            <Zap className={cn("w-4 h-4", c.text)} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-foreground">{rec.type}</p>
+                              <StatusBadge status={rec.severity} />
+                            </div>
+                            <p className="text-[10px] text-muted-foreground/80 font-mono mt-0.5">Shipment {rec.shipmentId.slice(-8)}</p>
+                          </div>
+                        </div>
+                        <Link href={`/shipments/${rec.shipmentId}`}>
+                          <Button variant="outline" size="sm" className="h-8 gap-2">
+                            Review <ArrowRight className="w-3.5 h-3.5" />
+                          </Button>
+                        </Link>
+                      </div>
+                      <div className="flex items-center gap-6 pt-2 border-t border-border/50 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <Activity className="w-3.5 h-3.5" />
+                          <span>Conf: {rec.confidence}%</span>
+                        </div>
+                        {rec.estimatedImpact && (
+                          <div className="flex items-center gap-1.5">
+                            <TrendingUp className="w-3.5 h-3.5" />
+                            <span>{rec.estimatedImpact}</span>
+                          </div>
+                        )}
+                        <span className="ml-auto">{formatRelativeTime(rec.createdAt)}</span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Threat feed */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
@@ -451,6 +520,7 @@ export default function CommandCenterPage() {
 
           <div className="pt-4">
             <ManualIncidentForm onSuccess={() => { refresh(); }} />
+          </div>
           </div>
         </div>
 

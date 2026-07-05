@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, AlertTriangle, Clock, Zap } from "lucide-react";
-import { formatRelativeTime } from "@/lib/utils";
+import { formatRelativeTime, cn } from "@/lib/utils";
 import { OperationalHealthScore, OperationalRecommendation } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
 import { useStore } from "@/lib/store";
+import Link from "next/link";
 
 export function OperationalFeed() {
   const { operationalFeed: feedData, operationalHealth: healthScore } = useStore();
@@ -94,18 +95,32 @@ export function OperationalFeed() {
               ) : feedData?.recommendations && feedData.recommendations.length > 0 ? (
                 <div className="space-y-3">
                   {feedData.recommendations.map((rec: OperationalRecommendation) => (
-                    <div key={rec.recommendationId} className="p-3 border rounded-lg bg-card hover:bg-muted/50 transition-colors">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-semibold text-sm">{rec.type}</span>
-                        <Badge variant={getSeverityColor(rec.severity) as any} className="text-[10px]">
-                          {rec.severity}
-                        </Badge>
+                    <Link href={`/shipments/${rec.shipmentId}`} key={rec.recommendationId} className="block">
+                      <div className="p-3 border rounded-lg bg-card hover:bg-muted/50 transition-colors shadow-sm">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-semibold text-sm">{rec.type}</span>
+                          <div className="flex gap-1.5">
+                            <Badge variant="outline" className={cn("text-[10px] capitalize", 
+                              rec.lifecycleStatus === "accepted" || rec.lifecycleStatus === "executed" || rec.lifecycleStatus === "completed" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : 
+                              rec.lifecycleStatus === "rejected" || rec.lifecycleStatus === "cancelled" ? "bg-red-500/10 text-red-500 border-red-500/20" :
+                              "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                            )}>
+                              {rec.lifecycleStatus}
+                            </Badge>
+                            <Badge variant={getSeverityColor(rec.severity) as any} className="text-[10px]">
+                              {rec.severity}
+                            </Badge>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{rec.reason}</p>
+                        <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Activity className="h-3 w-3" /> Shipment: {rec.shipmentId.slice(0,8)}
+                          </div>
+                          <span>{formatRelativeTime(rec.createdAt)}</span>
+                        </div>
                       </div>
-                      <p className="text-xs text-muted-foreground">{rec.reason}</p>
-                      <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Activity className="h-3 w-3" /> Shipment: {rec.shipmentId.slice(0,8)}
-                      </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               ) : (

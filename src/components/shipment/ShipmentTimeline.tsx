@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Clock, Activity, MessageSquare, AlertTriangle, ShieldCheck, MapPin, Navigation, CloudRain, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { useSocket } from "@/hooks/use-socket";
@@ -13,10 +14,12 @@ export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
 
   useSocket({
     on: {
-      "feed:updated": (data: any) => {
-        // Technically feed:updated triggers re-fetch, but if timeline is emitted directly we can also listen to timeline:new
-        if (data.type === "timeline" && data.shipmentId === shipmentId) {
-          fetchTimeline();
+      "timeline:new": (data: any) => {
+        if (data.shipmentId === shipmentId && data.event) {
+          setEvents(prev => {
+            if (prev.some(e => e.eventId === data.event.eventId)) return prev;
+            return [data.event, ...prev].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          });
         }
       },
       "sync:refresh_feed": () => {
@@ -80,34 +83,42 @@ export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
               <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground bg-background px-2">{date}</span>
             </div>
             <div className="space-y-6">
-              {(dateEvents as any[]).map((event: any) => {
-                const style = getStyle(event.type);
-                return (
-                  <div key={event.eventId} className="relative flex gap-4 group">
-                    <div className={cn(
-                      "flex items-center justify-center w-8 h-8 rounded-full border border-background shadow-sm shrink-0 z-10",
-                      style.bg, "bg-background"
-                    )}>
-                      {style.icon}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0 bg-muted/20 border border-border/50 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow group-hover:border-border/80">
-                      <div className="flex items-start justify-between mb-1 gap-2">
-                        <span className="text-sm font-semibold text-foreground truncate">{event.type}</span>
-                        <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">
-                          {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+              <AnimatePresence initial={false}>
+                {(dateEvents as any[]).map((event: any) => {
+                  const style = getStyle(event.type);
+                  return (
+                    <motion.div 
+                      key={event.eventId} 
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                      className="relative flex gap-4 group"
+                    >
+                      <div className={cn(
+                        "flex items-center justify-center w-8 h-8 rounded-full border border-background shadow-sm shrink-0 z-10",
+                        style.bg, "bg-background"
+                      )}>
+                        {style.icon}
                       </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{event.description}</p>
-                      <div className="mt-3 flex items-center gap-2">
-                        <span className="text-[10px] px-2 py-0.5 bg-background border border-border rounded-full text-muted-foreground">
-                          {t('shipmentDetail.source')}: {event.source}
-                        </span>
+                      
+                      <div className="flex-1 min-w-0 bg-muted/20 border border-border/50 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow group-hover:border-border/80">
+                        <div className="flex items-start justify-between mb-1 gap-2">
+                          <span className="text-sm font-semibold text-foreground truncate">{event.type}</span>
+                          <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">
+                            {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{event.description}</p>
+                        <div className="mt-3 flex items-center gap-2">
+                          <span className="text-[10px] px-2 py-0.5 bg-background border border-border rounded-full text-muted-foreground">
+                            {t('shipmentDetail.source')}: {event.source}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
           </div>
         ))}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCompany } from "@/lib/company-context";
 import { useSocket } from "@/hooks/use-socket";
 
@@ -84,22 +85,29 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
         ) : messages.length === 0 ? (
           <div className="text-sm text-center text-muted-foreground mt-10">No messages yet.</div>
         ) : (
-          messages.map(msg => {
-            const isMe = msg.senderType === "Dispatcher" || msg.senderType === "Operations Manager";
-            return (
-              <div key={msg.messageId} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-                <span className="text-[10px] text-muted-foreground mb-1 ml-1">{msg.senderName} ({msg.senderType})</span>
-                <div className={`px-4 py-2 rounded-2xl max-w-[85%] text-sm ${
-                  isMe ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted text-foreground rounded-tl-sm"
-                }`}>
-                  {msg.message}
-                </div>
-                <span className="text-[10px] text-muted-foreground mt-1 mr-1">
-                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-            );
-          })
+          <AnimatePresence initial={false}>
+            {messages.map(msg => {
+              const isMe = msg.senderType === "Dispatcher" || msg.senderType === "Operations Manager";
+              return (
+                <motion.div 
+                  key={msg.messageId} 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
+                >
+                  <span className="text-[10px] text-muted-foreground mb-1 ml-1">{msg.senderName} ({msg.senderType})</span>
+                  <div className={`px-4 py-2 rounded-2xl max-w-[85%] text-sm ${
+                    isMe ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted text-foreground rounded-tl-sm"
+                  }`}>
+                    {msg.message}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground mt-1 mr-1">
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         )}
       </div>
 
