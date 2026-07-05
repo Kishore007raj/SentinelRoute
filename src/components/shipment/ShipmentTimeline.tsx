@@ -4,15 +4,29 @@ import { useEffect, useState } from "react";
 import { Clock, Activity, MessageSquare, AlertTriangle, ShieldCheck, MapPin, Navigation, CloudRain, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { useSocket } from "@/hooks/use-socket";
 
 export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
   const { t } = useI18n();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchTimeline() {
-      try {
+  useSocket({
+    on: {
+      "feed:updated": (data: any) => {
+        // Technically feed:updated triggers re-fetch, but if timeline is emitted directly we can also listen to timeline:new
+        if (data.type === "timeline" && data.shipmentId === shipmentId) {
+          fetchTimeline();
+        }
+      },
+      "sync:refresh_feed": () => {
+         fetchTimeline();
+      }
+    }
+  });
+
+  async function fetchTimeline() {
+    try {
         const res = await fetch(`/api/intelligence/shipments/${shipmentId}/timeline`);
         if (res.ok) {
           const data = await res.json();
@@ -24,7 +38,8 @@ export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
         setLoading(false);
       }
     }
-    
+
+  useEffect(() => {
     fetchTimeline();
   }, [shipmentId]);
 

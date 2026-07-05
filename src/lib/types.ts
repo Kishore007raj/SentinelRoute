@@ -544,10 +544,13 @@ export type IncidentCategory = "Weather" | "Traffic" | "Road Closure" | "Acciden
 export interface Incident {
   incidentId:         string;
   companyId?:         string; // Optional, some incidents might be company specific but usually global
+  ownerId?:           string; // Command Center owner
   title:              string;
   description:        string;
   category:           IncidentCategory;
   severity:           "low" | "medium" | "high" | "critical";
+  priority?:          "low" | "medium" | "high" | "critical";
+  commandStatus?:     "open" | "investigating" | "mitigating" | "resolved";
   confidence:         number;
   latitude:           number;
   longitude:          number;
@@ -559,6 +562,11 @@ export interface Incident {
   verifiedStatus:     boolean;
   impactScore:        number;
   recommendedAction:  string;
+  actionsTaken?:      string[];
+  resolution?:        string;
+  relatedShipmentId?: string;
+  relatedVehicleId?:  string;
+  relatedDriverId?:   string;
   affectedState?:     string;
   affectedCity?:      string;
   logisticsImpact?:   string;
@@ -615,8 +623,18 @@ export type TimelineEventType =
   | "Route Deviation"
   // Module 6 Operational Intelligence Events
   | "Recommendation Generated"
+  | "Recommendation Assigned"
+  | "Recommendation Viewed"
   | "Recommendation Accepted"
   | "Recommendation Rejected"
+  | "Recommendation Executed"
+  | "Recommendation Completed"
+  | "Recommendation Cancelled"
+  | "Recommendation Expired"
+  | "Recommendation Approved"
+  | "Recommendation Overridden"
+  | "Recommendation Escalated"
+  | "Recommendation Delegated"
   | "Risk Escalated"
   | "Shipment Assigned"
   | "Driver Assigned"
@@ -740,6 +758,8 @@ export type RecommendationType =
   | "Split Cargo"
   | "Escalate to Operations Manager";
 
+export type RecommendationLifecycleStatus = "generated" | "assigned" | "viewed" | "accepted" | "rejected" | "executed" | "completed" | "cancelled" | "expired";
+
 export interface OperationalRecommendation {
   recommendationId:  string;
   shipmentId:        string;
@@ -752,9 +772,18 @@ export interface OperationalRecommendation {
   estimatedImpact:   string;
   severity:          "low" | "medium" | "high" | "critical";
   status:            "pending" | "accepted" | "rejected" | "resolved";
+  lifecycleStatus:   RecommendationLifecycleStatus;
   createdAt:         string;
+  assignedTo?:       string;
+  assignedAt?:       string;
+  viewedAt?:         string;
+  viewedBy?:         string;
   resolvedAt?:       string;
   resolvedBy?:       string;
+  executedAt?:       string;
+  completedAt?:      string;
+  cancelledAt?:      string;
+  expiredAt?:        string;
 }
 
 export interface OperationalHealthScore {

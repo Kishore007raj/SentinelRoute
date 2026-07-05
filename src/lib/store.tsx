@@ -25,6 +25,7 @@ export interface PresenceUser {
   userId: string;
   status: "online" | "offline";
   role?: string;
+  entityId?: string;
 }
 
 // ─── API resilience helpers ───────────────────────────────────────────────────
@@ -197,14 +198,16 @@ function reducer(state: StoreState, action: Action): StoreState {
       };
     case "SET_OPERATIONAL_DATA":
       return { ...state, operationalFeed: action.payload.feed, operationalHealth: action.payload.health, lastSync: Date.now() };
-    case "PRESENCE_UPDATE":
+    case "PRESENCE_UPDATE": {
+      const existing = state.presence[action.payload.userId] || {};
       return {
         ...state,
         presence: {
           ...state.presence,
-          [action.payload.userId]: action.payload,
+          [action.payload.userId]: { ...existing, ...action.payload },
         },
       };
+    }
     case "PRESENCE_SYNC":
       return { ...state, presence: action.payload };
     case "KPI_UPDATE":
@@ -361,9 +364,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }});
       }
     },
-    // Module 7: presence
+    // Module 7 & 8: presence
     "presence:updated": (data: unknown) => {
       dispatch({ type: "PRESENCE_UPDATE", payload: data as PresenceUser });
+    },
+    "presence:entity:joined": (data: unknown) => {
+      dispatch({ type: "PRESENCE_UPDATE", payload: { ...(data as PresenceUser), status: "online" } });
+    },
+    "presence:entity:left": (data: unknown) => {
+      dispatch({ type: "PRESENCE_UPDATE", payload: { ...(data as PresenceUser), entityId: undefined } });
     },
     "presence:sync": (data: unknown) => {
       dispatch({ type: "PRESENCE_SYNC", payload: data as Record<string, PresenceUser> });

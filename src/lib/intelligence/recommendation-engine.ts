@@ -133,6 +133,7 @@ export class RecommendationEngine {
       estimatedImpact,
       severity,
       status: "pending",
+      lifecycleStatus: "generated",
       createdAt: new Date().toISOString()
     };
   }

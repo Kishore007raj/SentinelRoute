@@ -31,6 +31,8 @@ export type IntelligenceEventType =
   | "incident_detected"
   | "incident_updated"
   | "incident_closed"
+  | "incident_assigned"
+  | "incident_priority_changed"
   // Routing events
   | "reroute_suggested"
   | "reroute_accepted"
@@ -42,6 +44,20 @@ export type IntelligenceEventType =
   | "news_risk_added"
   | "shipment_channel_message"
   | "shipment_assigned"
+  // Recommendation lifecycle events
+  | "recommendation_generated"
+  | "recommendation_assigned"
+  | "recommendation_viewed"
+  | "recommendation_accepted"
+  | "recommendation_rejected"
+  | "recommendation_approved"
+  | "recommendation_overridden"
+  | "recommendation_escalated"
+  | "recommendation_delegated"
+  | "recommendation_executed"
+  | "recommendation_completed"
+  | "recommendation_cancelled"
+  | "recommendation_expired"
   // Super admin
   | "super_admin_read";
 

@@ -5,6 +5,7 @@ import { ShipmentMessage } from "@/lib/types";
 import { addTimelineEvent } from "@/lib/timeline-service";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 import { encryptObjectFields, decryptObjectFields } from "@/lib/encryption";
+import { emitToCompany } from "@/lib/socket-server";
 
 export async function GET(
   req: Request,
@@ -149,6 +150,10 @@ export async function POST(
         messageLength: message.message.length
       }
     }).catch(() => {});
+
+    // Broadcast Real-time Events
+    emitToCompany(companyId, "message:new", message);
+    emitToCompany(companyId, "feed:updated", { type: "timeline", shipmentId: id });
 
     return NextResponse.json({ success: true, message });
   } catch (err: any) {

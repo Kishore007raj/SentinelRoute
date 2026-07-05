@@ -4,6 +4,7 @@ import next from "next";
 import { Server as SocketIOServer } from "socket.io";
 import { validateStartup, logEnvStatus } from "./src/lib/env";
 import { adminAuth } from "./src/lib/firebase-admin";
+import { getDb } from "./src/lib/mongodb";
 
 // ── Startup validation — fail fast if critical env vars are missing ──────────
 validateStartup();
@@ -73,7 +74,17 @@ app.prepare().then(() => {
       const uid = adminAuth
         ? (await adminAuth.verifyIdToken(token)).uid
         : decodeJwtUid(token)!;
+      
+      const db = await getDb();
+      const userRecord = await db.collection("users").findOne({ userId: uid });
+      
+      if (!userRecord || !userRecord.companyId) {
+        return next(new Error("Unauthorized: user or company not found"));
+      }
+
       socket.data.uid = uid;
+      socket.data.companyId = userRecord.companyId;
+      socket.data.role = userRecord.role;
       return next();
     } catch {
       return next(new Error("Unauthorized: token verification failed"));
@@ -81,13 +92,39 @@ app.prepare().then(() => {
   });
 
   // ── Presence tracking ─────────────────────────────────────────────────────
-  const presence = new Map<string, { companyId: string; userId: string; role: string; lastSeen: number }>();
+  const presence = new Map<string, { companyId: string; userId: string; role: string; lastSeen: number; entityId?: string }>();
+
+  // Sweeper to reap stale connections every 30 seconds
+  setInterval(() => {
+    const now = Date.now();
+    for (const [socketId, userPresence] of presence.entries()) {
+      if (now - userPresence.lastSeen > 60000) {
+        io.to(`company:${userPresence.companyId}`).emit("presence:updated", {
+          userId: userPresence.userId,
+          status: "offline",
+          role: userPresence.role
+        });
+        if (userPresence.entityId) {
+          io.to(`company:${userPresence.companyId}`).emit("presence:entity:left", {
+            userId: userPresence.userId,
+            entityId: userPresence.entityId
+          });
+        }
+        presence.delete(socketId);
+        const s = io.sockets.sockets.get(socketId);
+        if (s) s.disconnect(true);
+      }
+    }
+  }, 30000);
 
   io.on("connection", (socket) => {
     console.log(`[socket] Client connected: ${socket.id} uid=${socket.data.uid}`);
 
     // Send server UTC time immediately on connect so clients can verify clock sync
     socket.emit("server:time", { utc: new Date().toISOString() });
+    
+    // Connection recovery: let the client know we established a fresh session
+    socket.emit("handshake:success", { timestamp: new Date().toISOString() });
 
     // Client can join a user-specific room for targeted updates
     socket.on("join:user", (userId: string) => {
@@ -101,16 +138,73 @@ app.prepare().then(() => {
     // Client joins a company room for real-time collaboration updates
     socket.on("join:company", (data: { companyId: string, userId: string, role: string }) => {
       if (data && typeof data.companyId === "string" && data.companyId.length > 0) {
-        socket.join(`company:${data.companyId}`);
-        presence.set(socket.id, { companyId: data.companyId, userId: data.userId, role: data.role, lastSeen: Date.now() });
+        if (data.companyId !== socket.data.companyId && socket.data.role !== "super_admin") {
+          console.warn(`[SECURITY] Unauthorized join:company attempt. uid=${socket.data.uid}, requested=${data.companyId}, authorized=${socket.data.companyId}`);
+          socket.disconnect(true);
+          return;
+        }
+
+        const targetCompany = socket.data.role === "super_admin" ? data.companyId : socket.data.companyId;
+        socket.join(`company:${targetCompany}`);
+        presence.set(socket.id, { companyId: targetCompany, userId: socket.data.uid, role: socket.data.role, lastSeen: Date.now() });
         
-        io.to(`company:${data.companyId}`).emit("presence:updated", {
-          userId: data.userId,
+        io.to(`company:${targetCompany}`).emit("presence:updated", {
+          userId: socket.data.uid,
           status: "online",
-          role: data.role
+          role: socket.data.role
         });
-        console.log(`[socket] ${socket.id} joined room company:${data.companyId}`);
+        console.log(`[socket] ${socket.id} joined room company:${targetCompany}`);
       }
+    });
+
+    // Client joins a specific entity room (e.g., viewing a shipment or incident)
+    socket.on("join:entity", async (data: { entityId: string, companyId: string, userId: string, role: string }) => {
+      if (data && typeof data.entityId === "string" && data.entityId.length > 0) {
+        try {
+          const db = await getDb();
+          const shipment = await db.collection("shipments").findOne({ id: data.entityId });
+          
+          if (!shipment || (shipment.companyId !== socket.data.companyId && socket.data.role !== "super_admin")) {
+            console.warn(`[SECURITY] Unauthorized join:entity attempt. uid=${socket.data.uid}, requestedEntity=${data.entityId}, authorizedCompany=${socket.data.companyId}`);
+            socket.disconnect(true);
+            return;
+          }
+        } catch (err) {
+          console.error(`[socket] Error validating join:entity for ${socket.data.uid}:`, err);
+          return;
+        }
+
+        socket.join(`entity:${data.entityId}`);
+        const userPresence = presence.get(socket.id);
+        if (userPresence) {
+          userPresence.entityId = data.entityId;
+          presence.set(socket.id, userPresence);
+        }
+        
+        const targetCompany = socket.data.role === "super_admin" ? data.companyId : socket.data.companyId;
+        io.to(`company:${targetCompany}`).emit("presence:entity:joined", {
+          userId: socket.data.uid,
+          entityId: data.entityId,
+          role: socket.data.role
+        });
+        console.log(`[socket] ${socket.id} joined entity:${data.entityId}`);
+      }
+    });
+
+    socket.on("leave:entity", (data: { entityId: string, companyId: string, userId: string }) => {
+       if (data && typeof data.entityId === "string" && data.entityId.length > 0) {
+         socket.leave(`entity:${data.entityId}`);
+         const userPresence = presence.get(socket.id);
+         if (userPresence) {
+           userPresence.entityId = undefined;
+           presence.set(socket.id, userPresence);
+         }
+         const targetCompany = socket.data.role === "super_admin" ? data.companyId : socket.data.companyId;
+         io.to(`company:${targetCompany}`).emit("presence:entity:left", {
+            userId: socket.data.uid,
+            entityId: data.entityId
+         });
+       }
     });
 
     // Handle ping for connection health tracking
@@ -131,6 +225,12 @@ app.prepare().then(() => {
           status: "offline",
           role: userPresence.role
         });
+        if (userPresence.entityId) {
+          io.to(`company:${userPresence.companyId}`).emit("presence:entity:left", {
+            userId: userPresence.userId,
+            entityId: userPresence.entityId
+          });
+        }
         presence.delete(socket.id);
       }
     });

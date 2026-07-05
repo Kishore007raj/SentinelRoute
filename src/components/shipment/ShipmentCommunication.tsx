@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { useCompany } from "@/lib/company-context";
+import { useSocket } from "@/hooks/use-socket";
 
 export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
   const { userRecord } = useCompany();
@@ -14,6 +15,19 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
   const isSuperAdmin = userRecord?.role === "super_admin";
   const isCrossCompany = isSuperAdmin && typeof window !== "undefined" && new URLSearchParams(window.location.search).has("companyId");
   const targetCompanyId = isCrossCompany && typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("companyId") : null;
+
+  useSocket({
+    on: {
+      "message:new": (msg: any) => {
+        if (msg.shipmentId === shipmentId) {
+          setMessages(prev => {
+            if (prev.some(m => m.messageId === msg.messageId)) return prev;
+            return [...prev, msg];
+          });
+        }
+      }
+    }
+  });
 
   useEffect(() => {
     async function fetchMessages() {

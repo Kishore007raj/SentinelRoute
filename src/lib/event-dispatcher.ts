@@ -15,7 +15,9 @@ type EventType =
   | "KPI_UPDATED"
   | "FEED_UPDATED"
   | "HEALTH_UPDATED"
-  | "LOCATION_UPDATED";
+  | "LOCATION_UPDATED"
+  | "INCIDENT_COMMAND_UPDATED"
+  | "DECISION_LIFECYCLE_UPDATED";
 
 interface DomainEvent {
   type: EventType;

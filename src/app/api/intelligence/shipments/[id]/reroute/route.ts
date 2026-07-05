@@ -49,7 +49,7 @@ export async function POST(
       const newRouteName = routeName || "Alternative Safest Route";
 
       await db.collection("shipments").updateOne(
-        { id },
+        { id, companyId },
         {
           $set: {
             selectedRoute,
