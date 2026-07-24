@@ -39,9 +39,9 @@ export function DecisionWorkspace({ shipment, prediction, routeForMap, execution
   const handleAction = async (rec: OperationalRecommendation) => {};
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)] min-h-[600px]">
-      {/* 1st Half: The Map */}
-      <div className="lg:col-span-2 rounded-xl overflow-hidden border shadow-sm relative">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Map */}
+      <div className="lg:col-span-2 rounded-xl overflow-hidden border shadow-sm relative h-[420px] lg:h-[500px]">
         <RouteMapView 
           route={routeForMap}
           routes={routeForMap ? [routeForMap] : []}
@@ -73,8 +73,8 @@ export function DecisionWorkspace({ shipment, prediction, routeForMap, execution
         )}
       </div>
 
-      {/* 2nd Half: Operational Panel */}
-      <Card className="flex flex-col h-full border-l shadow-none lg:shadow-sm">
+      {/* Operational Panel */}
+      <Card className="flex flex-col border shadow-sm min-h-[300px] lg:h-[500px]">
         <CardHeader className="pb-3 border-b">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">

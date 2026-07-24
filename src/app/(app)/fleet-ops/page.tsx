@@ -28,15 +28,16 @@ export default function FleetOpsPage() {
   if (!company) return <div className="p-8 text-center text-muted-foreground font-mono text-sm uppercase tracking-wider">Select a company first.</div>;
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <div className="flex justify-between items-end">
+    <div className="max-w-6xl mx-auto w-full space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-end pb-8 border-b border-border gap-4">
         <div className="space-y-2">
-          <h1 className="text-3xl font-light tracking-tight">Fleet Operations</h1>
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">Operations</p>
+          <h1 className="text-3xl font-bold tracking-tight">Fleet Operations</h1>
           <p className="text-muted-foreground">Live tracking and execution monitoring across all active trips.</p>
         </div>
         <Link href="/command-center">
-          <Button variant="outline" className="gap-2 border-primary/20 hover:bg-primary/5 text-primary">
-            <ShieldCheck className="w-4 h-4" /> Go to Command Center
+          <Button variant="outline" className="gap-2 border-primary/20 hover:bg-primary/5 text-primary h-10">
+            <ShieldCheck className="w-4 h-4" /> Command Center
           </Button>
         </Link>
       </div>

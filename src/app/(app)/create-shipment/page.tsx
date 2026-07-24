@@ -203,10 +203,10 @@ function GeoapifyLocationInput({
         </div>
       )}
 
-      {/* Coordinate confirmation badge */}
+      {/* Location confirmation badge — shows only city name, no raw coords */}
       {confirmed && value && (
-        <p className="text-[10px] text-emerald-400/70 mt-1 pl-1">
-          {value.lat.toFixed(4)}, {value.lng.toFixed(4)} · {value.placeId}
+        <p className="text-[10px] text-emerald-400/70 mt-1 pl-1 truncate max-w-sm">
+          ✓ {value.address || value.name}
         </p>
       )}
     </div>
@@ -346,7 +346,7 @@ export default function CreateShipmentPage() {
         <p className="text-xs text-muted-foreground uppercase tracking-widest">Mission configuration</p>
         <h1 className="text-3xl font-bold text-foreground">New Shipment</h1>
         <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-          Search any location across India — Mappls autosuggest provides live suggestions with coordinates.
+          Search any location across India — live autosuggest finds cities, hubs and addresses instantly.
         </p>
       </div>
 
@@ -492,8 +492,8 @@ export default function CreateShipmentPage() {
         </div>
 
         {/* ── Preview panel ── */}
-        <div className="hidden lg:block lg:w-96 xl:w-[450px] shrink-0">
-          <div className="sticky top-8 space-y-8">
+        <div className="hidden lg:block lg:w-96 xl:w-[420px] shrink-0">
+          <div className="sticky top-24 space-y-8">
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground uppercase tracking-widest">Route preview</p>
               {origin || destination ? (

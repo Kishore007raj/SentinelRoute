@@ -257,9 +257,9 @@ function OverviewTab({
   };
 
   return (
-    <div className="grid gap-8 xl:grid-cols-[1.5fr_1fr]">
+    <div className="grid gap-8 xl:grid-cols-[1.5fr_1fr] min-w-0">
       {/* Left column */}
-      <div className="space-y-6">
+      <div className="space-y-6 min-w-0">
 
         {/* Core info */}
         <div className="panel p-7">
@@ -459,7 +459,7 @@ function OverviewTab({
       </div>
 
       {/* Right column — map */}
-      <div>
+      <div className="min-w-0 overflow-hidden">
         {!hasBreakdown && (
           <p className="text-xs text-muted-foreground/50 mb-3 px-1">
             {t("shipmentDetail.riskBreakdownUnavailable")}
@@ -614,15 +614,15 @@ export default function ShipmentDetailPage({
       />
 
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-5 pb-8 border-b border-border">
-        <div className="space-y-2">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-8 border-b border-border">
+        <div className="space-y-2 min-w-0">
           <p className="text-xs text-muted-foreground uppercase tracking-widest">
             {t("shipmentDetail.shipmentDetail")}
           </p>
-          <h1 className="text-3xl font-bold text-foreground">{shipment.shipmentCode}</h1>
+          <h1 className="text-3xl font-bold text-foreground truncate">{shipment.shipmentCode}</h1>
           <p className="text-sm text-muted-foreground">{shipment.origin} → {shipment.destination}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0 flex-wrap">
           <StatusBadge status={shipment.status} />
           {cancelling && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -640,13 +640,13 @@ export default function ShipmentDetailPage({
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="h-11 bg-muted/20 gap-1 p-1 rounded-lg flex-wrap">
+        <TabsList className="h-auto min-h-[44px] bg-muted/20 gap-1 p-1 rounded-lg flex-wrap">
           <TabsTrigger value="overview"      className="text-sm h-9 px-4 rounded-md">Overview</TabsTrigger>
           <TabsTrigger value="route"         className="text-sm h-9 px-4 rounded-md">Route</TabsTrigger>
           <TabsTrigger value="risk"          className="text-sm h-9 px-4 rounded-md">Risk Intelligence</TabsTrigger>
           <TabsTrigger value="timeline"      className="text-sm h-9 px-4 rounded-md">Timeline</TabsTrigger>
           <TabsTrigger value="communication" className="text-sm h-9 px-4 rounded-md">Communication</TabsTrigger>
-          <TabsTrigger value="audit" className="text-sm h-9 px-4 rounded-md">Audit</TabsTrigger>
+          <TabsTrigger value="audit"         className="text-sm h-9 px-4 rounded-md">Audit</TabsTrigger>
         </TabsList>
 
         {/* Overview */}
@@ -706,7 +706,7 @@ export default function ShipmentDetailPage({
               </DashboardCard>
             )}
             {/* Map */}
-            <div className="rounded-xl overflow-hidden border border-border h-[500px]">
+            <div className="rounded-xl overflow-hidden border border-border" style={{ height: "500px" }}>
               <RouteMapView
                 route={{
                   id:            shipment.id,

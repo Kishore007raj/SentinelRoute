@@ -62,7 +62,7 @@ function OrderRow({ shipment, index }: { shipment: Shipment; index: number }) {
       {/* Link uses shipment.id — consistent with dashboard and shipments page */}
       <Link href={`/shipments/${shipment.id}`}>
         <div className="rounded-xl border border-border/50 bg-card hover:border-border hover:shadow-lg hover:shadow-black/20 transition-all duration-200 overflow-hidden cursor-pointer">
-          <div className="h-px w-full bg-gradient-to-r from-transparent via-border/50 to-transparent" />
+          <div className="h-px w-full bg-linear-to-r from-transparent via-border/50 to-transparent" />
 
           <div className="px-6 pt-5 pb-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 text-base font-bold text-foreground min-w-0">

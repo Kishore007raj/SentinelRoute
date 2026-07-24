@@ -133,9 +133,10 @@ export default function DriverOpsPage() {
   const selectedShipment = shipments.find(s => s.id === selectedShipmentId);
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-light tracking-tight">Driver Operations</h1>
+    <div className="max-w-4xl mx-auto w-full space-y-8">
+      <div className="pb-8 border-b border-border space-y-2">
+        <p className="text-xs text-muted-foreground uppercase tracking-widest">Fleet Operations</p>
+        <h1 className="text-3xl font-bold tracking-tight">Driver Operations</h1>
         <p className="text-muted-foreground">Simulate driver app actions for assigned shipments.</p>
       </div>
 

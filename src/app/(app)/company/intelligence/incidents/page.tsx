@@ -284,7 +284,7 @@ export default function IncidentsPage() {
   });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto w-full space-y-6">
       {showCreate && (
         <CreateIncidentDialog
           onClose={() => setShowCreate(false)}
@@ -292,8 +292,9 @@ export default function IncidentsPage() {
         />
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-8 border-b border-border">
         <div className="space-y-1">
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">Operational Intelligence</p>
           <h1 className="text-3xl font-bold tracking-tight">Incident Center</h1>
           <p className="text-muted-foreground">
             Active disruptions and logistics incidents affecting corridors.
@@ -301,7 +302,7 @@ export default function IncidentsPage() {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shrink-0"
+          className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shrink-0 h-11"
         >
           <Plus className="w-4 h-4" />
           Report Incident

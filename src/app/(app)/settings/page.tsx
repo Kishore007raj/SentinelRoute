@@ -131,13 +131,14 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="company">
-        <TabsList className="h-11 bg-muted/20 gap-1 p-1 flex-wrap">
+        <TabsList className="h-auto min-h-[44px] bg-muted/20 gap-1 p-1 flex-wrap rounded-lg">
           {sections.map((s) => {
             const Icon = s.icon;
             return (
-              <TabsTrigger key={s.id} value={s.id} className="text-sm h-9 px-4 gap-2">
-                <Icon className="w-3.5 h-3.5" />
-                {s.label}
+              <TabsTrigger key={s.id} value={s.id} className="text-sm h-9 px-3 sm:px-4 gap-1.5 rounded-md">
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">{s.label}</span>
+                <span className="sm:hidden">{s.label.split(" ")[0]}</span>
               </TabsTrigger>
             );
           })}
@@ -146,7 +147,7 @@ export default function SettingsPage() {
         {/* ── Company Profile ── */}
         <TabsContent value="company" className="mt-8">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border p-8 space-y-0 divide-y divide-border/40">
+            className="bg-card border border-border rounded-xl p-8 space-y-0 divide-y divide-border/40">
             {company ? (
               <>
                 <div className="pb-6">
@@ -197,7 +198,7 @@ export default function SettingsPage() {
         {/* ── Notifications ── */}
         <TabsContent value="notifications" className="mt-8">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border p-8 divide-y divide-border/40">
+            className="bg-card border border-border rounded-xl p-8 divide-y divide-border/40">
             {([
               { key: "notifyRiskAlerts",        label: "Predictive Risk Alerts",         desc: "Notify when route risk score exceeds threshold" },
               { key: "notifyDispatchConfirm",   label: "Shipment Dispatch Confirmation", desc: "Send confirmation on every dispatch action" },
@@ -219,7 +220,7 @@ export default function SettingsPage() {
         {/* ── Risk Thresholds ── */}
         <TabsContent value="thresholds" className="mt-8">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border p-8 space-y-8">
+            className="bg-card border border-border rounded-xl p-8 space-y-8">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
@@ -279,7 +280,7 @@ export default function SettingsPage() {
         {/* ── Dispatch Defaults ── */}
         <TabsContent value="dispatch" className="mt-8">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border p-8 divide-y divide-border/40">
+            className="bg-card border border-border rounded-xl p-8 divide-y divide-border/40">
             <SettingRow label="Default Vehicle Type" description="Pre-selected vehicle for new shipments">
               <Select
                 value={draft.defaultVehicleType ?? "Container Truck"}
@@ -317,7 +318,7 @@ export default function SettingsPage() {
         {/* ── Security ── */}
         <TabsContent value="security" className="mt-8">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border p-8 space-y-8">
+            className="bg-card border border-border rounded-xl p-8 space-y-8">
             <p className="text-sm font-semibold text-foreground">Change Password</p>
             <div className="grid gap-5 max-w-sm">
               {([

@@ -79,8 +79,9 @@ export default function RiskCenterPage() {
   const riskColor = riskScore > 70 ? "text-red-500" : riskScore > 50 ? "text-orange-500" : riskScore > 25 ? "text-amber-500" : "text-emerald-500";
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col gap-2">
+    <div className="max-w-7xl mx-auto w-full space-y-6">
+      <div className="flex flex-col gap-2 pb-8 border-b border-border">
+        <p className="text-xs text-muted-foreground uppercase tracking-widest">Operational Intelligence</p>
         <h1 className="text-3xl font-bold tracking-tight">Risk Center</h1>
         <p className="text-muted-foreground">
           Live operational risk intelligence for your logistics network.

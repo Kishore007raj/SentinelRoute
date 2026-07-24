@@ -78,9 +78,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AppSidebar />
       <SidebarInset>
         <AppHeader />
-        <div className="flex-1 overflow-auto px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+        <main className="flex-1 min-h-0 px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12 overflow-x-hidden">
           <PageTransition>{children}</PageTransition>
-        </div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

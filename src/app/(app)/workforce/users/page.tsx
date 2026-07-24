@@ -19,7 +19,7 @@ import type { CompanyUser, UserRole } from "@/lib/types";
 
 function UsersSkeleton() {
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-8 p-6">
+    <div className="max-w-7xl mx-auto w-full space-y-8">
       <div className="pb-6 border-b border-border space-y-2">
         <Skeleton className="h-3 w-32" />
         <Skeleton className="h-8 w-48" />
@@ -139,7 +139,7 @@ export default function UserManagementPage() {
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto w-full p-6">
+      <div className="max-w-7xl mx-auto w-full">
         <div className="flex flex-col items-center justify-center py-24 gap-5 text-center bg-card border border-border rounded-2xl">
           <AlertTriangle className="w-8 h-8 text-amber-400" />
           <div className="space-y-1">
@@ -156,7 +156,7 @@ export default function UserManagementPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-10 p-6">
+    <div className="max-w-7xl mx-auto w-full space-y-10">
 
       {/* Header */}
       <div className="pb-6 border-b border-border flex items-start justify-between gap-4">

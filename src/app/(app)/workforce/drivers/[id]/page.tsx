@@ -21,7 +21,7 @@ import type { Driver, WorkforceAudit } from "@/lib/types";
 
 function ProfileSkeleton() {
   return (
-    <div className="max-w-5xl mx-auto w-full space-y-8 p-6">
+    <div className="max-w-5xl mx-auto w-full space-y-8">
       <div className="pb-6 border-b border-border space-y-3">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-8 w-64" />
@@ -146,7 +146,7 @@ export default function DriverProfilePage() {
 
   if (error) {
     return (
-      <div className="max-w-5xl mx-auto w-full p-6">
+      <div className="max-w-5xl mx-auto w-full">
         <div className="flex flex-col items-center justify-center py-24 gap-5 text-center bg-card border border-border rounded-2xl">
           <AlertTriangle className="w-8 h-8 text-amber-400" />
           <div className="space-y-1">
@@ -171,7 +171,7 @@ export default function DriverProfilePage() {
   if (!driver) return null;
 
   return (
-    <div className="max-w-5xl mx-auto w-full space-y-8 p-6">
+    <div className="max-w-5xl mx-auto w-full space-y-8">
 
       {/* Header */}
       <div className="pb-6 border-b border-border">

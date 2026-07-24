@@ -1,11 +1,10 @@
 "use client";
+// Analytics Dashboard — SentinelRoute
 import { useEffect, useState, useMemo } from "react";
-import { motion } from "framer-motion";
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { TrendingDown, TrendingUp, AlertTriangle, Zap } from "lucide-react";
@@ -47,7 +46,6 @@ export default function AnalyticsPage() {
 
   const memoStats = useMemo(() => {
     const total = (shipments || []).length;
-    const completed = (shipments || []).filter((s) => s.status === "completed").length;
     const active = (shipments || []).filter((s) => s.status === "active" || s.status === "at-risk").length;
     
     const avgRiskScore = total > 0
@@ -101,19 +99,19 @@ export default function AnalyticsPage() {
       },
     ];
 
-    return { total, completed, active, avgRiskScore, highRiskAvoided, volumeData, riskDist, volTrend };
+    return { total, active, avgRiskScore, highRiskAvoided, volumeData, riskDist, volTrend };
   }, [shipments, currentTime]);
 
   if (!hydrated) return null;
 
-  const { total, completed, active, avgRiskScore, highRiskAvoided, volumeData, riskDist, volTrend } = memoStats;
+  const { total, active, avgRiskScore, highRiskAvoided, volumeData, riskDist, volTrend } = memoStats;
 
   // ── Low-data guard ────────────────────────────────────────────────────────
   // Charts are meaningless with fewer than 5 shipments — show a clear message instead.
   const hasEnoughData = total >= 5;
 
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-10 p-6">
+    <div className="max-w-7xl mx-auto w-full space-y-10">
       <div className="pb-8 border-b border-border">
         <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2 font-bold">Operational intelligence</p>
         <h1 className="text-3xl font-bold text-foreground mb-8 tracking-tight">Analytics Dashboard</h1>

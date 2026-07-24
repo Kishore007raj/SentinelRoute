@@ -168,20 +168,38 @@ export default function RouteIntelligencePage() {
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Origin</label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-                  <input type="text" value={origin} onChange={e => setOrigin(e.target.value)} required className="input w-full pl-9" placeholder="e.g. Mumbai" />
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
+                  <input
+                    type="text"
+                    value={origin}
+                    onChange={e => setOrigin(e.target.value)}
+                    required
+                    placeholder="e.g. Mumbai"
+                    className="flex h-10 w-full rounded-lg border border-border bg-muted/20 pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                  />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Destination</label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-                  <input type="text" value={destination} onChange={e => setDestination(e.target.value)} required className="input w-full pl-9" placeholder="e.g. Delhi" />
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
+                  <input
+                    type="text"
+                    value={destination}
+                    onChange={e => setDestination(e.target.value)}
+                    required
+                    placeholder="e.g. Delhi"
+                    className="flex h-10 w-full rounded-lg border border-border bg-muted/20 pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                  />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Cargo Type</label>
-                <select value={cargoType} onChange={e => setCargoType(e.target.value)} className="input w-full">
+                <select
+                  value={cargoType}
+                  onChange={e => setCargoType(e.target.value)}
+                  className="flex h-10 w-full rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                >
                   <option value="Electronics">Electronics</option>
                   <option value="Pharmaceuticals">Pharmaceuticals</option>
                   <option value="Perishables">Perishables</option>
@@ -190,14 +208,22 @@ export default function RouteIntelligencePage() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Priority</label>
-                <select value={urgency} onChange={e => setUrgency(e.target.value)} className="input w-full">
+                <select
+                  value={urgency}
+                  onChange={e => setUrgency(e.target.value)}
+                  className="flex h-10 w-full rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                >
                   <option value="Standard">Standard</option>
                   <option value="High">High</option>
                   <option value="Critical">Critical</option>
                 </select>
               </div>
               <div>
-                <button type="submit" disabled={analyzing} className="btn-primary w-full flex items-center justify-center gap-2 h-10">
+                <button
+                  type="submit"
+                  disabled={analyzing}
+                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {analyzing ? (
                     <><span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> Analyzing</>
                   ) : (

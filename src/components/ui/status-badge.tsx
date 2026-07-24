@@ -57,7 +57,7 @@ export function StatusBadge({
     const s = status.toLowerCase()
     if (s.includes('active') || s.includes('completed') || s.includes('delivered') || s.includes('available')) activeVariant = 'success'
     else if (s.includes('delayed') || s.includes('warning') || s.includes('maintenance')) activeVariant = 'warning'
-    else if (s.includes('critical') || s.includes('cancelled') || s.includes('at risk')) activeVariant = 'critical'
+    else if (s.includes('critical') || s.includes('cancelled') || s === 'at-risk' || s.includes('at risk')) activeVariant = 'critical'
     else if (s.includes('pending') || s.includes('scheduled')) activeVariant = 'info'
     else activeVariant = 'inactive'
   }

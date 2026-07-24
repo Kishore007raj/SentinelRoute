@@ -9,9 +9,10 @@ export default function HeatmapPage() {
   const { t } = useI18n();
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">{t('intelligence.operationalHeatmap')}</h1>
+    <div className="max-w-7xl mx-auto w-full space-y-6">
+      <div className="flex flex-col gap-2 pb-8 border-b border-border">
+        <p className="text-xs text-muted-foreground uppercase tracking-widest">Operational Intelligence</p>
+        <h1 className="text-3xl font-bold tracking-tight">Operational Heatmap</h1>
         <p className="text-muted-foreground">
           {t('intelligence.operationalHeatmapSubtitle')}
         </p>

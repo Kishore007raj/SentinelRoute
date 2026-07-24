@@ -29,8 +29,9 @@ export default function CorridorsPage() {
   }, []);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col gap-2">
+    <div className="max-w-7xl mx-auto w-full space-y-6">
+      <div className="flex flex-col gap-2 pb-8 border-b border-border">
+        <p className="text-xs text-muted-foreground uppercase tracking-widest">Operational Intelligence</p>
         <h1 className="text-3xl font-bold tracking-tight">Corridor Intelligence</h1>
         <p className="text-muted-foreground">
           Live statistics and risk aggregation for your active logistics corridors.

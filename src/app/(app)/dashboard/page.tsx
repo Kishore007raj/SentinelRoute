@@ -38,13 +38,13 @@ function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: numbe
 
           <div className="flex-1 min-w-0 px-6 py-6">
             {/* Main row */}
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-4 sm:gap-8 min-w-0">
               {/* Route */}
               <div className="flex-1 min-w-0 space-y-2">
-                <div className="flex items-center gap-2.5 text-base font-semibold text-foreground">
-                  <span className="truncate">{shipment.origin}</span>
+                <div className="flex items-center gap-2 text-sm sm:text-base font-semibold text-foreground min-w-0">
+                  <span className="truncate max-w-[100px] sm:max-w-none">{shipment.origin}</span>
                   <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
-                  <span className="truncate">{shipment.destination}</span>
+                  <span className="truncate max-w-[100px] sm:max-w-none">{shipment.destination}</span>
                 </div>
                 <p className="text-xs font-mono text-muted-foreground/50 hidden sm:block tracking-wider">
                   {shipment.shipmentCode}
@@ -52,17 +52,17 @@ function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: numbe
               </div>
 
               {/* Risk */}
-              <div className="w-16 shrink-0 text-center space-y-1">
-                <p className={cn("text-2xl font-bold tabular-nums leading-none", riskColor)}>
+              <div className="w-14 sm:w-16 shrink-0 text-center space-y-1">
+                <p className={cn("text-xl sm:text-2xl font-bold tabular-nums leading-none", riskColor)}>
                   {shipment.riskScore}
                 </p>
-                <p className={cn("text-[10px] uppercase tracking-widest font-medium", riskColor, "opacity-70")}>
+                <p className={cn("text-[10px] uppercase tracking-widest font-medium hidden sm:block", riskColor, "opacity-70")}>
                   {shipment.riskLevel}
                 </p>
               </div>
 
               {/* ETA */}
-              <div className="w-28 shrink-0 hidden sm:block space-y-1">
+              <div className="w-24 sm:w-28 shrink-0 hidden sm:block space-y-1">
                 <p className="text-base font-semibold text-foreground">{shipment.eta}</p>
                 <p className="text-xs text-muted-foreground">estimated</p>
               </div>
@@ -76,7 +76,7 @@ function ShipmentFeedRow({ shipment, index }: { shipment: Shipment; index: numbe
               {/* Status */}
               <div className="shrink-0 hidden sm:block w-24 text-right space-y-1">
                 <p className="text-xs text-muted-foreground">{formatRelativeTime(shipment.lastUpdate)}</p>
-                <StatusBadge status={isAtRisk ? "at risk" : isCompleted ? "completed" : "active"} />
+                <StatusBadge status={isAtRisk ? "at-risk" : isCompleted ? "completed" : "active"} />
               </div>
             </div>
 
@@ -164,16 +164,16 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-4 ml-auto text-xs text-muted-foreground">
-            <div>
-              <span className="uppercase tracking-widest text-[10px]">Company ID </span>
-              <span className="font-mono text-foreground">{company.companyId.slice(0, 16)}…</span>
+            <div className="flex items-center gap-1.5">
+              <span className="uppercase tracking-widest text-[10px]">ID </span>
+              <span className="font-mono text-foreground">{company.companyId.slice(0, 12)}…</span>
             </div>
             <div className="flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-emerald-400 font-medium capitalize">{company.status}</span>
             </div>
-            <div>
-              <span className="uppercase tracking-widest text-[10px]">Trust Score </span>
+            <div className="flex items-center gap-1.5">
+              <span className="uppercase tracking-widest text-[10px]">Trust </span>
               <span className="font-semibold text-foreground">{company.trustScore}</span>
             </div>
           </div>
@@ -261,7 +261,7 @@ export default function DashboardPage() {
       <div className="flex flex-col xl:flex-row gap-10">
 
         {/* Feed */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex items-center justify-between mb-6">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-foreground">Shipment Feed</h2>
@@ -272,7 +272,7 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="hidden sm:flex items-center border-b border-border/40 bg-muted/5 px-6 py-3 pl-7">
+          <div className="hidden sm:flex items-center border border-border/40 bg-muted/5 px-6 py-3 pl-7 rounded-t-xl">
             <div className="flex items-center gap-8 flex-1 min-w-0">
               <span className="text-xs text-muted-foreground uppercase tracking-widest flex-1">Route</span>
               <span className="text-xs text-muted-foreground uppercase tracking-widest w-16 text-center shrink-0">Risk</span>
