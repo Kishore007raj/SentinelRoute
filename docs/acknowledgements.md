@@ -2,7 +2,6 @@
 
 SentinelRoute is built on open source libraries, publicly available APIs, and the work of the communities behind them.
 
-**Related:** [Back to README](../README.md)
 
 ---
 

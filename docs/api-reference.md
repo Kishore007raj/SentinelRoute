@@ -1,9 +1,6 @@
 # API Reference
 
 All API routes return responses in the envelope format `{ success: true, data: ... }` or `{ success: false, error: string }`. All routes require a valid Firebase ID token in the `Authorization: Bearer <token>` header unless noted.
-
-**Related:** [Authentication](authentication.md) · [Security](security.md) · [Database](database.md) · [Modules](modules.md) · [Back to README](../README.md)
-
 ---
 
 ## Response Envelope

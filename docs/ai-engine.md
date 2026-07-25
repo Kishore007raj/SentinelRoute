@@ -2,8 +2,6 @@
 
 SentinelRoute combines deterministic risk scoring with AI-generated reasoning. The two layers are kept strictly separate: the risk score is computed before Gemini is called, and Gemini's output never influences the score.
 
-**Related:** [Architecture](architecture.md) · [Modules](modules.md) · [Performance](performance.md) · [Production Hardening](production-hardening.md) · [Back to README](../README.md)
-
 ---
 
 ## Data Inputs
