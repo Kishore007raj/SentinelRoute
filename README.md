@@ -194,7 +194,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [LOCAL HOST](http://localhost:3000).
 
 **Key environment variables:**
 
@@ -208,7 +208,7 @@ DATA_ENCRYPTION_KEY=
 NEXT_PUBLIC_ENABLE_WEBSOCKET=true
 ```
 
-See [docs/environment.md](docs/environment.md) for the full variable reference.
+See [Environment](docs/environment.md) for the full variable reference.
 
 ---
 
@@ -220,7 +220,7 @@ See [docs/environment.md](docs/environment.md) for the full variable reference.
 | Vercel | `npm run build && npm start` | Serverless -polling fallback active |
 | Node.js (with WebSocket) | `npm run start:ws` | Persistent process required |
 
-See [docs/deployment.md](docs/deployment.md) for full deployment instructions including environment setup, CI/CD, and Google Cloud upgrade path.
+See [Deployment](docs/deployment.md) for full deployment instructions including environment setup, CI/CD, and Google Cloud upgrade path.
 
 ---
 
@@ -237,7 +237,7 @@ See [docs/deployment.md](docs/deployment.md) for full deployment instructions in
 | v3.0 | BigQuery analytics integration -warehouse-scale shipment intelligence |
 | v3.1 | Google Cloud deployment -auto-scaling, global edge delivery |
 
-See [docs/roadmap.md](docs/roadmap.md) for the extended future platform roadmap.
+See [Roadmap](docs/roadmap.md) for the extended future platform roadmap.
 
 ---
 
