@@ -53,10 +53,10 @@ export async function GET(req: NextRequest) {
 
     const formattedData = {
       summary: data.summary[0] || { total: 0, avgConfidence: 0 },
-      confidenceTrend: data.confidenceTrend.map((d: any) => ({
-        date: d._id,
+      confidenceTrend: data.confidenceTrend.map((d: { _id: string; avgConfidence: number; count: number }) => ({
+        date:       d._id,
         confidence: d.avgConfidence,
-        volume: d.count
+        volume:     d.count,
       }))
     };
 

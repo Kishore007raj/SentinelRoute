@@ -8,11 +8,11 @@ export async function GET(req: NextRequest) {
     const { company } = await requireCompany(req);
     const searchParams = req.nextUrl.searchParams;
 
-    const metric = searchParams.get("metric") as any;
-    const start = searchParams.get("start") || undefined;
-    const end = searchParams.get("end") || undefined;
-    const preset = (searchParams.get("preset") as DateRangePreset) || undefined;
-    const granularity = (searchParams.get("granularity") as any) || "daily";
+    const metric    = searchParams.get("metric") as "shipment_volume" | "incidents" | "risk_score" | "predictions" | null;
+    const start     = searchParams.get("start")   ?? undefined;
+    const end       = searchParams.get("end")     ?? undefined;
+    const preset    = (searchParams.get("preset") as DateRangePreset) ?? undefined;
+    const granularity = (searchParams.get("granularity") as "daily" | "weekly" | "monthly") || "daily";
 
     if (!metric) {
       return NextResponse.json({ error: "Missing required parameter: metric" }, { status: 400 });

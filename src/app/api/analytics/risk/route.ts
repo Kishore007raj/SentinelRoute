@@ -55,12 +55,12 @@ export async function GET(req: NextRequest) {
 
     const formattedData = {
       summary: data.summary[0] || { totalCalculations: 0, avgOverallRisk: 0 },
-      riskTrend: data.riskTrend.map((d: any) => ({
-        date: d._id,
-        overall: d.avgOverallRisk,
-        weather: d.avgWeatherRisk,
-        traffic: d.avgTrafficRisk,
-        security: d.avgSecurityRisk
+      riskTrend: data.riskTrend.map((d: { _id: string; avgOverallRisk: number; avgWeatherRisk: number; avgTrafficRisk: number; avgSecurityRisk: number }) => ({
+        date:     d._id,
+        overall:  d.avgOverallRisk,
+        weather:  d.avgWeatherRisk,
+        traffic:  d.avgTrafficRisk,
+        security: d.avgSecurityRisk,
       }))
     };
 

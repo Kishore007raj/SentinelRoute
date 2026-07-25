@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireCompany } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/mongodb";
 import { calculateRoutePrediction } from "@/lib/prediction-engine";
@@ -8,11 +8,11 @@ import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 import { Shipment } from "@/lib/types";
 
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userRecord, company } = await requireCompany(req as any);
+    const { userRecord, company } = await requireCompany(req);
     const companyId = company.companyId;
     const isSuperAdmin = userRecord.role === "super_admin";
     const { id } = await params;

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireCompany } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/mongodb";
 import { ShipmentMessage } from "@/lib/types";
@@ -8,11 +8,11 @@ import { encryptObjectFields, decryptObjectFields } from "@/lib/encryption";
 import { emitToCompany } from "@/lib/socket-server";
 
 export async function GET(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userRecord, company } = await requireCompany(req as any);
+    const { userRecord, company } = await requireCompany(req);
     const isSuperAdmin = userRecord.role === "super_admin";
 
     let companyId = company.companyId;
@@ -54,7 +54,7 @@ export async function GET(
       .toArray();
 
     return NextResponse.json({ 
-      messages: messages.map(({_id, ...rest}) => decryptObjectFields(rest, ["message", "caption", "notes", "textPayload"])) 
+      messages: messages.map(({ _id: _omit, ...rest }) => decryptObjectFields(rest, ["message", "caption", "notes", "textPayload"])) 
     });
   } catch (err: unknown) {
     if (err instanceof Error && err.message === "Unauthorized") {
@@ -66,11 +66,11 @@ export async function GET(
 }
 
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userRecord, company } = await requireCompany(req as any);
+    const { userRecord, company } = await requireCompany(req);
     const companyId = company.companyId;
     const { id } = await params;
     const body = await req.json();
@@ -89,19 +89,22 @@ export async function POST(
       return NextResponse.json({ error: "Cannot send messages for completed shipments" }, { status: 400 });
     }
 
-    // Ensure channel exists
-    let channel = await db.collection("shipment_channels").findOne({ shipmentId: id, companyId });
-    if (!channel) {
-      const newChannel = {
-        channelId: `ch-${id}`,
+    // Ensure channel exists — extract channelId for use below
+    const existingChannel = await db.collection("shipment_channels").findOne({ shipmentId: id, companyId });
+    let channelId: string;
+    if (!existingChannel) {
+      const newChannelId = `ch-${id}`;
+      await db.collection("shipment_channels").insertOne({
+        channelId:  newChannelId,
         shipmentId: id,
         companyId,
-        active: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      await db.collection("shipment_channels").insertOne(newChannel);
-      channel = newChannel as any;
+        active:     true,
+        createdAt:  new Date().toISOString(),
+        updatedAt:  new Date().toISOString(),
+      });
+      channelId = newChannelId;
+    } else {
+      channelId = existingChannel.channelId as string;
     }
 
     let senderRole: "Dispatcher" | "Driver" | "Operations Manager" | "System" = "Dispatcher";
@@ -110,8 +113,8 @@ export async function POST(
     }
 
     const message: ShipmentMessage = {
-      messageId: `msg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      channelId: channel!.channelId,
+      messageId:   `msg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      channelId,
       shipmentId: id,
       companyId,
       senderType: senderRole,

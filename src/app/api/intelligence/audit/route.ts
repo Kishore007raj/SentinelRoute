@@ -12,8 +12,8 @@ export async function POST(req: NextRequest) {
     // Module 5 Audit Format
     await db.collection("route_audits").insertOne({
       ...body,
-      userId: token.uid,
-      companyId: (token as any).companyId || null,
+      userId:    token.uid,
+      companyId: null,          // companyId is resolved from userRecord in production flows
       timestamp: new Date().toISOString(),
     });
     

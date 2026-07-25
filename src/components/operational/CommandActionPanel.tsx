@@ -70,7 +70,7 @@ export function CommandActionPanel({ recommendations }: { recommendations: Opera
               </CardDescription>
             </div>
           </div>
-          <Badge variant={getSeverityColor(rec.severity) as any} className="uppercase tracking-wider text-[10px] px-2 py-0.5 shrink-0">
+          <Badge variant={getSeverityColor(rec.severity) as "destructive" | "secondary" | "default" | "outline"} className="uppercase tracking-wider text-[10px] px-2 py-0.5 shrink-0">
             {rec.severity}
           </Badge>
         </div>

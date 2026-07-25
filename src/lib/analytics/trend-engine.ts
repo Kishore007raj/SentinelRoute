@@ -26,7 +26,7 @@ export class TrendEngine {
 
     let collectionName = "";
     let dateField = "createdAt";
-    let aggregation: any = { count: { $sum: 1 } };
+    let aggregation: Record<string, unknown> = { count: { $sum: 1 } };
 
     // Configure query based on metric
     switch (metric) {

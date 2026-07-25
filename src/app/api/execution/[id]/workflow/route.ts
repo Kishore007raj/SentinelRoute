@@ -4,7 +4,7 @@ import { requireApprovedCompany, handleAuthError } from "@/lib/auth-helpers";
 import { createAuditEvent } from "@/lib/audit";
 import { addTimelineEvent } from "@/lib/timeline-service";
 import { utcNow } from "@/lib/time";
-import { ShipmentExecution } from "@/lib/types";
+import { ShipmentExecution, TimelineEventType } from "@/lib/types";
 
 export async function POST(
   req: NextRequest,
@@ -56,13 +56,14 @@ export async function POST(
       // Initialize if not exists
       if (!execution) {
         // Build checkpoints from route if available
-        const checkpoints = shipment.route?.stops?.map((stop: any, index: number) => ({
-          id: `chk-${index}`,
-          name: stop.address || `Stop ${index + 1}`,
-          latitude: stop.location?.lat || 0,
-          longitude: stop.location?.lng || 0,
-          status: "pending"
-        })) || [];
+        const checkpoints = (shipment.route?.stops as Array<{ address?: string; location?: { lat?: number; lng?: number } }> | undefined)
+          ?.map((stop, index) => ({
+            id:        `chk-${index}`,
+            name:      stop.address ?? `Stop ${index + 1}`,
+            latitude:  stop.location?.lat ?? 0,
+            longitude: stop.location?.lng ?? 0,
+            status:    "pending" as const,
+          })) ?? [];
         
         const newExecution = {
           shipmentId,
@@ -112,14 +113,7 @@ export async function POST(
         { $set: { operationalStatus: "In Transit", updatedAt: now } }
       );
       
-      await addTimelineEvent(
-        shipmentId,
-        auth.company.companyId,
-        "Trip Started" as any,
-        notes || "Trip execution has started",
-        "system",
-        100
-      );
+      await addTimelineEvent(shipmentId, auth.company.companyId, "Trip Started", notes || "Trip execution has started", "system", 100);
       
       await createAuditEvent({
         db,
@@ -152,14 +146,7 @@ export async function POST(
         { $set: { operationalStatus: "Paused", updatedAt: now } }
       );
       
-      await addTimelineEvent(
-        shipmentId,
-        auth.company.companyId,
-        "Trip Paused" as any,
-        notes || "Trip execution has been paused",
-        "system",
-        100
-      );
+      await addTimelineEvent(shipmentId, auth.company.companyId, "Trip Paused", notes || "Trip execution has been paused", "system", 100);
       
       await createAuditEvent({
         db,
@@ -187,14 +174,7 @@ export async function POST(
         { $set: { operationalStatus: "Driving", updatedAt: now } }
       );
       
-      await addTimelineEvent(
-        shipmentId,
-        auth.company.companyId,
-        "Trip Resumed" as any,
-        notes || "Trip execution has been resumed",
-        "system",
-        100
-      );
+      await addTimelineEvent(shipmentId, auth.company.companyId, "Trip Resumed", notes || "Trip execution has been resumed", "system", 100);
       
       await createAuditEvent({
         db,
@@ -233,14 +213,7 @@ export async function POST(
         { $set: { operationalStatus: "Available", status: "available", currentDriverId: null, updatedAt: now } }
       );
       
-      await addTimelineEvent(
-        shipmentId,
-        auth.company.companyId,
-        "Shipment Completed" as any,
-        notes || "Trip execution has been completed successfully",
-        "system",
-        100
-      );
+      await addTimelineEvent(shipmentId, auth.company.companyId, "Shipment Completed", notes || "Trip execution has been completed successfully", "system", 100);
       
       await createAuditEvent({
         db,
@@ -279,14 +252,7 @@ export async function POST(
         { $set: { operationalStatus: "Available", status: "available", currentDriverId: null, updatedAt: now } }
       );
       
-      await addTimelineEvent(
-        shipmentId,
-        auth.company.companyId,
-        "Shipment Cancelled" as any,
-        notes || "Trip execution has been cancelled",
-        "system",
-        100
-      );
+      await addTimelineEvent(shipmentId, auth.company.companyId, "Shipment Cancelled", notes || "Trip execution has been cancelled", "system", 100);
       
       await createAuditEvent({
         db,

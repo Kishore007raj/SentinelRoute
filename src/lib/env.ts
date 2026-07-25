@@ -2,26 +2,35 @@
  * env.ts — Single source of truth for all environment variable access.
  *
  * Rules:
- *   - NEXT_PUBLIC_ variables: validated at build time via requireBuildEnv()
- *   - Server-only secrets: lazy accessors via lazyEnv() — never read at module level
+ *   - NEXT_PUBLIC_ variables: accessed via requireBuildEnv() — never throws,
+ *     because these vars are inlined into the client bundle at compile time and
+ *     are NOT available as process.env in SSR/prerender workers.
+ *   - Server-only secrets: lazy accessors via lazyEnv() — never read at module level,
+ *     only called inside request handlers.
  *   - No other file in src/ may call process.env directly. Use these exports.
  *
- * In production: missing required vars throw at first request (fail-fast).
+ * In production: server secrets throw at first request if absent (fail-fast).
  * In development: warns and returns "" so the dev server starts without all secrets.
  */
 
 // ─── Build-time helper (NEXT_PUBLIC_ vars only) ───────────────────────────────
+//
+// NEXT_PUBLIC_ variables are inlined into the client bundle at compile time by
+// the Next.js compiler. They are NOT available as process.env in SSR/prerender
+// workers — accessing process.env.NEXT_PUBLIC_* in a worker always returns
+// undefined even when the var is set in the deployment environment.
+//
+// Therefore: this function NEVER throws. It warns in development and returns ""
+// as the fallback. The actual value is already baked into the bundle.
 
 function requireBuildEnv(key: string): string {
   const value = process.env[key];
   if (!value || value.trim() === "") {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error(
-        `[env] Missing required build-time variable: "${key}"\n` +
-        `Add it to your deployment environment and redeploy.`
-      );
+    // Only warn in development — in production the value is inlined at compile
+    // time so process.env access in workers will be empty regardless.
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(`[env] ⚠️  Missing environment variable: "${key}" — fill in .env.local`);
     }
-    console.warn(`[env] ⚠️  Missing environment variable: "${key}" — fill in .env.local`);
     return "";
   }
   return value.trim();

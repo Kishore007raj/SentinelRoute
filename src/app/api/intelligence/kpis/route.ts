@@ -14,14 +14,14 @@
  *   avgEtaConfidence         — average etaConfidence from recent route_predictions
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireCompany } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/mongodb";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const { userRecord, company } = await requireCompany(req as any);
+    const { userRecord, company } = await requireCompany(req);
     const isSuperAdmin = userRecord.role === "super_admin";
 
     let companyId = company.companyId;

@@ -4,7 +4,7 @@ import { requireApprovedCompany, handleAuthError } from "@/lib/auth-helpers";
 import { utcNow } from "@/lib/time";
 import { addTimelineEvent } from "@/lib/timeline-service";
 import { geoapifyRoute } from "@/lib/geoapify";
-import { DriverLocation, ShipmentCheckpoint } from "@/lib/types";
+import { DriverLocation, ShipmentCheckpoint, TimelineEventType } from "@/lib/types";
 
 export async function POST(
   req: NextRequest,
@@ -49,7 +49,7 @@ export async function POST(
     
     const historicalLocations = [...execution.historicalLocations, newLocation].slice(-100);
     
-    const updatePayload: any = {
+    const updatePayload: Record<string, unknown> = {
       lastKnownLocation: newLocation,
       historicalLocations,
       lastUpdated: now
@@ -103,7 +103,7 @@ export async function POST(
       await addTimelineEvent(
         shipmentId,
         auth.company.companyId,
-        "Route Deviation" as any,
+        "Route Deviation",
         "Significant route deviation detected based on current location and ETA.",
         "system",
         100

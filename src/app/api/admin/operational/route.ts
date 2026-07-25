@@ -35,9 +35,9 @@ export async function GET(req: NextRequest) {
     const telemetryMap = new Map(telemetry.map(t => [t._id, t.latest]));
 
     const aggregated = activeShipments.map(s => {
-      const { _id, ...shipment } = s as any;
-      const currentTelemetry = telemetryMap.get(s.shipmentId) || null;
-      if (currentTelemetry) delete currentTelemetry._id;
+      const { _id: _omit, ...shipment } = s as Record<string, unknown>;
+      const currentTelemetry = telemetryMap.get(s.shipmentId as string) ?? null;
+      if (currentTelemetry) delete (currentTelemetry as Record<string, unknown>)._id;
 
       return {
         ...shipment,

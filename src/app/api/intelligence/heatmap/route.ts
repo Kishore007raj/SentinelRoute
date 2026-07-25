@@ -1,11 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireCompany } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/mongodb";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 
-export async function GET(req: Request) {
+interface RiskDoc {
+  weatherRisk?: number;
+  trafficRisk?: number;
+  festivalRiskScore?: number;
+  newsDisruptionBonus?: number;
+  newsDelayBonus?: number;
+}
+
+export async function GET(req: NextRequest) {
   try {
-    const { userRecord, company } = await requireCompany(req as any);
+    const { userRecord, company } = await requireCompany(req);
     const isSuperAdmin = userRecord.role === "super_admin";
 
     let companyId = company.companyId;
@@ -74,22 +82,22 @@ export async function GET(req: Request) {
     ]).toArray();
 
     const heatPoints = aggregated.map((row, idx) => {
-      const validRisks = (row.risksList || []).filter((r: any) => r != null);
-      const sumWeather = validRisks.reduce((sum: number, r: any) => sum + (r.weatherRisk || 0), 0);
-      const sumTraffic = validRisks.reduce((sum: number, r: any) => sum + (r.trafficRisk || 0), 0);
-      const sumFestival = validRisks.reduce((sum: number, r: any) => sum + (r.festivalRiskScore || 0), 0);
-      const sumNews = validRisks.reduce((sum: number, r: any) => sum + ((r.newsDisruptionBonus || 0) + (r.newsDelayBonus || 0)), 0);
-      const riskCount = validRisks.length || 1;
+      const validRisks = (row.risksList || []).filter((r: RiskDoc | null): r is RiskDoc => r != null);
+      const sumWeather  = validRisks.reduce((sum: number, r: RiskDoc) => sum + (r.weatherRisk ?? 0), 0);
+      const sumTraffic  = validRisks.reduce((sum: number, r: RiskDoc) => sum + (r.trafficRisk ?? 0), 0);
+      const sumFestival = validRisks.reduce((sum: number, r: RiskDoc) => sum + (r.festivalRiskScore ?? 0), 0);
+      const sumNews     = validRisks.reduce((sum: number, r: RiskDoc) => sum + ((r.newsDisruptionBonus ?? 0) + (r.newsDelayBonus ?? 0)), 0);
+      const riskCount   = validRisks.length || 1;
 
-      const weatherRisk = Math.round(sumWeather / riskCount);
-      const trafficRisk = Math.round(sumTraffic / riskCount);
+      const weatherRisk  = Math.round(sumWeather  / riskCount);
+      const trafficRisk  = Math.round(sumTraffic  / riskCount);
       const festivalRisk = Math.round(sumFestival / riskCount);
-      const newsRisk = Math.round(sumNews / riskCount);
+      const newsRisk     = Math.round(sumNews     / riskCount);
       const avgRiskScore = Math.round(row.avgRiskScore || 0);
 
       let incidentCount = 0;
-      (row.allTimelineEvents || []).forEach((events: any[]) => {
-        (events || []).forEach(e => {
+      (row.allTimelineEvents || []).forEach((events: Array<{ type: string }>) => {
+        events.forEach(e => {
           if (e.type === "Incident Detected") incidentCount++;
         });
       });

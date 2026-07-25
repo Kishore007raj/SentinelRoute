@@ -25,7 +25,7 @@ export class ReportEngine {
     const startTime = Date.now();
     const db = await getDb();
     
-    let reportData: any = {};
+    let reportData: Record<string, unknown> | unknown[] = {};
 
     switch (req.type) {
       case "executive":

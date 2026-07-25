@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
 
     const userResults = await db.collection("users").aggregate(usersPipeline).toArray();
     
-    const roleDistribution = userResults.reduce((acc: any, curr: any) => {
-      acc[curr._id] = curr.count;
+    const roleDistribution = userResults.reduce((acc: Record<string, number>, curr) => {
+      acc[curr._id as string] = curr.count as number;
       return acc;
     }, {});
 

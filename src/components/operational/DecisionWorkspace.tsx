@@ -3,12 +3,8 @@
 import { useEffect, useState } from "react";
 import { RouteMapView } from "@/components/shipment/RouteMapView";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertTriangle, Info, CheckCircle, Activity, Map, ArrowRight } from "lucide-react";
+import { CheckCircle, Activity } from "lucide-react";
 import { OperationalRecommendation, Shipment, RoutePrediction, Route, ShipmentExecution } from "@/lib/types";
-import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { LiveCollaborators } from "./LiveCollaborators";
 import { CommandActionPanel } from "./CommandActionPanel";
@@ -35,8 +31,7 @@ export function DecisionWorkspace({ shipment, prediction, routeForMap, execution
     }
   }, [operationalFeed, shipment.id]);
 
-  // Deprecated UI handler since CommandActionPanel now handles transitions
-  const handleAction = async (rec: OperationalRecommendation) => {};
+  // CommandActionPanel handles all recommendation transitions directly
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

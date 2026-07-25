@@ -1,16 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { requireCompany } from "@/lib/auth-helpers";
 import { emitToCompany } from "@/lib/socket-server";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
-import { RecommendationLifecycleStatus } from "@/lib/types";
+import { RecommendationLifecycleStatus, TimelineEventType } from "@/lib/types";
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userRecord, company } = await requireCompany(request as any);
+    const { userRecord, company } = await requireCompany(request);
     const auth = {
       companyId: company.companyId,
       userId: userRecord.userId,
@@ -94,7 +94,7 @@ export async function POST(
       { $set: updatePayload }
     );
 
-    // Audit Log
+    // Audit Log — eventType is a free-form string for audit records
     const auditEvent = `recommendation_${newStatus}` as any;
     await createIntelligenceAudit({
       companyId: auth.companyId,
@@ -105,18 +105,22 @@ export async function POST(
       metadata: { recommendationId: id, reason, previousStatus: recommendation.lifecycleStatus, newStatus }
     });
 
-    // Timeline Log
-    let timelineType = `Recommendation ${action.charAt(0).toUpperCase() + action.slice(1)}`;
-    // Make sure we match existing type if possible
-    if (action === "accept") timelineType = "Recommendation Accepted";
-    if (action === "reject") timelineType = "Recommendation Rejected";
+    // Timeline Log — build a matching TimelineEventType string
+    let timelineType: TimelineEventType = "Recommendation Generated";
+    if (action === "accept" || action === "approve") timelineType = "Recommendation Accepted";
+    else if (action === "reject") timelineType = "Recommendation Rejected";
+    else if (action === "execute") timelineType = "Recommendation Executed";
+    else if (action === "complete") timelineType = "Recommendation Completed";
+    else if (action === "assign") timelineType = "Recommendation Assigned";
+    else if (action === "view") timelineType = "Recommendation Viewed";
+    else if (action === "override") timelineType = "Recommendation Overridden";
 
     const timelineEvent = {
       eventId: `te-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       shipmentId: recommendation.shipmentId,
       companyId: auth.companyId,
       timestamp: now,
-      type: timelineType as any,
+      type: timelineType,
       description: `Recommendation '${recommendation.type}' was ${newStatus} by ${role}. ${reason ? "Reason: " + reason : ""}`,
       source: "Command Center",
       confidence: 100,

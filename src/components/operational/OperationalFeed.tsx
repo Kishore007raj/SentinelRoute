@@ -12,6 +12,12 @@ import { Progress } from "@/components/ui/progress";
 import { useStore } from "@/lib/store";
 import Link from "next/link";
 
+interface FeedEvent {
+  type: string;
+  description?: string;
+  timestamp: string;
+}
+
 export function OperationalFeed() {
   const { operationalFeed: feedData, operationalHealth: healthScore } = useStore();
   const loading = !feedData || !healthScore;
@@ -107,7 +113,7 @@ export function OperationalFeed() {
                             )}>
                               {rec.lifecycleStatus}
                             </Badge>
-                            <Badge variant={getSeverityColor(rec.severity) as any} className="text-[10px]">
+                            <Badge variant={getSeverityColor(rec.severity) as "destructive" | "secondary" | "default" | "outline"} className="text-[10px]">
                               {rec.severity}
                             </Badge>
                           </div>
@@ -138,7 +144,7 @@ export function OperationalFeed() {
                 <div className="animate-pulse bg-muted h-20 rounded-lg mb-2" />
               ) : feedData?.events && feedData.events.length > 0 ? (
                 <div className="space-y-4">
-                  {feedData.events.map((event: any, i: number) => (
+                  {feedData.events.map((event: FeedEvent, i: number) => (
                     <div key={i} className="flex gap-3">
                       <div className="mt-0.5">
                         {event.type.includes("Alert") || event.type.includes("Incident") ? (

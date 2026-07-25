@@ -492,7 +492,7 @@ export default function CreateShipmentPage() {
         </div>
 
         {/* ── Preview panel ── */}
-        <div className="hidden lg:block lg:w-96 xl:w-[420px] shrink-0">
+        <div className="hidden lg:block lg:w-96 xl:w-105 shrink-0">
           <div className="sticky top-24 space-y-8">
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground uppercase tracking-widest">Route preview</p>
@@ -519,9 +519,9 @@ export default function CreateShipmentPage() {
                     { label: "Fastest ETA",      value: routePreview.eta,         color: "text-foreground" },
                     { label: "Distance",          value: routePreview.distance,    color: "text-foreground" },
                     { label: "Risk range",        value: routePreview.riskRange,   color: "text-amber-400" },
-                    { label: "Traffic severity",  value: `${(routePreview.routes as any[]).find((r) => r.label === "balanced")?.riskBreakdown?.traffic ?? 0}%`, color: "text-red-400" },
-                    { label: "Weather risk",      value: `${(routePreview.routes as any[]).find((r) => r.label === "balanced")?.riskBreakdown?.weather ?? 0}%`, color: "text-blue-400" },
-                    { label: "Disruption prob.",  value: `${(routePreview.routes as any[]).find((r) => r.label === "balanced")?.riskBreakdown?.disruption ?? 0}%`, color: "text-purple-400" },
+                    { label: "Traffic severity",  value: `${(routePreview.routes as Route[]).find((r) => r.label === "balanced")?.riskBreakdown?.traffic ?? 0}%`, color: "text-red-400" },
+                    { label: "Weather risk",      value: `${(routePreview.routes as Route[]).find((r) => r.label === "balanced")?.riskBreakdown?.weather ?? 0}%`, color: "text-blue-400" },
+                    { label: "Disruption prob.",  value: `${(routePreview.routes as Route[]).find((r) => r.label === "balanced")?.riskBreakdown?.disruption ?? 0}%`, color: "text-purple-400" },
                     { label: "Routes available",  value: String(routePreview.routesFound), color: "text-primary" },
                   ].map(({ label, value, color }) => (
                     <div key={label} className="flex items-center justify-between py-3 border-b border-border/30">
@@ -533,7 +533,7 @@ export default function CreateShipmentPage() {
 
                 <div className="h-64 mt-4 w-full rounded-lg overflow-hidden border border-border">
                   <RouteMapView 
-                    route={(routePreview.routes as any[]).find((r) => r.label === "balanced") || routePreview.routes[0]}
+                    route={(routePreview.routes as Route[]).find((r) => r.label === "balanced") || routePreview.routes[0]}
                     routes={routePreview.routes}
                     status="active"
                     origin={origin?.name}
@@ -556,7 +556,7 @@ export default function CreateShipmentPage() {
                   <div key={label} className="flex items-center justify-between py-3 border-b border-border/20 last:border-0">
                     <span className="text-sm text-muted-foreground">{label}</span>
                     {value ? (
-                      <span className="text-sm text-foreground font-medium truncate max-w-[140px]">{value}</span>
+                      <span className="text-sm text-foreground font-medium truncate max-w-35">{value}</span>
                     ) : (
                       <span className="text-sm text-muted-foreground/30">—</span>
                     )}

@@ -7,9 +7,27 @@ import { useI18n } from "@/lib/i18n";
 import { ShieldAlert, Package, Clock, CloudRain, Car, AlertTriangle, Newspaper, AlertCircle } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
+interface HeatPoint {
+  id: string;
+  lat: number;
+  lng: number;
+  intensity: number;
+  shipmentCount: number;
+  averageDelay: number;
+  corridor?: string;
+  dominantRisk: string;
+  breakdown: {
+    weather: number;
+    traffic: number;
+    festival: number;
+    news: number;
+    incidents: number;
+  };
+}
+
 export function HeatmapMap() {
   const { t } = useI18n();
-  const [heatPoints, setHeatPoints] = useState<any[]>([]);
+  const [heatPoints, setHeatPoints] = useState<HeatPoint[]>([]);
 
   useEffect(() => {
     async function fetchHeatmap() {

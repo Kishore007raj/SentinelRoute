@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireCompany } from "@/lib/auth-helpers";
 import { getShipmentTimeline } from "@/lib/timeline-service";
 import { getDb } from "@/lib/mongodb";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 
 export async function GET(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userRecord, company } = await requireCompany(req as any);
+    const { userRecord, company } = await requireCompany(req);
     const isSuperAdmin = userRecord.role === "super_admin";
 
     let companyId = company.companyId;

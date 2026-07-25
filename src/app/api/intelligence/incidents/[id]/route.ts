@@ -1,24 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireCompany } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/mongodb";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 
-/**
- * PATCH /api/intelligence/incidents/[id]
- *
- * Closes an incident. Only the owning company can close their incidents.
- * Super Admins have read-only access and cannot mutate another company's data.
- *
- * Body: { status: "closed", resolution?: string }
- *
- * Emits: incident_closed audit event
- */
 export async function PATCH(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userRecord, company } = await requireCompany(req as any);
+    const { userRecord, company } = await requireCompany(req);
     const companyId = company.companyId;
     const isSuperAdmin = userRecord.role === "super_admin";
     const { id } = await params;

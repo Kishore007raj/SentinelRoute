@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
     const formattedData = {
       summary: data.summary[0] || { total: 0, avgRating: 0 },
-      statusDistribution: data.statusDistribution.reduce((acc: any, curr: any) => {
+      statusDistribution: data.statusDistribution.reduce((acc: Record<string, number>, curr: { _id: string; count: number }) => {
         acc[curr._id] = curr.count;
         return acc;
       }, {})

@@ -4,7 +4,7 @@ import { requireApprovedCompany, handleAuthError } from "@/lib/auth-helpers";
 import { createAuditEvent } from "@/lib/audit";
 import { addTimelineEvent } from "@/lib/timeline-service";
 import { utcNow } from "@/lib/time";
-import { ShipmentCheckpoint } from "@/lib/types";
+import { ShipmentCheckpoint, TimelineEventType } from "@/lib/types";
 
 export async function POST(
   req: NextRequest,
@@ -70,7 +70,7 @@ export async function POST(
       await addTimelineEvent(
         shipmentId,
         auth.company.companyId,
-        "Checkpoint Arrived" as any,
+        "Checkpoint Arrived",
         `Arrived at checkpoint: ${checkpoint.name}`,
         "system",
         100
@@ -118,7 +118,7 @@ export async function POST(
       await addTimelineEvent(
         shipmentId,
         auth.company.companyId,
-        "Checkpoint Departed" as any,
+        "Checkpoint Departed",
         `Departed from checkpoint: ${checkpoint.name}`,
         "system",
         100
@@ -162,7 +162,7 @@ export async function POST(
       await addTimelineEvent(
         shipmentId,
         auth.company.companyId,
-        "System Alert" as any,
+        "System Alert",
         `Checkpoint skipped: ${checkpoint.name}`,
         "system",
         100

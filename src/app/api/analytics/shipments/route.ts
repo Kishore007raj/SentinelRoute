@@ -57,11 +57,11 @@ export async function GET(req: NextRequest) {
 
     const formattedData = {
       summary: data.summary[0] || { total: 0, avgDistance: 0, avgDuration: 0 },
-      statusDistribution: data.statusDistribution.reduce((acc: any, curr: any) => {
+      statusDistribution: data.statusDistribution.reduce((acc: Record<string, number>, curr: { _id: string; count: number }) => {
         acc[curr._id] = curr.count;
         return acc;
       }, {}),
-      dailyVolume: data.dailyVolume.map((d: any) => ({ date: d._id, volume: d.count }))
+      dailyVolume: data.dailyVolume.map((d: { _id: string; count: number }) => ({ date: d._id, volume: d.count }))
     };
 
     return NextResponse.json(formattedData);
