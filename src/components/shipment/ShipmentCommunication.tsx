@@ -7,8 +7,6 @@ import { useCompany } from "@/lib/company-context";
 import { useSocket } from "@/hooks/use-socket";
 import type { ShipmentMessage } from "@/lib/types";
 
-import type { ShipmentMessage } from "@/lib/types";
-
 export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
   const { userRecord } = useCompany();
   const [messages, setMessages] = useState<ShipmentMessage[]>([]);
