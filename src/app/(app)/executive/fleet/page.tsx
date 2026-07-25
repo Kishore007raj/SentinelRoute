@@ -1,3 +1,4 @@
+"use client";
 import { AnalyticsPageTemplate } from "@/components/analytics/AnalyticsPageTemplate";
 import { Truck } from "lucide-react";
 

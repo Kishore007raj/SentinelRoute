@@ -18,10 +18,40 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+interface CompanyDoc {
+  documentId: string;
+  type: string;
+  uploadedAt: string;
+  fileUrl?: string;
+}
+
+interface CompanyStats {
+  users: number;
+  drivers: number;
+  shipments: number;
+  vehicles: number;
+}
+
+interface CompanyData {
+  company: {
+    companyId: string;
+    companyName: string;
+    status: string;
+    contactName?: string;
+    email?: string;
+    phone?: string;
+    taxId?: string;
+    createdAt?: string;
+    address?: { street?: string; city?: string; state?: string; zipCode?: string; country?: string };
+  };
+  documents: CompanyDoc[];
+  stats: CompanyStats;
+}
+
 export default function CompanyInspectionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
 
-  const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [data, setData] = useState<CompanyData | null>(null);
   const [loading, setLoading] = useState(true);
   
   const [actionModal, setActionModal] = useState<{ isOpen: boolean; action: string | null }>({ isOpen: false, action: null });
@@ -204,7 +234,7 @@ export default function CompanyInspectionPage({ params }: { params: Promise<{ id
             <div className="p-5 flex-1">
               {documents && documents.length > 0 ? (
                 <div className="space-y-3">
-                  {documents.map((doc: { documentId: string; type: string; uploadedAt: string; fileUrl?: string }) => (
+                  {documents.map((doc) => (
                     <div key={doc.documentId} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
                       <div className="flex flex-col">
                         <span className="text-sm font-medium">{doc.type}</span>

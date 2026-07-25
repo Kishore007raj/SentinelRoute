@@ -75,6 +75,11 @@ export function formatRiskScore(score: number): string {
   return score.toString().padStart(2, "0")
 }
 
+/** Formats a number with locale-aware thousands separators. e.g. 1234567 → "1,234,567" */
+export function formatNumber(n: number): string {
+  return n.toLocaleString();
+}
+
 /** Generates a random shipment code like SR-2026-0412 */
 export function generateShipmentCode(): string {
   const num = Math.floor(Math.random() * 900) + 100
