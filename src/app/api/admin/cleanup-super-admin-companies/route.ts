@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { SUPER_ADMIN_SEED_SECRET } from "@/lib/env";
-import { verifyFirebaseToken, adminAuth } from "@/lib/firebase-admin";
+import { verifyFirebaseToken, getAdminAuth } from "@/lib/firebase-admin";
 import type { UserRecord } from "@/lib/types";
 
 /**
@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const adminAuth = getAdminAuth();
   if (!adminAuth) {
     return NextResponse.json(
       { error: "Firebase Admin SDK not configured" },

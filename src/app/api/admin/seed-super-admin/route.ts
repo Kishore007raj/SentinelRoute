@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { verifyFirebaseToken, adminAuth } from "@/lib/firebase-admin";
+import { verifyFirebaseToken, getAdminAuth } from "@/lib/firebase-admin";
 import { SUPER_ADMIN_SEED_SECRET } from "@/lib/env";
 import type { UserRecord } from "@/lib/types";
 
@@ -48,7 +48,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid secret" }, { status: 403 });
   }
 
-  // ── Require Admin SDK — needed to resolve Firebase UIDs by email ──────────
+  // ── Require Admin SDK ─────────────────────────────────────────────────────
+  const adminAuth = getAdminAuth();
   if (!adminAuth) {
     return NextResponse.json(
       {

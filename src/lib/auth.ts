@@ -20,7 +20,7 @@
  * And throws only on unexpected Admin SDK errors (callers return 503).
  */
 
-import { adminAuth } from "./firebase-admin";
+import { getAdminAuth } from "./firebase-admin";
 
 // ─── JWT payload decoder (no verification) ───────────────────────────────────
 
@@ -47,6 +47,7 @@ export async function getUserIdFromRequest(req: Request): Promise<string | null>
   if (!token) return null;
 
   // ── Mode 1: Admin SDK available — full cryptographic verification ──────────
+  const adminAuth = getAdminAuth();
   if (adminAuth) {
     try {
       const decoded = await adminAuth.verifyIdToken(token);

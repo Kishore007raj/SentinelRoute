@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { verifyFirebaseToken, adminAuth } from "@/lib/firebase-admin";
+import { verifyFirebaseToken, getAdminAuth } from "@/lib/firebase-admin";
 import type { Company, UserRecord } from "@/lib/types";
 
 /**
@@ -43,9 +43,10 @@ export async function GET(req: NextRequest) {
     let callerEmail: string | null = null;
 
     // Method A: Firebase Admin SDK (most reliable)
-    if (adminAuth) {
+    const adminAuthInst = getAdminAuth();
+    if (adminAuthInst) {
       try {
-        const fbUser = await adminAuth.getUser(userId);
+        const fbUser = await adminAuthInst.getUser(userId);
         callerEmail = fbUser.email ?? null;
       } catch {
         // non-fatal — fall through to JWT decode

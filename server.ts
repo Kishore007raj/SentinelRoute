@@ -3,7 +3,7 @@ import { parse } from "url";
 import next from "next";
 import { Server as SocketIOServer } from "socket.io";
 import { validateStartup, logEnvStatus } from "./src/lib/env";
-import { adminAuth } from "./src/lib/firebase-admin";
+import { getAdminAuth } from "./src/lib/firebase-admin";
 import { getDb } from "./src/lib/mongodb";
 import { logger } from "./src/lib/logger";
 
@@ -63,6 +63,7 @@ app.prepare().then(() => {
     }
 
     try {
+      const adminAuth = getAdminAuth();
       if (adminAuth) {
         // Full cryptographic verification via Firebase Admin SDK
         await adminAuth.verifyIdToken(token);
@@ -72,8 +73,9 @@ app.prepare().then(() => {
         if (!uid) return next(new Error("Unauthorized: invalid token issuer"));
       }
       // Attach decoded uid to socket data for downstream handlers
-      const uid = adminAuth
-        ? (await adminAuth.verifyIdToken(token)).uid
+      const adminAuthInst = getAdminAuth();
+      const uid = adminAuthInst
+        ? (await adminAuthInst.verifyIdToken(token)).uid
         : decodeJwtUid(token)!;
       
       const db = await getDb();
