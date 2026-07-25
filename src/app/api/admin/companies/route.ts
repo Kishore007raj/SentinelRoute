@@ -1,66 +1,64 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { requireSuperAdmin, handleAuthError } from "@/lib/auth-helpers";
 import type { Company, UserRecord } from "@/lib/types";
 
-/**
- * GET /api/admin/companies
- *
- * Returns all companies (with optional ?status= filter).
- * Requires super_admin role.
- */
 export async function GET(req: NextRequest) {
-  let userId: string;
   try {
-    const verified = await verifyFirebaseToken(req);
-    userId = verified.uid;
-  } catch (err) {
-    if (err instanceof Response) return err;
-    return NextResponse.json({ error: "Authentication service unavailable" }, { status: 503 });
-  }
-
-  try {
+    await requireSuperAdmin(req);
     const db = await getDb();
-
-    // Verify super_admin
-    const actor = await db.collection<UserRecord>("users").findOne({ userId });
-    if (actor?.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const { searchParams } = new URL(req.url);
     const statusFilter = searchParams.get("status");
+    const searchStr = searchParams.get("search");
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "20", 10);
+    const skip = (page - 1) * limit;
 
-    const query = statusFilter ? { status: statusFilter as Company["status"] } : {};
+    const query: any = {};
+    if (statusFilter && statusFilter !== "all") {
+      query.status = statusFilter;
+    }
+    if (searchStr) {
+      query.$or = [
+        { companyName: { $regex: searchStr, $options: "i" } },
+        { companyId: { $regex: searchStr, $options: "i" } }
+      ];
+    }
 
-    const companies = await db
-      .collection<Company>("companies")
-      .find(query)
-      .sort({ createdAt: -1 })
-      .toArray();
+    const [companies, total] = await Promise.all([
+      db.collection<Company>("companies")
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .toArray(),
+      db.collection<Company>("companies").countDocuments(query)
+    ]);
 
-    // Collect unique companyIds to look up admin emails in a single query
+    // Lookup admin emails
     const companyIds = [...new Set(companies.map((c) => c.companyId))];
-
     const adminUsers = await db
       .collection<UserRecord>("users")
       .find({ companyId: { $in: companyIds }, role: "company_admin" })
       .toArray();
 
-    // Map<companyId, email> — first company_admin found wins if there are multiples
     const adminEmailMap = new Map<string, string>(
       adminUsers.map((u) => [u.companyId, u.email])
     );
 
     const cleaned = companies.map(({ _id, ...c }: Company & { _id: unknown }) => ({
       ...c,
-      companyEmail: c.email,
       adminUserEmail: adminEmailMap.get(c.companyId) ?? null,
     }));
 
-    return NextResponse.json({ companies: cleaned, total: cleaned.length });
+    return NextResponse.json({ 
+      companies: cleaned, 
+      total,
+      page,
+      pages: Math.ceil(total / limit)
+    });
   } catch (err) {
-    console.error("[GET /api/admin/companies]", err);
-    return NextResponse.json({ error: "Failed to fetch companies" }, { status: 503 });
+    return handleAuthError(err);
   }
 }
