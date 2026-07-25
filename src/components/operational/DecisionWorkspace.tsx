@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertTriangle, Info, CheckCircle, Activity, Map, ArrowRight } from "lucide-react";
-import { OperationalRecommendation, Shipment, RoutePrediction } from "@/lib/types";
+import { OperationalRecommendation, Shipment, RoutePrediction, Route, ShipmentExecution } from "@/lib/types";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { LiveCollaborators } from "./LiveCollaborators";
@@ -16,8 +16,8 @@ import { CommandActionPanel } from "./CommandActionPanel";
 interface DecisionWorkspaceProps {
   shipment: Shipment;
   prediction?: RoutePrediction;
-  routeForMap?: any;
-  execution?: any;
+  routeForMap?: Route;
+  execution?: ShipmentExecution | null;
 }
 
 export function DecisionWorkspace({ shipment, prediction, routeForMap, execution }: DecisionWorkspaceProps) {

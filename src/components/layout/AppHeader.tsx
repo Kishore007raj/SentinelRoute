@@ -25,6 +25,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useUser } from "@/lib/auth-context";
 import { useStore } from "@/lib/store";
+import type { PresenceUser } from "@/lib/store";
 
 const routeLabels: Record<string, string> = {
   "/dashboard":          "Dashboard",
@@ -52,7 +53,7 @@ export function AppHeader() {
   const segments = pathname.split("/").filter(Boolean);
 
   // Calculate total online users globally across the platform
-  const onlineUsers = Object.values(presence).filter((p: any) => p.status === "online");
+  const onlineUsers = Object.values(presence).filter((p): p is PresenceUser => p.status === "online");
   const onlineCount = onlineUsers.length;
 
   // Derive a human-readable title — handle dynamic segments gracefully
@@ -130,7 +131,7 @@ export function AppHeader() {
             <p className="font-semibold mb-1">Active Collaborators</p>
             {onlineCount > 0 ? (
               <ul className="space-y-1">
-                {onlineUsers.slice(0, 5).map((u: any) => (
+                {onlineUsers.slice(0, 5).map((u) => (
                   <li key={u.userId} className="truncate text-muted-foreground">
                     {u.userId} {u.role ? `(${u.role})` : ""}
                   </li>

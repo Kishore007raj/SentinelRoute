@@ -30,11 +30,13 @@ export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
   useSocket({
     on: {
       "timeline:new": (data: unknown) => {
-        const d = data as { shipmentId?: string; event?: { eventId: string; timestamp: string } };
+        const d = data as { shipmentId?: string; event?: ShipmentTimelineEvent };
         if (d.shipmentId === shipmentId && d.event) {
           setEvents(prev => {
-            if (prev.some((e: { eventId: string }) => e.eventId === d.event!.eventId)) return prev;
-            return [d.event, ...prev].sort((a: { timestamp: string }, b: { timestamp: string }) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            if (prev.some(e => e.eventId === d.event!.eventId)) return prev;
+            return [d.event!, ...prev].sort(
+              (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            );
           });
         }
       },
