@@ -21,10 +21,10 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
   useSocket({
     on: {
       "message:new": (msg: unknown) => {
-        const m = msg as { shipmentId?: string; messageId?: string; message?: string; senderType?: string; senderName?: string; timestamp?: string };
+        const m = msg as ShipmentMessage;
         if (m.shipmentId === shipmentId) {
           setMessages(prev => {
-            if (prev.some((existing: { messageId?: string }) => existing.messageId === m.messageId)) return prev;
+            if (prev.some(existing => existing.messageId === m.messageId)) return prev;
             return [...prev, m];
           });
         }
