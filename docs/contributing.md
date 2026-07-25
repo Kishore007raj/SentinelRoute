@@ -1,9 +1,5 @@
 # Contributing
 
-**Related:** [Development](development.md) · [Testing](testing.md) · [Architecture](architecture.md) · [Back to README](../README.md)
-
----
-
 ## Development Workflow
 
 1. Fork the repository and clone your fork.
