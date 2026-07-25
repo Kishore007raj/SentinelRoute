@@ -123,13 +123,13 @@ export function RouteMapView({
   // Fix missing marker icons natively in Leaflet
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const L = typeof window !== "undefined" ? require("leaflet") as typeof import("leaflet") : null;
-  const DefaultIcon = L ? L.icon({
+  const DefaultIcon: import("leaflet").Icon | undefined = L ? L.icon({
     iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
     iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
     shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
     iconSize: [25, 41],
     iconAnchor: [12, 41],
-  }) : null;
+  }) : undefined;
 
   // Derive map center from geometry bounds
   let originCoords: [number, number] | null = null;
