@@ -325,7 +325,7 @@ export default function VehicleProfilePage() {
             <MapPin className="w-4 h-4 text-muted-foreground" />
             {t("workforce.liveTracking")}
           </CardTitle>
-          <p className="text-xs text-muted-foreground">Mappls Integration — Coming in Module 4</p>
+          <p className="text-xs text-muted-foreground">Mappls Integration - Coming in Module 4</p>
         </CardHeader>
         <CardContent className="pt-0">
           <div className="h-32 flex items-center justify-center rounded-xl border border-dashed border-border bg-muted/20">

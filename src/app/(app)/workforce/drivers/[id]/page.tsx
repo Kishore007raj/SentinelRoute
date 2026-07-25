@@ -321,7 +321,7 @@ export default function DriverProfilePage() {
               <Package className="w-4 h-4 text-muted-foreground" />
               {t("workforce.shipmentHistory")}
             </CardTitle>
-            <p className="text-xs text-muted-foreground">Coming in Module 3 — Shipment Lifecycle</p>
+            <p className="text-xs text-muted-foreground">Coming in Module 3 - Shipment Lifecycle</p>
           </CardHeader>
           <CardContent>
             <div className="h-20 flex items-center justify-center rounded-xl border border-dashed border-border bg-muted/20">
@@ -336,7 +336,7 @@ export default function DriverProfilePage() {
               <MessageSquare className="w-4 h-4 text-muted-foreground" />
               {t("workforce.communicationLog")}
             </CardTitle>
-            <p className="text-xs text-muted-foreground">Coming in Module 3 — Shipment Lifecycle</p>
+            <p className="text-xs text-muted-foreground">Coming in Module 3 - Shipment Lifecycle</p>
           </CardHeader>
           <CardContent>
             <div className="h-20 flex items-center justify-center rounded-xl border border-dashed border-border bg-muted/20">

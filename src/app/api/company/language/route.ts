@@ -112,7 +112,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // Build the patch — only include provided fields
+    // Build the patch - only include provided fields
     const patch: Record<string, unknown> = {};
     if (preferred !== undefined) patch.language = preferred;
     if (supported !== undefined) patch.supportedLanguages = supported;

@@ -1,6 +1,6 @@
 "use client";
 /**
- * settings-context.tsx — Global user settings.
+ * settings-context.tsx - Global user settings.
  * Loads from /api/settings on auth, persists via POST /api/settings.
  */
 

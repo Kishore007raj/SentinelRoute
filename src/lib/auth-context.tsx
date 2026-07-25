@@ -1,6 +1,6 @@
 "use client";
 /**
- * auth-context.tsx — Firebase Auth context with token refresh.
+ * auth-context.tsx - Firebase Auth context with token refresh.
  *
  * Provides:
  *  - useUser()     → { user, loading }
@@ -54,7 +54,7 @@ const AuthContext = createContext<AuthContextValue>({
   refreshToken: async () => null,
 });
 
-// ─── Refresh interval — 45 minutes ───────────────────────────────────────────
+// ─── Refresh interval - 45 minutes ───────────────────────────────────────────
 const REFRESH_INTERVAL_MS = 45 * 60 * 1000;
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
@@ -84,8 +84,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     refreshTimerRef.current = setInterval(async () => {
       const token = await refreshToken();
       if (!token) {
-        // Refresh failed — user session is broken, force sign-out
-        console.warn("[auth] Proactive refresh failed — signing out");
+        // Refresh failed - user session is broken, force sign-out
+        console.warn("[auth] Proactive refresh failed - signing out");
         clearSessionCookie();
         await signOut(auth).catch(() => {});
       }
@@ -116,7 +116,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           const token = await firebaseUser.getIdToken(true);
           writeSessionCookie(token);
         } catch {
-          // Non-fatal — token will be refreshed on next API call
+          // Non-fatal - token will be refreshed on next API call
         }
         startRefreshTimer();
       } else {

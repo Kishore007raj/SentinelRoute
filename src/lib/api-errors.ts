@@ -1,5 +1,5 @@
 /**
- * api-errors.ts — Standardized API error factory for SentinelRoute.
+ * api-errors.ts - Standardized API error factory for SentinelRoute.
  *
  * Every API route must use these helpers instead of ad-hoc NextResponse.json
  * error objects. This enforces a consistent error envelope across the platform.
@@ -39,7 +39,7 @@ function traceId(): string {
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
 export const ApiErrors = {
-  /** 400 — Caller provided invalid input. */
+  /** 400 - Caller provided invalid input. */
   badRequest(
     message = "Bad request",
     code    = "BAD_REQUEST",
@@ -50,7 +50,7 @@ export const ApiErrors = {
     return NextResponse.json(body, { status: 400 });
   },
 
-  /** 401 — Missing or invalid authentication. */
+  /** 401 - Missing or invalid authentication. */
   unauthorized(message = "Unauthorized"): NextResponse<ApiErrorBody> {
     return NextResponse.json(
       { error: message, code: "UNAUTHORIZED" },
@@ -58,7 +58,7 @@ export const ApiErrors = {
     );
   },
 
-  /** 403 — Authenticated but not allowed. */
+  /** 403 - Authenticated but not allowed. */
   forbidden(message = "Forbidden"): NextResponse<ApiErrorBody> {
     return NextResponse.json(
       { error: message, code: "FORBIDDEN" },
@@ -66,7 +66,7 @@ export const ApiErrors = {
     );
   },
 
-  /** 404 — Resource does not exist (or is not visible to this caller). */
+  /** 404 - Resource does not exist (or is not visible to this caller). */
   notFound(resource = "Resource"): NextResponse<ApiErrorBody> {
     return NextResponse.json(
       { error: `${resource} not found`, code: "NOT_FOUND" },
@@ -74,7 +74,7 @@ export const ApiErrors = {
     );
   },
 
-  /** 409 — State conflict (duplicate, already assigned, etc.). */
+  /** 409 - State conflict (duplicate, already assigned, etc.). */
   conflict(message: string, code = "CONFLICT"): NextResponse<ApiErrorBody> {
     return NextResponse.json(
       { error: message, code },
@@ -82,14 +82,14 @@ export const ApiErrors = {
     );
   },
 
-  /** 422 — Payload is well-formed but semantically invalid. */
+  /** 422 - Payload is well-formed but semantically invalid. */
   unprocessable(message: string, field?: string): NextResponse<ApiErrorBody> {
     const body: ApiErrorBody = { error: message, code: "UNPROCESSABLE" };
     if (field) body.field = field;
     return NextResponse.json(body, { status: 422 });
   },
 
-  /** 429 — Rate limit exceeded. */
+  /** 429 - Rate limit exceeded. */
   rateLimited(retryAfterSec = 60): NextResponse<ApiErrorBody> {
     return new NextResponse(
       JSON.stringify({ error: "Too many requests", code: "RATE_LIMITED" }),
@@ -105,7 +105,7 @@ export const ApiErrors = {
   },
 
   /**
-   * 500 — Unhandled server error.
+   * 500 - Unhandled server error.
    * Logs the real error server-side; never exposes internals to the client.
    */
   internal(
@@ -122,7 +122,7 @@ export const ApiErrors = {
   },
 
   /**
-   * 503 — Dependency (DB, external API) unavailable.
+   * 503 - Dependency (DB, external API) unavailable.
    * Logs and returns a clean error without internal details.
    */
   serviceUnavailable(

@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
   ).find(([, v]) => !v || typeof v !== "string");
 
   if (missingString) {
-    console.warn(`[POST /api/shipments] Invalid payload — missing field: ${missingString[0]}`);
+    console.warn(`[POST /api/shipments] Invalid payload - missing field: ${missingString[0]}`);
     return NextResponse.json(
       { error: `Missing or invalid field: ${missingString[0]}` },
       { status: 400 }
@@ -198,15 +198,15 @@ export async function POST(req: NextRequest) {
   }
 
   if (typeof riskScore !== "number" || !isFinite(riskScore)) {
-    console.warn("[POST /api/shipments] Invalid payload — riskScore not a number");
+    console.warn("[POST /api/shipments] Invalid payload - riskScore not a number");
     return NextResponse.json({ error: "riskScore must be a number" }, { status: 400 });
   }
   if (typeof confidencePercent !== "number" || !isFinite(confidencePercent)) {
-    console.warn("[POST /api/shipments] Invalid payload — confidencePercent not a number");
+    console.warn("[POST /api/shipments] Invalid payload - confidencePercent not a number");
     return NextResponse.json({ error: "confidencePercent must be a number" }, { status: 400 });
   }
 
-  const now = utcNow(); // UTC ISO — clients display in their local timezone
+  const now = utcNow(); // UTC ISO - clients display in their local timezone
 
   const selectedRoute =
     routeId.includes("fastest") ? "fastest" as const :
@@ -279,11 +279,11 @@ export async function POST(req: NextRequest) {
     const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
     const companyId  = userRecord?.companyId;
 
-    // Task 5: enforce ownership fields — both required on every new shipment
+    // Task 5: enforce ownership fields - both required on every new shipment
     // companyId comes from the authenticated user's company, never from request body
     // createdByUserId is the authenticated user's uid
     if (!companyId) {
-      console.warn("[POST /api/shipments] No companyId on userRecord — shipment blocked");
+      console.warn("[POST /api/shipments] No companyId on userRecord - shipment blocked");
       return NextResponse.json(
         { error: "No company associated with this account. Complete company registration first." },
         { status: 403 }
@@ -305,7 +305,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Strip undefined values — MongoDB rejects documents containing undefined fields
+    // Strip undefined values - MongoDB rejects documents containing undefined fields
     const cleanBreakdown = shipment.riskBreakdown
       ? Object.fromEntries(Object.entries(shipment.riskBreakdown).filter(([, v]) => v !== undefined))
       : undefined;
@@ -316,15 +316,15 @@ export async function POST(req: NextRequest) {
     );
 
     // Encrypt sensitive fields (notes, contactDetails, specialInstructions)
-    // before persisting — non-sensitive operational fields are stored as-is
+    // before persisting - non-sensitive operational fields are stored as-is
     const encryptedDocument = encryptObjectFields(rawDocument, ["notes", "contactDetails", "specialInstructions"]);
 
-    // Always scope to authenticated userId + companyId — never trust from request body
+    // Always scope to authenticated userId + companyId - never trust from request body
     // Task 5: createdByUserId and companyId are mandatory on every shipment record
     await db.collection("shipments").insertOne({
       ...encryptedDocument,
       userId,
-      companyId,          // always set — enforced above
+      companyId,          // always set - enforced above
       createdByUserId: userId, // ownership field
     });
   } catch (err) {
@@ -341,21 +341,21 @@ export async function POST(req: NextRequest) {
     shipment.id,
     shipment.companyId!,
     "Shipment Created",
-    `Shipment dispatched via ${shipment.routeName} — ${shipment.origin} → ${shipment.destination}. ` +
+    `Shipment dispatched via ${shipment.routeName} - ${shipment.origin} → ${shipment.destination}. ` +
     `Risk: ${shipment.riskScore} (${shipment.riskLevel}). ETA: ${shipment.eta}. Distance: ${shipment.distance}.`,
     "SentinelRoute",
     shipment.confidencePercent,
     ["riskScore", "eta", "distance"]
-  ).catch(() => {/* fire-and-forget — never block the response */});
+  ).catch(() => {/* fire-and-forget - never block the response */});
 
-  // Trigger prediction engine — fire-and-forget, never blocks response
+  // Trigger prediction engine - fire-and-forget, never blocks response
   import("@/lib/prediction-engine").then(({ calculateRoutePrediction }) => {
     calculateRoutePrediction(shipment).catch((err) => {
       console.error("[POST /api/shipments] prediction engine error:", err);
     });
   }).catch(() => {});
 
-  // Create communication channel for this shipment — fire-and-forget
+  // Create communication channel for this shipment - fire-and-forget
   import("@/lib/mongodb").then(async ({ getDb: getDbLazy }) => {
     try {
       const dbLazy = await getDbLazy();

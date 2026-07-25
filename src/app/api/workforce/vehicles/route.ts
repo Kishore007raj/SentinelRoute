@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
     vehicleType:     (body.vehicleType    as string).trim(),
     capacity:        (body.capacity       as string).trim(),
 
-    // Optional fields — default to empty string if not provided
+    // Optional fields - default to empty string if not provided
     fuelType:        typeof body.fuelType        === "string" ? body.fuelType        : "",
     insuranceNumber: typeof body.insuranceNumber === "string" ? body.insuranceNumber : "",
     insuranceExpiry: typeof body.insuranceExpiry === "string" ? body.insuranceExpiry : "",

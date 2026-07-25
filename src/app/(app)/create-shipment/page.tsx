@@ -203,7 +203,7 @@ function GeoapifyLocationInput({
         </div>
       )}
 
-      {/* Location confirmation badge — shows only city name, no raw coords */}
+      {/* Location confirmation badge - shows only city name, no raw coords */}
       {confirmed && value && (
         <p className="text-[10px] text-emerald-400/70 mt-1 pl-1 truncate max-w-sm">
           ✓ {value.address || value.name}
@@ -250,7 +250,7 @@ export default function CreateShipmentPage() {
     routes: Route[]; // We will pass these to RouteMapView
   } | null>(null);
 
-  // Live preview — fires when both confirmed locations change
+  // Live preview - fires when both confirmed locations change
   useEffect(() => {
     if (!origin || !destination || origin.placeId === destination.placeId) {
       const t = setTimeout(() => setRoutePreview(null), 0);
@@ -333,9 +333,9 @@ export default function CreateShipmentPage() {
   };
 
   const cargoRiskNote =
-    form.cargoType === "Pharmaceuticals"  ? "Cold-chain sensitivity active — route scoring adjusted"
+    form.cargoType === "Pharmaceuticals"  ? "Cold-chain sensitivity active - route scoring adjusted"
     : form.cargoType === "Cold Chain Goods" ? "Temperature monitoring required along selected corridor"
-    : form.cargoType === "Electronics"     ? "Heat exposure risk flagged — avoid high-disruption routes"
+    : form.cargoType === "Electronics"     ? "Heat exposure risk flagged - avoid high-disruption routes"
     : null;
 
   return (
@@ -346,7 +346,7 @@ export default function CreateShipmentPage() {
         <p className="text-xs text-muted-foreground uppercase tracking-widest">Mission configuration</p>
         <h1 className="text-3xl font-bold text-foreground">New Shipment</h1>
         <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-          Search any location across India — live autosuggest finds cities, hubs and addresses instantly.
+          Search any location across India - live autosuggest finds cities, hubs and addresses instantly.
         </p>
       </div>
 
@@ -423,7 +423,7 @@ export default function CreateShipmentPage() {
                   >
                     <Zap className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                     <p className="text-sm text-red-400/90 leading-relaxed">
-                      Critical urgency — fastest route will be weighted higher in analysis.
+                      Critical urgency - fastest route will be weighted higher in analysis.
                     </p>
                   </motion.div>
                 )}

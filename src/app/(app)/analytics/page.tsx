@@ -1,5 +1,5 @@
 "use client";
-// Analytics Dashboard — SentinelRoute
+// Analytics Dashboard - SentinelRoute
 import { useEffect, useState, useMemo } from "react";
 import {
   BarChart, Bar, PieChart, Pie, Cell,
@@ -10,11 +10,11 @@ import { useStore } from "@/lib/store";
 import { TrendingDown, TrendingUp, AlertTriangle, Zap } from "lucide-react";
 
 const C = {
-  primary: "#5eadd4",   // cyan-blue — matches new --primary oklch(0.68 0.17 210)
-  violet:  "#a78bfa",   // violet    — matches new --accent-2 oklch(0.70 0.18 300)
-  amber:   "#fbbf24",   // amber     — matches --sr-amber
-  emerald: "#34d399",   // green     — matches --sr-emerald
-  danger:  "#f87171",   // red       — matches --sr-danger
+  primary: "#5eadd4",   // cyan-blue - matches new --primary oklch(0.68 0.17 210)
+  violet:  "#a78bfa",   // violet    - matches new --accent-2 oklch(0.70 0.18 300)
+  amber:   "#fbbf24",   // amber     - matches --sr-amber
+  emerald: "#34d399",   // green     - matches --sr-emerald
+  danger:  "#f87171",   // red       - matches --sr-danger
   muted:   "#6b7280",   // neutral axis labels
   border:  "#1e2a3a",   // dark border for tooltip
   popover: "#0a0f1a",   // tooltip background
@@ -107,7 +107,7 @@ export default function AnalyticsPage() {
   const { total, active, avgRiskScore, highRiskAvoided, volumeData, riskDist, volTrend } = memoStats;
 
   // ── Low-data guard ────────────────────────────────────────────────────────
-  // Charts are meaningless with fewer than 5 shipments — show a clear message instead.
+  // Charts are meaningless with fewer than 5 shipments - show a clear message instead.
   const hasEnoughData = total >= 5;
 
   return (
@@ -206,7 +206,7 @@ export default function AnalyticsPage() {
             if (balancedCount > fastestCount) {
               insights.push({
                 title:   "Balanced routing preferred",
-                context: `${balancedCount} of ${total} shipments used the balanced route — indicating a preference for risk-adjusted decisions over raw speed.`,
+                context: `${balancedCount} of ${total} shipments used the balanced route - indicating a preference for risk-adjusted decisions over raw speed.`,
                 tag:     "Pattern",
                 color:   "blue",
               });
@@ -222,7 +222,7 @@ export default function AnalyticsPage() {
             if (safestCount > 0) {
               insights.push({
                 title:   "Conservative routing active",
-                context: `${safestCount} shipment${safestCount !== 1 ? "s" : ""} used the safest route — appropriate for sensitive cargo or high-disruption corridors.`,
+                context: `${safestCount} shipment${safestCount !== 1 ? "s" : ""} used the safest route - appropriate for sensitive cargo or high-disruption corridors.`,
                 tag:     "Safety",
                 color:   "green",
               });

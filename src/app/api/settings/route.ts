@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     const doc = await db.collection("user_settings").findOne({ userId });
 
     if (!doc) {
-      // Return defaults — no document yet
+      // Return defaults - no document yet
       const defaults: UserSettings = {
         ...DEFAULT_SETTINGS,
         userId,

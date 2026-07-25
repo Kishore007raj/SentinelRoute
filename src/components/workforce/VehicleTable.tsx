@@ -155,7 +155,7 @@ export function VehicleTable({
               </p>
             </div>
 
-            {/* Type — hidden on mobile (shown inline above) */}
+            {/* Type - hidden on mobile (shown inline above) */}
             <div className="hidden lg:flex items-center">
               <p className="text-sm text-muted-foreground truncate">
                 {vehicle.vehicleType}
@@ -223,7 +223,7 @@ export function VehicleTable({
                   Edit
                 </Button>
 
-                {/* Assign Driver — available and assigned rows */}
+                {/* Assign Driver - available and assigned rows */}
                 {(vehicle.status === "available" || vehicle.status === "assigned") && (
                   <Button
                     variant="outline"
@@ -235,7 +235,7 @@ export function VehicleTable({
                   </Button>
                 )}
 
-                {/* Mark Maintenance — available and assigned rows */}
+                {/* Mark Maintenance - available and assigned rows */}
                 {(vehicle.status === "available" || vehicle.status === "assigned") && (
                   <Button
                     variant="outline"
@@ -247,7 +247,7 @@ export function VehicleTable({
                   </Button>
                 )}
 
-                {/* Mark Available — maintenance rows only */}
+                {/* Mark Available - maintenance rows only */}
                 {vehicle.status === "maintenance" && (
                   <Button
                     variant="outline"

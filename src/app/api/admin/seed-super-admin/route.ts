@@ -7,7 +7,7 @@ import type { UserRecord } from "@/lib/types";
 /**
  * POST /api/admin/seed-super-admin
  *
- * Seeds all three known super admin accounts. Idempotent — safe to call multiple times.
+ * Seeds all three known super admin accounts. Idempotent - safe to call multiple times.
  * Protected by SUPER_ADMIN_SEED_SECRET env var AND requires a valid Firebase ID token.
  *
  * Uses Firebase Admin SDK getUserByEmail() to resolve the real Firebase UID for each
@@ -87,12 +87,12 @@ export async function POST(req: NextRequest) {
       } catch (fbErr: unknown) {
         const code = (fbErr as { code?: string }).code ?? "";
         if (code === "auth/user-not-found") {
-          // Email not registered in Firebase Auth yet — skip for now
+          // Email not registered in Firebase Auth yet - skip for now
           results.push({ email, uid: null, status: "not_in_firebase" });
           skipped++;
           continue;
         }
-        throw fbErr; // unexpected error — bubble up
+        throw fbErr; // unexpected error - bubble up
       }
 
       // ── Upsert UserRecord by userId (Firebase UID) ───────────────────────
@@ -108,14 +108,14 @@ export async function POST(req: NextRequest) {
 
       if (existing) {
         if (existing.role === "super_admin") {
-          // Already correct — ensure email field is up to date
+          // Already correct - ensure email field is up to date
           await db
             .collection("users")
             .updateOne({ userId: firebaseUid }, { $set: { email } });
           alreadyAdmin++;
           results.push({ email, uid: firebaseUid, status: "already_admin" });
         } else {
-          // Existing user (e.g. they registered as company_admin) — upgrade
+          // Existing user (e.g. they registered as company_admin) - upgrade
           await db.collection("users").updateOne(
             { userId: firebaseUid },
             { $set: { role: "super_admin", companyId: "platform", email } }
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
           results.push({ email, uid: firebaseUid, status: "upgraded" });
         }
       } else {
-        // No record at all — create one with the correct Firebase UID
+        // No record at all - create one with the correct Firebase UID
         const newUser: UserRecord = {
           userId:    firebaseUid,
           companyId: "platform",

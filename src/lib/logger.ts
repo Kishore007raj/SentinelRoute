@@ -1,5 +1,5 @@
 /**
- * logger.ts — Structured server-side logger for SentinelRoute.
+ * logger.ts - Structured server-side logger for SentinelRoute.
  *
  * Outputs JSON in production (for log aggregators like Datadog, CloudWatch,
  * GCP Logging) and human-readable coloured output in development.
@@ -13,16 +13,16 @@
  *   logger.audit("shipment.statusChange", { companyId, userId, shipmentId, from, to });
  *
  * Fields always included:
- *   ts        — UTC ISO timestamp
- *   level     — info | warn | error | audit
- *   event     — dot-namespaced event identifier
- *   env       — NODE_ENV
- *   ...meta   — caller-supplied key/value metadata
+ *   ts        - UTC ISO timestamp
+ *   level     - info | warn | error | audit
+ *   event     - dot-namespaced event identifier
+ *   env       - NODE_ENV
+ *   ...meta   - caller-supplied key/value metadata
  *
  * Rules:
  *   - Never log secret values (tokens, keys, passwords).
  *   - Never log PII (aadhaar, full addresses) in production.
- *   - audit() writes are immutable records — never suppressed.
+ *   - audit() writes are immutable records - never suppressed.
  */
 
 type LogLevel = "debug" | "info" | "warn" | "error" | "audit";
@@ -75,7 +75,7 @@ function write(
   }
 
   if (isProd) {
-    // Compact JSON — one line per entry for log aggregators
+    // Compact JSON - one line per entry for log aggregators
     const line = JSON.stringify(entry);
     if (level === "error" || level === "audit") {
       process.stderr.write(line + "\n");
@@ -97,7 +97,7 @@ function write(
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export const logger = {
-  /** Low-level debug information — suppressed in production. */
+  /** Low-level debug information - suppressed in production. */
   debug(event: string, meta?: Record<string, unknown>): void {
     if (isProd) return;
     write("debug", event, meta);
@@ -119,7 +119,7 @@ export const logger = {
   },
 
   /**
-   * Immutable audit trail — security, compliance, and data-change events.
+   * Immutable audit trail - security, compliance, and data-change events.
    * Always written, even in test environments.
    * Include: companyId, userId, action, affected resource IDs.
    * Never include: token values, raw passwords, PII.

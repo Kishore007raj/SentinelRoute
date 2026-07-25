@@ -19,37 +19,37 @@ import { cn } from "@/lib/utils";
 
 // ─── Per-item sphere palette ──────────────────────────────────────────────────
 const SPHERES = [
-  // 0 — blue → indigo
+  // 0 - blue → indigo
   {
     bg: "radial-gradient(circle at 35% 35%, #60a5fa, #4f46e5 60%, #312e81 100%)",
     shadow: "0 0 0 1px rgba(99,102,241,0.3), 0 4px 16px rgba(79,70,229,0.25)",
     line: "linear-gradient(to bottom, rgba(99,102,241,0.4), rgba(99,102,241,0.1))",
   },
-  // 1 — teal → emerald
+  // 1 - teal → emerald
   {
     bg: "radial-gradient(circle at 35% 35%, #5eead4, #059669 60%, #064e3b 100%)",
     shadow: "0 0 0 1px rgba(5,150,105,0.3), 0 4px 16px rgba(5,150,105,0.25)",
     line: "linear-gradient(to bottom, rgba(5,150,105,0.4), rgba(5,150,105,0.1))",
   },
-  // 2 — violet → purple
+  // 2 - violet → purple
   {
     bg: "radial-gradient(circle at 35% 35%, #c084fc, #7c3aed 60%, #3b0764 100%)",
     shadow: "0 0 0 1px rgba(124,58,237,0.3), 0 4px 16px rgba(124,58,237,0.25)",
     line: "linear-gradient(to bottom, rgba(124,58,237,0.4), rgba(124,58,237,0.1))",
   },
-  // 3 — amber → orange
+  // 3 - amber → orange
   {
     bg: "radial-gradient(circle at 35% 35%, #fcd34d, #ea580c 60%, #7c2d12 100%)",
     shadow: "0 0 0 1px rgba(234,88,12,0.3), 0 4px 16px rgba(234,88,12,0.25)",
     line: "linear-gradient(to bottom, rgba(234,88,12,0.4), rgba(234,88,12,0.1))",
   },
-  // 4 — rose → pink
+  // 4 - rose → pink
   {
     bg: "radial-gradient(circle at 35% 35%, #fb7185, #be185d 60%, #500724 100%)",
     shadow: "0 0 0 1px rgba(190,24,93,0.3), 0 4px 16px rgba(190,24,93,0.25)",
     line: "linear-gradient(to bottom, rgba(190,24,93,0.4), rgba(190,24,93,0.1))",
   },
-  // 5 — sky → cyan
+  // 5 - sky → cyan
   {
     bg: "radial-gradient(circle at 35% 35%, #7dd3fc, #0284c7 60%, #0c4a6e 100%)",
     shadow: "0 0 0 1px rgba(2,132,199,0.3), 0 4px 16px rgba(2,132,199,0.25)",
@@ -97,7 +97,7 @@ function Navbar() {
       )}
     >
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        {/* Logo — mini sphere */}
+        {/* Logo - mini sphere */}
         <Link href="/" className="flex items-center gap-2.5">
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
@@ -244,7 +244,7 @@ export default function HomePage() {
             animate="show"
             className="flex flex-col items-center text-center gap-6"
           >
-            {/* Badge — indigo dot */}
+            {/* Badge - indigo dot */}
             <motion.div
               variants={fadeUp}
               custom={0}
@@ -274,7 +274,7 @@ export default function HomePage() {
             >
               SentinelRoute provides the intelligence and justification for
               every routing decision. Analyze tradeoffs between speed, cost, and
-              risk — then move with confidence.
+              risk - then move with confidence.
             </motion.p>
 
             {/* CTAs */}
@@ -285,7 +285,7 @@ export default function HomePage() {
             >
               <Link href="/auth/signin">
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  {/* Sign In — same blue→indigo sphere style */}
+                  {/* Sign In - same blue→indigo sphere style */}
                   <button
                     className="inline-flex items-center gap-2 h-11 px-6 text-sm font-semibold text-white rounded-lg transition-opacity hover:opacity-90"
                     style={{ background: SPHERE_BG, boxShadow: SPHERE_SHADOW }}
@@ -436,7 +436,7 @@ export default function HomePage() {
                 custom={i}
                 className="flex gap-5 items-stretch"
               >
-                {/* Left — gradient sphere + connector line */}
+                {/* Left - gradient sphere + connector line */}
                 <div className="flex flex-col items-center shrink-0">
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
@@ -459,7 +459,7 @@ export default function HomePage() {
                   )}
                 </div>
 
-                {/* Right — content */}
+                {/* Right - content */}
                 <div className={cn("min-w-0 pt-1.5", i < howSteps.length - 1 ? "pb-10" : "pb-0")}>
                   <div className="flex items-center gap-2 mb-1.5">
                     <h3 className="text-sm font-bold text-foreground">{s.label}</h3>

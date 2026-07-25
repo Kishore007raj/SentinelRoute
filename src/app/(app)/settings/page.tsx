@@ -45,7 +45,7 @@ export default function SettingsPage() {
   const { company } = useCompany();
   const [saving, setSaving] = useState(false);
 
-  // Local draft — mirrors settings, allows editing before save
+  // Local draft - mirrors settings, allows editing before save
   const [draft, setDraft] = useState<Partial<UserSettings>>({});
 
   // Sync draft when settings load

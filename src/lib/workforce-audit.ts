@@ -1,10 +1,10 @@
 /**
- * workforce-audit.ts — Audit event helpers for the workforce_audits collection.
+ * workforce-audit.ts - Audit event helpers for the workforce_audits collection.
  *
  * All audit records are immutable insert-only (never updated or deleted).
  * Every workforce operation must call createWorkforceAuditEvent().
  *
- * This file is standalone — it does NOT import from or modify src/lib/audit.ts.
+ * This file is standalone - it does NOT import from or modify src/lib/audit.ts.
  * Pattern mirrors createAuditEvent from src/lib/audit.ts exactly.
  */
 
@@ -52,14 +52,14 @@ interface WorkforceAuditRecord {
   targetId:   string;
   targetType: "driver" | "vehicle" | "user";
   details:    Record<string, unknown>;
-  timestamp:  string;  // UTC ISO — immutable, never updated
+  timestamp:  string;  // UTC ISO - immutable, never updated
 }
 
 // ─── createWorkforceAuditEvent ────────────────────────────────────────────────
 
 /**
  * Inserts an immutable record into workforce_audits.
- * Non-throwing — logs errors but never fails the caller.
+ * Non-throwing - logs errors but never fails the caller.
  * Pattern mirrors createAuditEvent from src/lib/audit.ts.
  */
 export async function createWorkforceAuditEvent(

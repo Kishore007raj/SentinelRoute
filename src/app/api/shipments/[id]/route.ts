@@ -13,7 +13,7 @@ import { createIntelligenceAudit } from "@/lib/intelligence-audit";
  *
  * PATCH /api/shipments/[id]
  * Updates shipment status.
- * Scoped to authenticated user AND their company — cross-company modification impossible.
+ * Scoped to authenticated user AND their company - cross-company modification impossible.
  */
 
 // ─── GET /api/shipments/[id] ──────────────────────────────────────────────────

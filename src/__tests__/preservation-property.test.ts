@@ -1,5 +1,5 @@
 /**
- * Preservation Property Tests — Task 2
+ * Preservation Property Tests - Task 2
  *
  * **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11**
  *
@@ -10,11 +10,11 @@
  *   When re-run after the fix (Task 3.9), all tests should still PASS.
  *
  * Coverage:
- *   P2.1  GET /api/company/documents — returns all stored fields for any valid DocumentType
- *   P2.2  Upsert semantics — exactly one record per (companyId, type) after N uploads
- *   P2.3  Admin route 403 — any caller role ≠ super_admin always gets HTTP 403
- *   P2.4  Client file validation — file > 10 MB → toast error before any storage call
- *   P2.5  Client MIME validation — invalid MIME type → toast error before any storage call
+ *   P2.1  GET /api/company/documents - returns all stored fields for any valid DocumentType
+ *   P2.2  Upsert semantics - exactly one record per (companyId, type) after N uploads
+ *   P2.3  Admin route 403 - any caller role ≠ super_admin always gets HTTP 403
+ *   P2.4  Client file validation - file > 10 MB → toast error before any storage call
+ *   P2.5  Client MIME validation - invalid MIME type → toast error before any storage call
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -98,7 +98,7 @@ interface StoredDocument {
 // ─── Inline route simulations ─────────────────────────────────────────────────
 
 /**
- * Simulates GET /api/company/documents handler logic (unfixed & fixed — unchanged).
+ * Simulates GET /api/company/documents handler logic (unfixed & fixed - unchanged).
  *
  * The GET handler:
  *   1. Verifies auth token
@@ -250,7 +250,7 @@ function simulateGetAdminCompanies(
 }
 
 /**
- * Simulates the client-side file validation in handleFile (unfixed & fixed — unchanged).
+ * Simulates the client-side file validation in handleFile (unfixed & fixed - unchanged).
  *
  * Validation order (from page.tsx):
  *   1. size > 10 MB → toast.error("File too large"), return
@@ -280,7 +280,7 @@ function simulateClientValidation(
     return;
   }
 
-  // Only reached when validation passes — represents any storage call
+  // Only reached when validation passes - represents any storage call
   mockStorageCall();
 }
 
@@ -316,7 +316,7 @@ const arbValidMime = fc.constantFrom(
   "image/webp"
 );
 
-/** A valid fileUrl string (simulates a Firebase Storage download URL) — kept for GET simulation */
+/** A valid fileUrl string (simulates a Firebase Storage download URL) - kept for GET simulation */
 const arbFileUrl = fc.webUrl().filter((u) => u.startsWith("https://"));
 
 /** A valid companyId string */
@@ -324,7 +324,7 @@ const arbCompanyId = fc.stringMatching(/^company-[a-z0-9]{4,12}$/);
 
 // ─── Test Suite ────────────────────────────────────────────────────────────────
 
-describe("Preservation Property Tests — Non-Upload Behavior (Task 2)", () => {
+describe("Preservation Property Tests - Non-Upload Behavior (Task 2)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockStorageRef.mockReturnValue({ fullPath: "mock/path" });
@@ -336,7 +336,7 @@ describe("Preservation Property Tests — Non-Upload Behavior (Task 2)", () => {
 
   // ─── P2.1 ──────────────────────────────────────────────────────────────────
 
-  describe("P2.1 — GET /api/company/documents returns all stored fields for any valid DocumentType", () => {
+  describe("P2.1 - GET /api/company/documents returns all stored fields for any valid DocumentType", () => {
     /**
      * **Validates: Requirements 3.2, 3.3**
      *
@@ -344,7 +344,7 @@ describe("Preservation Property Tests — Non-Upload Behavior (Task 2)", () => {
      * has been stored, GET /api/company/documents returns that document with all
      * required fields present (documentId, companyId, type, fileUrl, uploadedAt, verified).
      *
-     * This ensures the GET handler shape is preserved — neither the fix nor any
+     * This ensures the GET handler shape is preserved - neither the fix nor any
      * future change should drop fields from the response.
      */
     it(
@@ -452,7 +452,7 @@ describe("Preservation Property Tests — Non-Upload Behavior (Task 2)", () => {
 
   // ─── P2.2 ──────────────────────────────────────────────────────────────────
 
-  describe("P2.2 — Upsert semantics: exactly one record per (companyId, type) after N uploads", () => {
+  describe("P2.2 - Upsert semantics: exactly one record per (companyId, type) after N uploads", () => {
     /**
      * **Validates: Requirements 3.4**
      *
@@ -609,7 +609,7 @@ describe("Preservation Property Tests — Non-Upload Behavior (Task 2)", () => {
 
   // ─── P2.3 ──────────────────────────────────────────────────────────────────
 
-  describe("P2.3 — GET /api/admin/companies returns 403 for any caller role ≠ super_admin", () => {
+  describe("P2.3 - GET /api/admin/companies returns 403 for any caller role ≠ super_admin", () => {
     /**
      * **Validates: Requirements 2.7, 3.8**
      *
@@ -694,7 +694,7 @@ describe("Preservation Property Tests — Non-Upload Behavior (Task 2)", () => {
 
   // ─── P2.4 ──────────────────────────────────────────────────────────────────
 
-  describe("P2.4 — Client validation: file > 10 MB triggers toast error before any storage call", () => {
+  describe("P2.4 - Client validation: file > 10 MB triggers toast error before any storage call", () => {
     /**
      * **Validates: Requirements 3.2**
      *
@@ -779,7 +779,7 @@ describe("Preservation Property Tests — Non-Upload Behavior (Task 2)", () => {
 
   // ─── P2.5 ──────────────────────────────────────────────────────────────────
 
-  describe("P2.5 — Client validation: invalid MIME type triggers toast error before any storage call", () => {
+  describe("P2.5 - Client validation: invalid MIME type triggers toast error before any storage call", () => {
     /**
      * **Validates: Requirements 3.2**
      *
@@ -884,9 +884,9 @@ describe("Preservation Property Tests — Non-Upload Behavior (Task 2)", () => {
     );
   });
 
-  // ─── P2.6 — Suspended company guard (Req 3.10) ───────────────────────────
+  // ─── P2.6 - Suspended company guard (Req 3.10) ───────────────────────────
 
-  describe("P2.6 — Suspended company guard: POST /api/company/documents returns 403 for suspended companies", () => {
+  describe("P2.6 - Suspended company guard: POST /api/company/documents returns 403 for suspended companies", () => {
     /**
      * **Validates: Requirement 3.10**
      *
@@ -925,9 +925,9 @@ describe("Preservation Property Tests — Non-Upload Behavior (Task 2)", () => {
     );
   });
 
-  // ─── P2.7 — Audit event emission (Req 3.11) ──────────────────────────────
+  // ─── P2.7 - Audit event emission (Req 3.11) ──────────────────────────────
 
-  describe("P2.7 — Audit event: document_uploaded event is emitted on every successful upload", () => {
+  describe("P2.7 - Audit event: document_uploaded event is emitted on every successful upload", () => {
     /**
      * **Validates: Requirement 3.11**
      *

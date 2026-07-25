@@ -1,5 +1,5 @@
 /**
- * route-utils.ts — Shared decision intelligence utilities.
+ * route-utils.ts - Shared decision intelligence utilities.
  *
  * Single source of truth for confidence scoring, spread analysis,
  * and recommendation logic. Imported by routes/page.tsx, ShipmentPass.tsx,
@@ -54,7 +54,7 @@ export function deriveConfidence(
 ): number {
   const { riskBreakdown } = route;
 
-  // Guard each breakdown value — malformed API data must not produce NaN
+  // Guard each breakdown value - malformed API data must not produce NaN
   const weather    = safeNum(riskBreakdown.weather);
   const traffic    = safeNum(riskBreakdown.traffic);
   const disruption = safeNum(riskBreakdown.disruption);
@@ -111,21 +111,21 @@ export function confidenceReasons(
   const disruption = safeNum(route.riskBreakdown.disruption);
   const { label }  = route;
 
-  // Weather — severity-aware language
+  // Weather - severity-aware language
   if (weather > 70)
-    reasons.push("Severe weather — ETA variance is high");
+    reasons.push("Severe weather - ETA variance is high");
   else if (weather > 50)
     reasons.push("Adverse weather reduces ETA predictability");
   else if (weather < 20)
-    reasons.push("Clear weather — high ETA accuracy");
+    reasons.push("Clear weather - high ETA accuracy");
 
-  // Traffic — variability-aware language
+  // Traffic - variability-aware language
   if (traffic > 70)
-    reasons.push("Heavy, unpredictable traffic — arrival time unreliable");
+    reasons.push("Heavy, unpredictable traffic - arrival time unreliable");
   else if (traffic > 60)
     reasons.push("Heavy traffic increases arrival variance");
   else if (traffic < 25)
-    reasons.push("Low traffic — minimal delay variance");
+    reasons.push("Low traffic - minimal delay variance");
 
   // Route label context
   if (label === "safest")
@@ -139,18 +139,18 @@ export function confidenceReasons(
   else if (disruption > 50)
     reasons.push("Disruption risk elevated on this corridor");
 
-  // Spread awareness — exact spec wording
+  // Spread awareness - exact spec wording
   if (allRoutes.length >= 2) {
     const spread = routeSpread(allRoutes);
     if (spread < 10)
-      reasons.push("Routes are nearly identical — decision sensitivity is high");
+      reasons.push("Routes are nearly identical - decision sensitivity is high");
     else if (spread < 18)
-      reasons.push("Routes are closely matched — difference is small");
+      reasons.push("Routes are closely matched - difference is small");
   }
 
   // Data source
   if (dataSource === "static-fallback")
-    reasons.push("Estimated data — live routing unavailable");
+    reasons.push("Estimated data - live routing unavailable");
 
   return reasons.slice(0, 3);
 }
@@ -189,22 +189,22 @@ export function decisionVerdict(
   if (allRoutes && allRoutes.length >= 2) {
     const spread = routeSpread(allRoutes);
     if (spread < 10)
-      return `All routes perform similarly — choice based on ${
+      return `All routes perform similarly - choice based on ${
         label === "fastest" ? "speed" : label === "safest" ? "safety" : "efficiency"
       } preference.`;
   }
 
   if (urgency === "Critical")
-    return `Critical urgency — fastest path selected. Risk ${riskScore}/100 accepted for speed.`;
+    return `Critical urgency - fastest path selected. Risk ${riskScore}/100 accepted for speed.`;
   if (cargoType === "Pharmaceuticals" || cargoType === "Cold Chain Goods")
-    return `Sensitive cargo — lowest-disruption corridor selected. Risk ${riskScore}/100 (${riskLevel}).`;
+    return `Sensitive cargo - lowest-disruption corridor selected. Risk ${riskScore}/100 (${riskLevel}).`;
   if (label === "balanced")
-    return `Optimal tradeoff selected — ${riskLevel} risk (${riskScore}/100) with acceptable ETA.`;
+    return `Optimal tradeoff selected - ${riskLevel} risk (${riskScore}/100) with acceptable ETA.`;
   if (label === "safest")
-    return `Lowest-risk corridor — ${riskScore}/100. Longer transit accepted for reduced exposure.`;
+    return `Lowest-risk corridor - ${riskScore}/100. Longer transit accepted for reduced exposure.`;
   if (label === "fastest")
-    return `Fastest path — ${riskScore}/100 risk accepted. Monitor corridor conditions post-dispatch.`;
-  return `Route confirmed — ${riskLevel} risk (${riskScore}/100).`;
+    return `Fastest path - ${riskScore}/100 risk accepted. Monitor corridor conditions post-dispatch.`;
+  return `Route confirmed - ${riskLevel} risk (${riskScore}/100).`;
 }
 
 // ─── Selection feedback ───────────────────────────────────────────────────────
@@ -258,7 +258,7 @@ export function selectionFeedback(
   }
 
   if (label === "fastest" && urgency === "Critical")
-    return `Critical urgency confirmed. Fastest path selected — arrival time prioritised over risk exposure.${spreadNote}`;
+    return `Critical urgency confirmed. Fastest path selected - arrival time prioritised over risk exposure.${spreadNote}`;
   if ((cargoType === "Pharmaceuticals" || cargoType === "Cold Chain Goods") && label === "safest")
     return `Temperature-sensitive cargo routed via lowest-disruption corridor. Delay variance minimised.${spreadNote}`;
   if (label === "balanced")
@@ -267,7 +267,7 @@ export function selectionFeedback(
       dominant[0] === "weather" ? "Weather" : "Disruption"
     } is the primary variable at ${safeNum(dominant[1] as number)}/100.${spreadNote}`;
   if (label === "safest")
-    return `Safest corridor selected. Risk score ${riskScore}/100 — lowest exposure on this route set.${spreadNote}`;
+    return `Safest corridor selected. Risk score ${riskScore}/100 - lowest exposure on this route set.${spreadNote}`;
   if (label === "fastest")
     return `Fastest path selected. Accepts higher risk (${riskScore}/100) in exchange for reduced transit time.${spreadNote}`;
   return `Route confirmed. Risk score ${riskScore}/100.${spreadNote}`;
@@ -284,24 +284,24 @@ export function liveInsightHint(
   const traffic  = safeNum(route.riskBreakdown.traffic);
   const riskScore = safeNum(route.riskScore);
 
-  // Exact spec wording — no variations
+  // Exact spec wording - no variations
   if (weather > 60)
-    return "Weather is the primary risk driver on this route — conditions are actively affecting the corridor.";
+    return "Weather is the primary risk driver on this route - conditions are actively affecting the corridor.";
   if (traffic > 70)
-    return "Traffic conditions significantly impact route performance — all options carry elevated delay risk.";
+    return "Traffic conditions significantly impact route performance - all options carry elevated delay risk.";
 
   if (allRoutes.length >= 2) {
     const spread = routeSpread(allRoutes);
     if (spread > 40)
-      return "Strong risk differentiation across routes — the safest option is significantly lower risk than the fastest.";
+      return "Strong risk differentiation across routes - the safest option is significantly lower risk than the fastest.";
     if (spread < 10)
-      return "Routes are closely matched — the decision is primarily about ETA preference.";
+      return "Routes are closely matched - the decision is primarily about ETA preference.";
   }
 
   if (dataSource === "static-fallback")
-    return "Live routing data unavailable — scores are estimated. Treat ETA as approximate.";
+    return "Live routing data unavailable - scores are estimated. Treat ETA as approximate.";
   if (riskScore < 20)
-    return "Unusually low risk across this corridor — conditions are favourable for dispatch.";
+    return "Unusually low risk across this corridor - conditions are favourable for dispatch.";
 
   return null;
 }
@@ -318,15 +318,15 @@ export function decisionContextText(routes: Route[]): string {
 
   // Exact spec wording for each case
   if (spread < 10)
-    return "All routes perform similarly — differences are within margin of error. Choose based on ETA preference.";
+    return "All routes perform similarly - differences are within margin of error. Choose based on ETA preference.";
   if (spread < 18)
-    return "Routes are closely matched — choose based on ETA preference. Risk exposure is comparable across all options.";
+    return "Routes are closely matched - choose based on ETA preference. Risk exposure is comparable across all options.";
   if (maxWeather > 60)
-    return "Weather is the primary risk driver on this route. All corridors are affected — the safest option minimises exposure time.";
+    return "Weather is the primary risk driver on this route. All corridors are affected - the safest option minimises exposure time.";
   if (maxTraffic > 70)
     return "Traffic conditions significantly impact route performance. The balanced route avoids the worst congestion without a major ETA penalty.";
   if (spread > 40)
-    return `Strong risk differentiation — ${spread} points between fastest and safest. The choice here has real operational consequence.`;
+    return `Strong risk differentiation - ${spread} points between fastest and safest. The choice here has real operational consequence.`;
 
   return "Balanced routes reduce disruption risk without major ETA loss. Fastest is not always the best choice.";
 }
@@ -382,7 +382,7 @@ export function buildTradeoffSentence(
   }
 
   if (label === "balanced" && fastest && safest) {
-    return ` Sits between fastest (risk ${safeNum(fastest.riskScore)}) and safest (risk ${safeNum(safest.riskScore)}) — optimised for the lowest delay-to-risk ratio.`;
+    return ` Sits between fastest (risk ${safeNum(fastest.riskScore)}) and safest (risk ${safeNum(safest.riskScore)}) - optimised for the lowest delay-to-risk ratio.`;
   }
 
   return ` This route represents a ${label} option on this corridor.`;

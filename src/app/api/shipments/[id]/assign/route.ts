@@ -99,7 +99,7 @@ export async function POST(
     }
     if (driverDoc.licenseExpiry && driverDoc.licenseExpiry < today) {
       return NextResponse.json(
-        { error: "Driver licence is expired — cannot assign" },
+        { error: "Driver licence is expired - cannot assign" },
         { status: 400 }
       );
     }
@@ -138,19 +138,19 @@ export async function POST(
     }
     if (vehicleDoc.insuranceExpiry && vehicleDoc.insuranceExpiry < today) {
       return NextResponse.json(
-        { error: "Vehicle insurance has expired — cannot assign" },
+        { error: "Vehicle insurance has expired - cannot assign" },
         { status: 400 }
       );
     }
     if (vehicleDoc.fitnessExpiry && vehicleDoc.fitnessExpiry < today) {
       return NextResponse.json(
-        { error: "Vehicle fitness certificate has expired — cannot assign" },
+        { error: "Vehicle fitness certificate has expired - cannot assign" },
         { status: 400 }
       );
     }
     if (vehicleDoc.permitExpiry && vehicleDoc.permitExpiry < today) {
       return NextResponse.json(
-        { error: "Vehicle permit has expired — cannot assign" },
+        { error: "Vehicle permit has expired - cannot assign" },
         { status: 400 }
       );
     }

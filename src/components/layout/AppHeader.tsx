@@ -41,7 +41,7 @@ const routeLabels: Record<string, string> = {
   "/company/documents":  "Document Upload",
   "/company/pending":    "Verification Pending",
   "/company/rejected":   "Application Status",
-  "/admin/companies":    "Admin — Companies",
+  "/admin/companies":    "Admin - Companies",
 };
 
 export function AppHeader() {
@@ -56,7 +56,7 @@ export function AppHeader() {
   const onlineUsers = Object.values(presence).filter((p): p is PresenceUser => p.status === "online");
   const onlineCount = onlineUsers.length;
 
-  // Derive a human-readable title — handle dynamic segments gracefully
+  // Derive a human-readable title - handle dynamic segments gracefully
   const pageTitle = (() => {
     // Exact match first
     if (routeLabels[pathname]) return routeLabels[pathname];
@@ -93,7 +93,7 @@ export function AppHeader() {
       <MobileNav open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
       <header className="h-[72px] flex items-center gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8 border-b border-border bg-background/95 backdrop-blur-md shadow-sm sticky top-0 z-30">
-        {/* Mobile hamburger — only on small screens */}
+        {/* Mobile hamburger - only on small screens */}
         <button
           className="md:hidden text-muted-foreground hover:text-foreground p-1.5 -ml-1 rounded-md hover:bg-accent transition-colors"
           onClick={() => setMobileNavOpen(true)}
@@ -146,7 +146,7 @@ export function AppHeader() {
           </TooltipContent>
         </Tooltip>
 
-        {/* Shipments quick-link — navigates to shipments list */}
+        {/* Shipments quick-link - navigates to shipments list */}
         <Link
           href="/shipments"
           className="hidden md:flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-muted/30 text-muted-foreground text-sm hover:bg-muted/50 hover:text-foreground transition-colors"
@@ -154,7 +154,7 @@ export function AppHeader() {
           <span>Shipments</span>
         </Link>
 
-        {/* Notifications — not yet implemented; tooltip explains why */}
+        {/* Notifications - not yet implemented; tooltip explains why */}
         <Tooltip>
           <TooltipTrigger
             aria-label="Notifications"

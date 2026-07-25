@@ -139,7 +139,7 @@ export function RouteCard({ route, selected, onSelect, index = 0 }: RouteCardPro
               : "bg-transparent border border-border/60 text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/10",
           )}
         >
-          {selected ? "Locked — Inspect Mission" : "Select Manifest"}
+          {selected ? "Locked - Inspect Mission" : "Select Manifest"}
           <ChevronRight className="w-4 h-4 ml-2" />
         </Button>
       </div>

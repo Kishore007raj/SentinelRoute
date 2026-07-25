@@ -1,5 +1,5 @@
 /**
- * Bug Condition Exploration Test — Task 1
+ * Bug Condition Exploration Test - Task 1
  *
  * **Validates: Requirements 1.1, 1.2, 1.3**
  *
@@ -96,7 +96,7 @@ function makeStorageRetryError(): Error {
 
 // ─── Test Suite ────────────────────────────────────────────────────────────────
 
-describe("Bug Condition Exploration — Firebase Storage Upload Failure (Task 1)", () => {
+describe("Bug Condition Exploration - Firebase Storage Upload Failure (Task 1)", () => {
   /**
    * We extract handleFile from the DocumentRow component by importing the module
    * and calling it directly. Since handleFile is a closure inside DocumentRow,
@@ -105,7 +105,7 @@ describe("Bug Condition Exploration — Firebase Storage Upload Failure (Task 1)
    *
    * The core bug logic from page.tsx:
    *   1. storageRef is called
-   *   2. uploadBytes(fileRef, file) is called — THIS THROWS on unfixed code
+   *   2. uploadBytes(fileRef, file) is called - THIS THROWS on unfixed code
    *   3. getDownloadURL is never reached
    *   4. fetch("/api/company/documents") is never reached
    *   5. onUploaded(doc) callback is never called
@@ -117,7 +117,7 @@ describe("Bug Condition Exploration — Firebase Storage Upload Failure (Task 1)
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock global fetch — it should NEVER be called when uploadBytes throws
+    // Mock global fetch - it should NEVER be called when uploadBytes throws
     fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
@@ -161,7 +161,7 @@ describe("Bug Condition Exploration — Firebase Storage Upload Failure (Task 1)
       await mockUploadBytes(fileRef, file);               // ← THROWS on unfixed code
       const fileUrl = await mockGetDownloadURL(fileRef);  // ← never reached
 
-      // Save to MongoDB via API — never reached when uploadBytes throws
+      // Save to MongoDB via API - never reached when uploadBytes throws
       const token = await user.getIdToken();
       await fetchMock("/api/company/documents", {
         method: "POST",
@@ -197,7 +197,7 @@ describe("Bug Condition Exploration — Firebase Storage Upload Failure (Task 1)
     }
 
     try {
-      // FIXED: read file as Base64 using FileReader — no Firebase Storage
+      // FIXED: read file as Base64 using FileReader - no Firebase Storage
       const base64Full = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload  = () => resolve(reader.result as string);
@@ -242,10 +242,10 @@ describe("Bug Condition Exploration — Firebase Storage Upload Failure (Task 1)
       // ACT: run the unfixed handleFile logic
       await simulateUnfixedHandleFile(file, user, "gst", "test-company-id");
 
-      // ASSERT: fetch was NEVER called — MongoDB write never attempted
+      // ASSERT: fetch was NEVER called - MongoDB write never attempted
       expect(fetchMock).not.toHaveBeenCalled();
 
-      // ASSERT: uploadBytes WAS called (confirms the bug — storage is attempted first)
+      // ASSERT: uploadBytes WAS called (confirms the bug - storage is attempted first)
       expect(mockUploadBytes).toHaveBeenCalledTimes(1);
 
       // ASSERT: error toast fired with "Upload failed"
@@ -258,7 +258,7 @@ describe("Bug Condition Exploration — Firebase Storage Upload Failure (Task 1)
     }
   );
 
-  // ─── Test 2: PBT — for ALL valid PDF files, fixed handleFile calls fetch ──
+  // ─── Test 2: PBT - for ALL valid PDF files, fixed handleFile calls fetch ──
 
   it(
     "Property 1 (PBT): for any valid PDF file (size 1B–10MB), " +
@@ -320,7 +320,7 @@ describe("Bug Condition Exploration — Firebase Storage Upload Failure (Task 1)
     }
   );
 
-  // ─── Test 3: Fixed — uploadBytes NOT called, fetch IS called ─────────────
+  // ─── Test 3: Fixed - uploadBytes NOT called, fetch IS called ─────────────
 
   it(
     "Fix Verified: uploadBytes is NOT called (Firebase Storage removed), " +
@@ -456,7 +456,7 @@ describe("Bug Condition Exploration — Firebase Storage Upload Failure (Task 1)
 
       await simulateUnfixedHandleFile(oversizedFile, user, "gst", "test-company-id");
 
-      // uploadBytes should NOT be called — file size guard runs first
+      // uploadBytes should NOT be called - file size guard runs first
       expect(mockUploadBytes).not.toHaveBeenCalled();
       expect(fetchMock).not.toHaveBeenCalled();
       expect(mockToastError).toHaveBeenCalledWith(

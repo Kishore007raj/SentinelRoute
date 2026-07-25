@@ -1,7 +1,7 @@
 "use client";
 /**
  * Company onboarding layout.
- * Minimal shell — no sidebar, no header. Just the page + brand mark.
+ * Minimal shell - no sidebar, no header. Just the page + brand mark.
  */
 
 import { useEffect } from "react";

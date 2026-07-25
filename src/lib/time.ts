@@ -1,9 +1,9 @@
 /**
- * time.ts — Timezone-aware time utilities for SentinelRoute.
+ * time.ts - Timezone-aware time utilities for SentinelRoute.
  *
  * RULE: All timestamps are stored and transmitted as UTC ISO 8601 strings.
  *       Display formatting always uses the viewer's local timezone via
- *       Intl.DateTimeFormat — so a user in India sees IST, a user in
+ *       Intl.DateTimeFormat - so a user in India sees IST, a user in
  *       New York sees EST, etc. No hardcoded timezone offsets anywhere.
  *
  * Server-side: use `utcNow()` to generate timestamps.
@@ -30,7 +30,7 @@ export function utcNow(): string {
 
 /**
  * Formats a UTC ISO string into the user's local time.
- * e.g. "2:34 PM" in India, "9:04 AM" in New York — automatically correct.
+ * e.g. "2:34 PM" in India, "9:04 AM" in New York - automatically correct.
  */
 export function formatLocalTime(utcIso: string): string {
   try {
@@ -66,7 +66,7 @@ export function formatLocalDateTime(utcIso: string): string {
 /**
  * Returns a human-readable relative time string.
  * e.g. "just now", "2 min ago", "3 hours ago", "yesterday"
- * Works for any user's timezone — the relative gap is timezone-independent.
+ * Works for any user's timezone - the relative gap is timezone-independent.
  */
 export function formatRelativeTime(utcIso: string): string {
   try {
@@ -86,7 +86,7 @@ export function formatRelativeTime(utcIso: string): string {
     if (diffDay === 1)  return "yesterday";
     if (diffDay < 7)    return `${diffDay} days ago`;
 
-    // Older than a week — show local date
+    // Older than a week - show local date
     return new Intl.DateTimeFormat(undefined, {
       day: "numeric", month: "short", year: "numeric",
     }).format(new Date(utcIso));

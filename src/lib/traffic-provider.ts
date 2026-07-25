@@ -1,5 +1,5 @@
 /**
- * traffic-provider.ts — Abstraction layer for traffic data.
+ * traffic-provider.ts - Abstraction layer for traffic data.
  * Supports switching between TomTom, Geoapify, or other providers without changing the core engine.
  */
 

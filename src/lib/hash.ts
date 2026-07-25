@@ -1,5 +1,5 @@
 /**
- * hash.ts — SHA-256 integrity hashing for route decisions.
+ * hash.ts - SHA-256 integrity hashing for route decisions.
  *
  * Creates cryptographic hashes of route analysis decisions to detect tampering.
  * Used to verify that route recommendations haven't been modified after generation.

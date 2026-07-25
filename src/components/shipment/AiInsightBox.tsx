@@ -1,6 +1,6 @@
 "use client";
 /**
- * AiInsightBox.tsx — "Why this route?" explanation block.
+ * AiInsightBox.tsx - "Why this route?" explanation block.
  *
  * Always renders. Shows AI explanation when available, deterministic
  * fallback when Gemini is unavailable. Never returns null.
@@ -33,7 +33,7 @@ function buildFallbackExplanation(
   allRoutes?: Route[]
 ): string {
   const { label, riskScore, riskLevel, riskBreakdown, eta, distance } = route;
-  // etaMinutes is used inside buildTradeoffSentence via route-utils — not needed here directly
+  // etaMinutes is used inside buildTradeoffSentence via route-utils - not needed here directly
 
   // 1. Dominant factor
   const sorted = Object.entries(riskBreakdown).sort(([, a], [, b]) => b - a);
@@ -47,19 +47,19 @@ function buildFallbackExplanation(
   const dominantSentence =
     `The dominant risk factor on this corridor is ${dominantName} (${dominantVal}/100).`;
 
-  // 2. Tradeoff — delegated to route-utils for semantic correctness and NaN safety
+  // 2. Tradeoff - delegated to route-utils for semantic correctness and NaN safety
   const tradeoffSentence = buildTradeoffSentence(route, allRoutes ?? []);
 
-  // 3. Outcome — cargo and urgency context
+  // 3. Outcome - cargo and urgency context
   let outcomeSentence = "";
   if (cargoType === "Pharmaceuticals" || cargoType === "Cold Chain Goods") {
-    outcomeSentence = ` Temperature-sensitive cargo — delay variance is the critical outcome to minimise.`;
+    outcomeSentence = ` Temperature-sensitive cargo - delay variance is the critical outcome to minimise.`;
   } else if (cargoType === "Electronics") {
     outcomeSentence = ` Electronics cargo is sensitive to handling disruptions; lower disruption score reduces exposure.`;
   } else if (urgency === "Critical") {
-    outcomeSentence = ` Critical urgency — arrival time is the primary outcome; risk score ${riskScore}/100 is accepted.`;
+    outcomeSentence = ` Critical urgency - arrival time is the primary outcome; risk score ${riskScore}/100 is accepted.`;
   } else if (urgency === "Priority") {
-    outcomeSentence = ` Priority urgency applies a 1.2× risk multiplier — final score reflects elevated sensitivity.`;
+    outcomeSentence = ` Priority urgency applies a 1.2× risk multiplier - final score reflects elevated sensitivity.`;
   } else {
     outcomeSentence = ` Overall ${riskLevel} risk (${riskScore}/100) for this ${eta}, ${distance} corridor.`;
   }

@@ -49,7 +49,7 @@ import { ShipmentAssignment } from "@/components/shipment/ShipmentAssignment";
 
 // ─── Audit tab ────────────────────────────────────────────────────────────────
 // Renders intelligence_audits for this shipment from the existing timeline API
-// (same data, different presentation — shows action/source/timestamp detail)
+// (same data, different presentation - shows action/source/timestamp detail)
 
 function ShipmentAuditTab({ shipmentId, companyId }: { shipmentId: string; companyId?: string }) {
   const { user } = useUser();
@@ -451,7 +451,7 @@ function OverviewTab({
         )}
       </div>
 
-      {/* Right column — map */}
+      {/* Right column - map */}
       <div className="min-w-0 overflow-hidden">
         {!hasBreakdown && (
           <p className="text-xs text-muted-foreground/50 mb-3 px-1">
@@ -490,7 +490,7 @@ export default function ShipmentDetailPage({
   const [cancelling, setCancelling] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
 
-  // Fetch shipment — first try store, then API
+  // Fetch shipment - first try store, then API
   const loadShipment = useCallback(async () => {
     const found = (state.shipments ?? []).find((item) => item.id === shipmentId);
     if (found && !isCrossCompany) {
@@ -571,7 +571,7 @@ export default function ShipmentDetailPage({
       await refreshShipments();
       toast.success("Shipment cancelled");
     } catch {
-      toast.error("Network error — could not cancel shipment");
+      toast.error("Network error - could not cancel shipment");
     } finally {
       setCancelling(false);
     }

@@ -1,5 +1,5 @@
 /**
- * schemas.ts — Zod validation schemas for SentinelRoute API routes.
+ * schemas.ts - Zod validation schemas for SentinelRoute API routes.
  * Aligned with the canonical types in types.ts.
  */
 

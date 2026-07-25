@@ -80,6 +80,6 @@ Write 2–3 sentences explaining why this route was selected or flagged. Focus o
 
   const explanation = await generateExplanation(prompt);
 
-  // generateExplanation returns null on failure/timeout — pass through directly
+  // generateExplanation returns null on failure/timeout - pass through directly
   return NextResponse.json({ explanation });
 }

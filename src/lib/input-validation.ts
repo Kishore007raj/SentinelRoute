@@ -1,15 +1,15 @@
 /**
- * input-validation.ts — Server-side input sanitization helpers.
+ * input-validation.ts - Server-side input sanitization helpers.
  *
  * Rules:
- *   - stripHtml()      — removes all HTML tags (XSS prevention)
- *   - sanitizeString() — trims + strips HTML + truncates to max length
- *   - isValidEmail()   — RFC-5321-lite email check
- *   - isValidPhone()   — E.164-compatible check
- *   - isValidDate()    — YYYY-MM-DD ISO date string
- *   - isValidObjectId()— MongoDB-compatible 24-char hex ID
- *   - isPositiveInt()  — number is a finite positive integer
- *   - clampNumber()    — clamps a number to [min, max]
+ *   - stripHtml()      - removes all HTML tags (XSS prevention)
+ *   - sanitizeString() - trims + strips HTML + truncates to max length
+ *   - isValidEmail()   - RFC-5321-lite email check
+ *   - isValidPhone()   - E.164-compatible check
+ *   - isValidDate()    - YYYY-MM-DD ISO date string
+ *   - isValidObjectId()- MongoDB-compatible 24-char hex ID
+ *   - isPositiveInt()  - number is a finite positive integer
+ *   - clampNumber()    - clamps a number to [min, max]
  *
  * Never use client-supplied strings directly in DB queries without first
  * passing them through sanitizeString().
@@ -22,7 +22,7 @@ const SCRIPT_RE   = /javascript\s*:/gi;
 
 /**
  * Removes all HTML tags and javascript: protocol from a string.
- * Does NOT HTML-encode — that happens at the rendering layer.
+ * Does NOT HTML-encode - that happens at the rendering layer.
  */
 export function stripHtml(value: string): string {
   return value.replace(HTML_TAG_RE, "").replace(SCRIPT_RE, "");

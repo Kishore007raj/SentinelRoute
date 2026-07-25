@@ -42,7 +42,7 @@ function RiskTrendBadge({ current, previous }: { current: number; previous: numb
 }
 
 export default function RiskCenterPage() {
-  // Single source of truth — useIntelligence owns kpis, alerts, loading states, and prevRisk.
+  // Single source of truth - useIntelligence owns kpis, alerts, loading states, and prevRisk.
   const {
     kpis,
     alerts,

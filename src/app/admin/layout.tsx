@@ -1,6 +1,6 @@
 "use client";
 /**
- * Admin layout — requires super_admin role.
+ * Admin layout - requires super_admin role.
  * Renders a complete enterprise admin shell with sidebar and header.
  */
 

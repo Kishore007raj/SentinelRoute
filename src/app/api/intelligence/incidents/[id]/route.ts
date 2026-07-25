@@ -39,7 +39,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Incident not found" }, { status: 404 });
     }
 
-    // Tenant boundary check — global incidents (companyId: null/undefined) can be closed by any authenticated company user
+    // Tenant boundary check - global incidents (companyId: null/undefined) can be closed by any authenticated company user
     // Company-scoped incidents can only be closed by the owning company
     const incidentCompanyId = incident.companyId as string | null | undefined;
     if (incidentCompanyId && incidentCompanyId !== companyId) {

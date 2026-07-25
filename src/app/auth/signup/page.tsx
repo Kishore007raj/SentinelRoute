@@ -74,7 +74,7 @@ function Spinner({ light = false }: { light?: boolean }) {
   );
 }
 
-// ─── Step bubble helper — avoids duplicate className ─────────────────────────
+// ─── Step bubble helper - avoids duplicate className ─────────────────────────
 function StepBubble({
   index, current, size = "md",
 }: {
@@ -159,7 +159,7 @@ export default function SignUpPage() {
       await signInWithPopup(auth, provider);
       const token = await auth.currentUser!.getIdToken();
       setSessionCookie(token);
-      // Redirect to company registration — not dashboard
+      // Redirect to company registration - not dashboard
       // CompanyProvider will detect no company and route accordingly
       router.push("/company/register");
     } catch (err: unknown) {
@@ -186,7 +186,7 @@ export default function SignUpPage() {
       });
       const token = await credential.user.getIdToken();
       setSessionCookie(token);
-      // Redirect to company registration — company details from signup step 1
+      // Redirect to company registration - company details from signup step 1
       // are preliminary; full registration is on /company/register
       router.push("/company/register");
     } catch (err: unknown) {
@@ -259,7 +259,7 @@ export default function SignUpPage() {
             &ldquo;Reduced route disruptions by 35% in Q1.&rdquo;
           </p>
           <p className="text-[10px] text-muted-foreground">
-            — Fleet Operations Lead, Tier-1 Logistics Co.
+            - Fleet Operations Lead, Tier-1 Logistics Co.
           </p>
         </div>
       </div>

@@ -49,7 +49,7 @@ async function fetchWithResilience(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
     try {
-      // Strip any existing signal from options — we own the abort controller
+      // Strip any existing signal from options - we own the abort controller
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { signal: _ignored, ...rest } = options as RequestInit & { signal?: unknown };
       const res = await fetch(url, { ...rest, signal: controller.signal });
@@ -65,7 +65,7 @@ async function fetchWithResilience(
   try {
     res = await attempt();
   } catch {
-    // First attempt failed (network/timeout) — wait then retry once
+    // First attempt failed (network/timeout) - wait then retry once
     await new Promise((r) => setTimeout(r, 800));
     return attempt();
   }
@@ -104,7 +104,7 @@ async function fetchWithAuth(
   const res = await fetchWithResilience(url, { ...options, headers });
 
   if (res.status === 401) {
-    // Token may have expired — force refresh once and retry
+    // Token may have expired - force refresh once and retry
     const freshToken = await forceRefreshToken();
     if (!freshToken) {
       onAuthFailure();
@@ -113,7 +113,7 @@ async function fetchWithAuth(
     const retryHeaders = { ...(options.headers as Record<string, string> ?? {}), Authorization: `Bearer ${freshToken}` };
     const retryRes = await fetchWithResilience(url, { ...options, headers: retryHeaders });
     if (retryRes.status === 401) {
-      // Still unauthorized after refresh — session is broken
+      // Still unauthorized after refresh - session is broken
       onAuthFailure();
     }
     return retryRes;
@@ -161,7 +161,7 @@ const initialState: StoreState = {
 function reducer(state: StoreState, action: Action): StoreState {
   switch (action.type) {
     case "SET_SHIPMENTS": {
-      // Deduplicate by id — guards against duplicate records from DB or concurrent fetches
+      // Deduplicate by id - guards against duplicate records from DB or concurrent fetches
       const seen = new Set<string>();
       const unique = (action.payload ?? []).filter((s) => {
         if (seen.has(s.id)) return false;
@@ -177,7 +177,7 @@ function reducer(state: StoreState, action: Action): StoreState {
     case "CLEAR_PENDING":
       return { ...state, pendingShipment: null };
     case "ADD_SHIPMENT":
-      // Deduplicate — if the shipment already exists (e.g. from a concurrent fetch),
+      // Deduplicate - if the shipment already exists (e.g. from a concurrent fetch),
       // replace it rather than prepend a second copy.
       if (state.shipments.some((s) => s.id === action.payload.id)) {
         return {
@@ -253,9 +253,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [pathname]);
 
-  // ── Auth failure handler — signs out and clears state ─────────────────────
+  // ── Auth failure handler - signs out and clears state ─────────────────────
   const handleAuthFailure = useCallback(() => {
-    console.warn("[store] Auth failure after token refresh — signing out");
+    console.warn("[store] Auth failure after token refresh - signing out");
     dispatch({ type: "SET_SHIPMENTS", payload: [] });
     document.cookie = "sr_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     signOut(auth).catch(() => {});
@@ -284,7 +284,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: "SET_SHIPMENTS", payload: data.shipments ?? [] });
     } catch (err) {
       // 503 = Firebase Admin not configured (expected in dev without service account).
-      // Still resolve to empty list — never leave the app in a loading state.
+      // Still resolve to empty list - never leave the app in a loading state.
       const msg = err instanceof Error ? err.message : String(err);
       if (!msg.includes("503")) {
         console.error("[store] fetchShipments:", err);
@@ -322,7 +322,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const refreshShipments = useCallback(async () => { await fetchShipments(); }, [fetchShipments]);
 
-  // ── Polling fallback (Vercel / serverless — no WebSocket) ─────────────────
+  // ── Polling fallback (Vercel / serverless - no WebSocket) ─────────────────
   // When WebSocket is disabled, poll every 30s to keep data reasonably fresh.
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_ENABLE_WEBSOCKET === "true") return;
@@ -331,7 +331,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [user, fetchShipments]);
 
-  // Ref to latest operational data — avoids stale closure in socketHandlers
+  // Ref to latest operational data - avoids stale closure in socketHandlers
   const latestOperational = useRef({ feed: state.operationalFeed, health: state.operationalHealth });
   useEffect(() => {
     latestOperational.current = { feed: state.operationalFeed, health: state.operationalHealth };
@@ -442,7 +442,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         cargoType:         pending.cargoType,
         urgency:           pending.urgency || "Standard",
         routeId:           route.id,
-        routeName:         route.name.split(" — ")[0].trim(),
+        routeName:         route.name.split(" - ")[0].trim(),
         riskScore:         route.riskScore,
         riskLevel,
         eta:               route.eta,
@@ -454,7 +454,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         riskBreakdown:     route.riskBreakdown,
         // Store geometry for map rendering on shipment detail page
         geometry:          route.geometry ?? undefined,
-        // Geoapify coordinate data — stored for Module 4 and route intelligence
+        // Geoapify coordinate data - stored for Module 4 and route intelligence
         originName:         pending.originName,
         originAddress:      pending.originAddress,
         originLat:          pending.originLat,
@@ -526,7 +526,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     ).catch((err) => console.error("[store] completeShipment:", err));
   }, [user, getToken, refreshToken, handleAuthFailure]);
 
-  // ── Derived — memoized to prevent recomputation on every render ───────────
+  // ── Derived - memoized to prevent recomputation on every render ───────────
 
   const activeShipments    = useMemo(
     () => state.shipments.filter((s) => s.status === "active" || s.status === "at-risk"),

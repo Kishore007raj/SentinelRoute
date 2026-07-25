@@ -1,15 +1,15 @@
 /**
- * Unit Tests for Fixed Upload Path — Task 3.7
+ * Unit Tests for Fixed Upload Path - Task 3.7
  *
  * **Validates: Requirements 2.1, 2.2, 2.5, 2.6**
  *
  * Covers all four fixed components using inline simulation
- * (same pattern as tasks 1 and 2 — no full Next.js server):
+ * (same pattern as tasks 1 and 2 - no full Next.js server):
  *
- *   1. handleFile (fixed)          — FileReader → fetch with fileData shape
- *   2. POST /api/company/documents — fixed validation and storage
- *   3. GET  /api/admin/companies   — email fields + 403 guard
- *   4. POST /api/admin/seed-super-admin — seed 3 admins, idempotent, secret guard
+ *   1. handleFile (fixed)          - FileReader → fetch with fileData shape
+ *   2. POST /api/company/documents - fixed validation and storage
+ *   3. GET  /api/admin/companies   - email fields + 403 guard
+ *   4. POST /api/admin/seed-super-admin - seed 3 admins, idempotent, secret guard
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -119,7 +119,7 @@ async function simulateFixedHandleFile(
   onUploaded:  (...args: any[]) => any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setUploading: (...args: any[]) => any,
-  /** Optionally override the FileReader result — defaults to a valid data URL */
+  /** Optionally override the FileReader result - defaults to a valid data URL */
   fileReaderResult?: string
 ): Promise<void> {
   // ── Size guard (unchanged) ────────────────────────────────────────────────
@@ -135,7 +135,7 @@ async function simulateFixedHandleFile(
 
   setUploading(true);
   try {
-    // ── Read file as Base64 (FIXED — no Firebase Storage) ──────────────────
+    // ── Read file as Base64 (FIXED - no Firebase Storage) ──────────────────
     const base64Full = await new Promise<string>((resolve, reject) => {
       // Use the injected result or fall back to a deterministic data URL
       const result =
@@ -149,7 +149,7 @@ async function simulateFixedHandleFile(
     const fileData = base64Full.split(",")[1]; // strip "data:mime;base64," prefix
 
     // ── uploadBytes must NEVER be called in the fixed path ─────────────────
-    // (the test assertion below will catch this — we simply don't call it)
+    // (the test assertion below will catch this - we simply don't call it)
 
     // ── POST to /api/company/documents ────────────────────────────────────
     const token = await user.getIdToken();
@@ -381,7 +381,7 @@ function simulateFixedSeedSuperAdmin(
 
 // ─── Test Suites ──────────────────────────────────────────────────────────────
 
-describe("Unit Tests — Fixed Upload Path (Task 3.7)", () => {
+describe("Unit Tests - Fixed Upload Path (Task 3.7)", () => {
 
   // ─── 1. handleFile (fixed) ────────────────────────────────────────────────
 
@@ -404,7 +404,7 @@ describe("Unit Tests — Fixed Upload Path (Task 3.7)", () => {
       vi.unstubAllGlobals();
     });
 
-    it("calls fetch with fileData, fileName, mimeType, fileSize — not uploadBytes", async () => {
+    it("calls fetch with fileData, fileName, mimeType, fileSize - not uploadBytes", async () => {
       const fileData = "dGVzdA=="; // base64 of "test"
       const dataUrl  = `data:application/pdf;base64,${fileData}`;
 
@@ -457,7 +457,7 @@ describe("Unit Tests — Fixed Upload Path (Task 3.7)", () => {
       expect(parsedBody.type).toBe("gst");
     });
 
-    it("strips the data URL prefix — only pure Base64 is sent in fileData", async () => {
+    it("strips the data URL prefix - only pure Base64 is sent in fileData", async () => {
       const pureBase64 = "SGVsbG8gV29ybGQ="; // "Hello World"
       const dataUrl    = `data:image/jpeg;base64,${pureBase64}`;
 
@@ -698,7 +698,7 @@ describe("Unit Tests — Fixed Upload Path (Task 3.7)", () => {
       expect(db.audits).toHaveLength(0);
     });
 
-    it("audit event written on success — document_uploaded event in audit_events", () => {
+    it("audit event written on success - document_uploaded event in audit_events", () => {
       const db     = makeDb();
       simulateFixedPostDocument(db, validBody, "company-001", "user-001");
 
@@ -708,7 +708,7 @@ describe("Unit Tests — Fixed Upload Path (Task 3.7)", () => {
       expect(audit["companyId"]).toBe("company-001");
     });
 
-    it("upsert semantics preserved — second upload of same type produces exactly one record", () => {
+    it("upsert semantics preserved - second upload of same type produces exactly one record", () => {
       const db = makeDb();
       simulateFixedPostDocument(db, { ...validBody, fileData: "Zmlyc3Q=" }, "company-001", "user-001");
       simulateFixedPostDocument(db, { ...validBody, fileData: "c2Vjb25k" }, "company-001", "user-001");
@@ -929,13 +929,13 @@ describe("Unit Tests — Fixed Upload Path (Task 3.7)", () => {
       const first = simulateFixedSeedSuperAdmin(db, { secret: SEED_SECRET }, SEED_SECRET);
       expect((first.body as { created: number }).created).toBe(3);
 
-      // Second call — same db
+      // Second call - same db
       const second = simulateFixedSeedSuperAdmin(db, { secret: SEED_SECRET }, SEED_SECRET);
       const body   = second.body as { created: number; alreadyAdmin: number };
       expect(body.created).toBe(0);
       expect(body.alreadyAdmin).toBe(3);
 
-      // Still exactly 3 users — no duplicates created
+      // Still exactly 3 users - no duplicates created
       expect(db.users).toHaveLength(3);
     });
 

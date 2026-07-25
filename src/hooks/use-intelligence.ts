@@ -127,7 +127,7 @@ export function useIntelligence(options: IntelligenceOptions = {}) {
 
       await Promise.all(promises);
     } catch {
-      // silent — never block the UI
+      // silent - never block the UI
     }
   }, [user, shouldFetchKpis, shouldFetchAlerts, shouldFetchIncidents]);
 

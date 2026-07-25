@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     const now = new Date().toISOString();
 
-    // Check documents — require all 5
+    // Check documents - require all 5
     const docs = await db
       .collection("company_documents")
       .find({ companyId: userRecord.companyId })

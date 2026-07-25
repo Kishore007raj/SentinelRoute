@@ -8,13 +8,13 @@ import { getDb } from "@/lib/mongodb";
  * Used by load balancers, uptime monitors, and container orchestrators.
  *
  * Returns 200 when the API process is alive and the DB connection is healthy.
- * Returns 503 when the DB is unreachable — signals the orchestrator to
+ * Returns 503 when the DB is unreachable - signals the orchestrator to
  * stop routing traffic to this instance.
  *
  * Response shape:
  *   { status: "ok" | "degraded", db: "ok" | "error", timestamp, uptime, version }
  *
- * Does NOT require authentication — must be reachable by infrastructure.
+ * Does NOT require authentication - must be reachable by infrastructure.
  */
 export async function GET() {
   const start = Date.now();

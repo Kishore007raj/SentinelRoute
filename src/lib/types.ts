@@ -1,5 +1,5 @@
 /**
- * types.ts — Single source of truth for all types in SentinelRoute.
+ * types.ts - Single source of truth for all types in SentinelRoute.
  * ALL files must import types from here.
  */
 
@@ -92,18 +92,18 @@ export interface Shipment {
   departureTime:     string;
   confidencePercent: number;
   predictiveAlert?:  string;
-  /** Full breakdown stored at dispatch time — never reconstructed */
+  /** Full breakdown stored at dispatch time - never reconstructed */
   riskBreakdown?:    RiskBreakdown;
-  /** Road geometry [lng, lat][] stored at dispatch — used for map rendering */
+  /** Road geometry [lng, lat][] stored at dispatch - used for map rendering */
   geometry?:         [number, number][];
   userId?:           string;
-  /** Tenant isolation — set at creation from authenticated user's company */
+  /** Tenant isolation - set at creation from authenticated user's company */
   companyId?:        string;
-  /** Ownership — set at creation from authenticated user's uid */
+  /** Ownership - set at creation from authenticated user's uid */
   createdByUserId?:  string;
   createdAt?:        string;
   updatedAt?:        string;
-  // ── Geoapify location data (Phase 3 — coordinate-aware shipments) ──────────
+  // ── Geoapify location data (Phase 3 - coordinate-aware shipments) ──────────
   /** Origin display name from Geoapify autosuggest */
   originName?:            string;
   /** Origin full address string */
@@ -124,7 +124,7 @@ export interface Shipment {
   destinationLng?:        number;
   /** Geoapify placeId for destination */
   destinationPlaceId?:    string;
-  // ── Cargo + schedule data (Phase 9 — Module 4 readiness) ─────────────────
+  // ── Cargo + schedule data (Phase 9 - Module 4 readiness) ─────────────────
   /** Gross cargo weight in kilograms */
   cargoWeightKg?:         number;
   /** Cargo volume in cubic metres */
@@ -133,7 +133,7 @@ export interface Shipment {
   plannedDeparture?:      string;
   /** ISO-8601 planned arrival datetime (UTC) */
   plannedArrival?:        string;
-  // ── Module 4 — Workforce assignment ──────────────────────────────────────
+  // ── Module 4 - Workforce assignment ──────────────────────────────────────
   /** Assigned driver ID (from drivers collection) */
   assignedDriverId?:      string;
   /** Driver display name snapshot at assignment time */
@@ -223,9 +223,9 @@ export interface CreateShipmentRequest {
   distance:            string;
   confidencePercent:   number;
   predictiveAlert?:    string;
-  /** Full breakdown from the route analysis — stored on the shipment */
+  /** Full breakdown from the route analysis - stored on the shipment */
   riskBreakdown?:      RiskBreakdown;
-  // Geoapify coordinate data (optional — gracefully absent for legacy shipments)
+  // Geoapify coordinate data (optional - gracefully absent for legacy shipments)
   originName?:         string;
   originAddress?:      string;
   originLat?:          number;
@@ -379,12 +379,12 @@ export interface CompanyAudit {
   timestamp:   string;
 }
 
-// ─── Company Settings (Task 2 — Module 1 Finalization) ────────────────────────
+// ─── Company Settings (Task 2 - Module 1 Finalization) ────────────────────────
 
 export interface CompanySettings {
   companyId:            string;
   // ─── Multilingual ──────────────────────────────────────────────────────────
-  language:             string;    // default "en" — company workspace default language
+  language:             string;    // default "en" - company workspace default language
   supportedLanguages:   string[];  // languages enabled for this company's users
   fallbackLanguage:     string;    // default "en"
   // ─── Operations ────────────────────────────────────────────────────────────
@@ -404,7 +404,7 @@ export const DEFAULT_COMPANY_SETTINGS: Omit<CompanySettings, "companyId" | "crea
   autoApprovalEnabled: false,
 };
 
-// ─── Audit event types (Task 3 — Module 1 Finalization) ──────────────────────
+// ─── Audit event types (Task 3 - Module 1 Finalization) ──────────────────────
 
 export type AuditEventType =
   | "company_registered"
@@ -434,12 +434,12 @@ export type AuditEventType =
   | "analytics_exported"
   | "dashboard_accessed";
 
-// ─── Module 2 — Workforce Management types ───────────────────────────────────
+// ─── Module 2 - Workforce Management types ───────────────────────────────────
 
 export interface Driver {
   // ─── Identity ─────────────────────────────────────────────────────────────
   driverId:                string;      // "drv-<timestamp>-<random4>"
-  companyId:               string;      // tenant key — indexed
+  companyId:               string;      // tenant key - indexed
   employeeId:              string;      // company-assigned employee number
   fullName:                string;
   phone:                   string;
@@ -460,8 +460,8 @@ export interface Driver {
   assignedVehicleId:       string | null;
 
   // ─── Module 3/4/5 Future Fields ───────────────────────────────────────────
-  shipmentIds:             string[];    // default [] — Module 3 linkage
-  communicationChannelId:  string | null; // default null — Module 3 comm layer
+  shipmentIds:             string[];    // default [] - Module 3 linkage
+  communicationChannelId:  string | null; // default null - Module 3 comm layer
   /** Driver's primary display/communication language. Default: "en" */
   preferredLanguage:       string;
   /** Additional languages the driver understands. Default: [] */
@@ -495,8 +495,8 @@ export interface Vehicle {
   currentDriverId:         string | null;
 
   // ─── Module 3/4 Future Fields ─────────────────────────────────────────────
-  shipmentIds:             string[];    // default [] — Module 3 linkage
-  trackingDeviceId:        string | null; // default null — Module 4 tracking
+  shipmentIds:             string[];    // default [] - Module 3 linkage
+  trackingDeviceId:        string | null; // default null - Module 4 tracking
 
   // ─── Timestamps ───────────────────────────────────────────────────────────
   createdAt:               string;
@@ -538,10 +538,10 @@ export interface WorkforceAudit {
   targetId:    string;
   targetType:  "driver" | "vehicle" | "user";
   details:     Record<string, unknown>;
-  timestamp:   string;       // UTC ISO — immutable, never updated
+  timestamp:   string;       // UTC ISO - immutable, never updated
 }
 
-// ─── Module 3 — Operational Intelligence Platform ─────────────────────────────
+// ─── Module 3 - Operational Intelligence Platform ─────────────────────────────
 
 export type IncidentCategory = "Weather" | "Traffic" | "Road Closure" | "Accident" | "Construction" | "Political" | "Public Event" | "Natural Disaster" | "Restriction" | "Unknown";
 
@@ -805,7 +805,7 @@ export interface OperationalHealthScore {
   calculatedAt:      string;
 }
 
-// ─── Module 4 — Shipment Assignment ──────────────────────────────────────────
+// ─── Module 4 - Shipment Assignment ──────────────────────────────────────────
 
 export interface ShipmentAssignment {
   assignmentId:    string;
@@ -817,11 +817,11 @@ export interface ShipmentAssignment {
   vehicleNumber:   string;
   assignedBy:      string;  // userId
   assignedAt:      string;  // UTC ISO
-  unassignedAt?:   string;  // UTC ISO — set when reassigned/unassigned
+  unassignedAt?:   string;  // UTC ISO - set when reassigned/unassigned
   active:          boolean;
 }
 
-// ─── Module 5B — Active Fleet Operations & Execution ───────────────────────
+// ─── Module 5B - Active Fleet Operations & Execution ───────────────────────
 
 export type ShipmentExecutionStatus = "pending" | "driving" | "paused" | "completed" | "cancelled";
 export type ShipmentCheckpointStatus = "pending" | "arrived" | "departed" | "skipped";

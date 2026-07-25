@@ -167,7 +167,7 @@ export async function PATCH(
       updates.active = true;
       eventType = "user_activated";
     } else {
-      // role change path — active was undefined so role must be present
+      // role change path - active was undefined so role must be present
       if (!role || !isValidRole(role)) {
         return NextResponse.json(
           { error: `Invalid role: "${role}". Accepted roles: ${VALID_USER_ROLES.join(", ")}` },

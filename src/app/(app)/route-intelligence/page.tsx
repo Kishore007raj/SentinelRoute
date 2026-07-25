@@ -1,6 +1,6 @@
 "use client";
 /**
- * Route Intelligence — shows aggregated risk signals from the user's
+ * Route Intelligence - shows aggregated risk signals from the user's
  * actual shipment history, plus live Route Analysis workspace for Module 5.
  */
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";

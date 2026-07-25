@@ -53,7 +53,7 @@
   --color-panel: var(--sr-panel);
   --color-surface: var(--sr-surface);
   --color-steel: var(--sr-steel);
-  /* Second accent — violet */
+  /* Second accent - violet */
   --color-accent-2: var(--accent-2);
   --color-accent-2-foreground: var(--accent-2-foreground);
   /* Glow tokens */
@@ -63,7 +63,7 @@
 }
 
 /* ===================== */
-/* PREMIUM DARK — deep graphite · cyan-blue primary · violet accent */
+/* PREMIUM DARK - deep graphite · cyan-blue primary · violet accent */
 /* 70% neutral · 20% semantic · 10% accent                          */
 /* ===================== */
 :root {
@@ -75,7 +75,7 @@
   --popover: oklch(0.13 0.014 240);
   --popover-foreground: oklch(0.96 0.01 240);
 
-  /* ── Primary — cyan-blue hybrid (restrained) ──────────────────────────── */
+  /* ── Primary - cyan-blue hybrid (restrained) ──────────────────────────── */
   --primary: oklch(0.68 0.17 210);             /* cyan-blue, less saturated */
   --primary-foreground: oklch(0.02 0 0);
   --ring: oklch(0.68 0.17 210);
@@ -95,7 +95,7 @@
   /* ── Semantic ─────────────────────────────────────────────────────────── */
   --destructive: oklch(0.70 0.22 25);
 
-  /* ── Charts — multi-accent palette ───────────────────────────────────── */
+  /* ── Charts - multi-accent palette ───────────────────────────────────── */
   --chart-1: oklch(0.68 0.17 210);             /* primary cyan-blue */
   --chart-2: oklch(0.70 0.18 300);             /* violet accent */
   --chart-3: oklch(0.75 0.18 160);             /* emerald */
@@ -124,7 +124,7 @@
   --sr-surface: oklch(0.11 0.012 240);
   --sr-steel: oklch(0.55 0.02 240);
 
-  /* ── Second accent — violet (NEW) ────────────────────────────────────── */
+  /* ── Second accent - violet (NEW) ────────────────────────────────────── */
   --accent-2: oklch(0.70 0.18 300);
   --accent-2-foreground: oklch(0.02 0 0);
 
@@ -228,7 +228,7 @@
     box-shadow: var(--glow-violet);
   }
 
-  /* ── Button glow on hover (non-destructive — only adds shadow) ──────── */
+  /* ── Button glow on hover (non-destructive - only adds shadow) ──────── */
   [data-slot="button"]:not([data-variant="ghost"]):not([data-variant="link"]):not([data-variant="outline"]):not([data-variant="destructive"]):hover {
     box-shadow: var(--glow-primary);
   }

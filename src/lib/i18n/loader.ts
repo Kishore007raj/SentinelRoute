@@ -1,21 +1,21 @@
 /**
- * i18n/loader.ts — Static locale loader with in-memory cache.
+ * i18n/loader.ts - Static locale loader with in-memory cache.
  *
  * All locale files are bundled at build time (imported statically).
  * No network requests. No runtime file reads. No AI translation.
  * Translations are deterministic and identical every time.
  *
- * The cache is a simple Map — locale data is loaded once per locale
+ * The cache is a simple Map - locale data is loaded once per locale
  * per process and never re-fetched.
  *
  * LibreTranslate (self-hosted only) hook is defined here for future
- * dynamic translation — it is NOT connected or called anywhere yet.
+ * dynamic translation - it is NOT connected or called anywhere yet.
  */
 
 import type { Translation, SupportedLocale } from "./types";
 import { FALLBACK_LOCALE } from "./types";
 
-// ─── Static imports — all bundled at build time ───────────────────────────────
+// ─── Static imports - all bundled at build time ───────────────────────────────
 // Each import is a static JSON file. Bundler inlines them at compile time.
 
 import en from "@/locales/en/common.json";
@@ -94,7 +94,7 @@ export function getKey(t: Translation, key: string): string {
   return typeof current === "string" ? current : key;
 }
 
-// ─── LibreTranslate hook (future — self-hosted only) ─────────────────────────
+// ─── LibreTranslate hook (future - self-hosted only) ─────────────────────────
 // When dynamic translation of user-generated content is needed, implement
 // this with a self-hosted LibreTranslate instance. All results must be cached.
 // DO NOT use public endpoints, unofficial APIs, or AI-based translation.

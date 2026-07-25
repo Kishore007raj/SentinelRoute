@@ -30,7 +30,7 @@ async function getCorridorHistoricalStats(origin: string, destination: string): 
 /**
  * Calculates deterministic probabilities and confidence for a shipment.
  * Incorporates: incidents, news intelligence, and festival calendar.
- * No AI hallucination — strict formulas only.
+ * No AI hallucination - strict formulas only.
  */
 export async function calculateRoutePrediction(shipment: Shipment): Promise<RoutePrediction> {
   const companyId = shipment.companyId || "system";
@@ -207,7 +207,7 @@ export async function calculateRoutePrediction(shipment: Shipment): Promise<Rout
 
   // ── Risk delta audit: risk_calculated / risk_increased / risk_decreased ───
   // Compare new risk score against the most recent prior calculation for this
-  // shipment. Fire-and-forget — never blocks the prediction result.
+  // shipment. Fire-and-forget - never blocks the prediction result.
   (async () => {
     try {
       const currentRiskScore = riskCalc.overallRiskScore;
@@ -244,7 +244,7 @@ export async function calculateRoutePrediction(shipment: Shipment): Promise<Rout
         const delta     = currentRiskScore - prevScore;
 
         if (Math.abs(delta) < 3) {
-          // Negligible change — still record it as a baseline recalculation
+          // Negligible change - still record it as a baseline recalculation
           await createIntelligenceAudit({
             companyId,
             shipmentId: shipment.id,

@@ -7,7 +7,7 @@ import { getAdminAuth } from "./src/lib/firebase-admin";
 import { getDb } from "./src/lib/mongodb";
 import { logger } from "./src/lib/logger";
 
-// ── Startup validation — fail fast if critical env vars are missing ──────────
+// ── Startup validation -fail fast if critical env vars are missing ──────────
 validateStartup();
 logEnvStatus();
 

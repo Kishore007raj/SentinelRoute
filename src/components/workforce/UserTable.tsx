@@ -21,7 +21,7 @@ import type { CompanyUser, UserRole } from "@/lib/types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/** All assignable roles — super_admin is excluded (platform-level only) */
+/** All assignable roles - super_admin is excluded (platform-level only) */
 const ASSIGNABLE_ROLES: UserRole[] = [
   "company_manager",
   "company_admin",
@@ -133,19 +133,19 @@ export function UserTable({
               className="grid grid-cols-1 lg:grid-cols-[1.5fr_1.5fr_1.5fr_0.8fr_1fr] gap-3 lg:gap-4 px-6 py-4 border-b border-border/30 last:border-0 hover:bg-muted/5 transition-colors"
               role="row"
             >
-              {/* Name — userId in monospace (real name lookup is a future enhancement) */}
+              {/* Name - userId in monospace (real name lookup is a future enhancement) */}
               <div className="self-center">
                 <p className="text-sm font-mono text-foreground truncate">
                   {user.userId}
                 </p>
               </div>
 
-              {/* Email — not stored on CompanyUser; lives in Firebase Auth */}
+              {/* Email - not stored on CompanyUser; lives in Firebase Auth */}
               <div className="flex items-center">
                 <p className="text-sm text-muted-foreground">—</p>
               </div>
 
-              {/* Role — inline Select (disabled for self-row) */}
+              {/* Role - inline Select (disabled for self-row) */}
               <div
                 className="flex items-center"
                 onClick={(e) => e.stopPropagation()}
@@ -199,7 +199,7 @@ export function UserTable({
                   </span>
                 ) : (
                   <>
-                    {/* Disable — shown only when active */}
+                    {/* Disable - shown only when active */}
                     {user.active && (
                       <Button
                         variant="outline"
@@ -211,7 +211,7 @@ export function UserTable({
                       </Button>
                     )}
 
-                    {/* Activate — shown only when disabled */}
+                    {/* Activate - shown only when disabled */}
                     {!user.active && (
                       <Button
                         variant="outline"

@@ -1,11 +1,11 @@
 /**
- * encryption.ts — AES-256-GCM encryption for sensitive data fields.
+ * encryption.ts - AES-256-GCM encryption for sensitive data fields.
  *
  * Encrypts sensitive shipment data (notes, contactDetails, specialInstructions)
  * before storing in MongoDB. Uses AES-256-GCM with random IV per encryption.
  *
  * Required env var:
- *   DATA_ENCRYPTION_KEY — 32-byte base64-encoded key
+ *   DATA_ENCRYPTION_KEY - 32-byte base64-encoded key
  *
  * Payload format:
  *   {

@@ -5,7 +5,7 @@ import { fetchApi } from "@/lib/api-client";
  *
  * Upload required verification documents.
  * Files are read as Base64 on the client and stored directly in MongoDB
- * via POST /api/company/documents — no Firebase Storage is used.
+ * via POST /api/company/documents - no Firebase Storage is used.
  */
 
 import { useState, useEffect, useRef } from "react";

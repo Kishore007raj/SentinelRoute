@@ -1,5 +1,5 @@
 /**
- * auth.ts — Server-side auth helpers.
+ * auth.ts - Server-side auth helpers.
  *
  * TWO MODES:
  *
@@ -10,13 +10,13 @@
  *
  * 2. Firebase Admin NOT configured (service account keys missing):
  *    → Decodes the JWT payload without verification to extract the UID.
- *    → Sufficient for development — the client is already authenticated
+ *    → Sufficient for development - the client is already authenticated
  *      via Firebase client SDK, and the token is a real Firebase JWT.
  *    → NOT safe as a standalone auth mechanism in production.
  *
  * In both modes the function returns:
- *   string  — the Firebase UID
- *   null    — no/invalid Authorization header
+ *   string  - the Firebase UID
+ *   null    - no/invalid Authorization header
  * And throws only on unexpected Admin SDK errors (callers return 503).
  */
 
@@ -46,7 +46,7 @@ export async function getUserIdFromRequest(req: Request): Promise<string | null>
   const token = authHeader.slice(7).trim();
   if (!token) return null;
 
-  // ── Mode 1: Admin SDK available — full cryptographic verification ──────────
+  // ── Mode 1: Admin SDK available - full cryptographic verification ──────────
   const adminAuth = getAdminAuth();
   if (adminAuth) {
     try {
@@ -70,7 +70,7 @@ export async function getUserIdFromRequest(req: Request): Promise<string | null>
     }
   }
 
-  // ── Mode 2: No Admin SDK — decode JWT payload without verification ─────────
+  // ── Mode 2: No Admin SDK - decode JWT payload without verification ─────────
   // The token is a real Firebase ID token issued by the client SDK.
   // We trust the `sub` (subject) claim as the UID.
   // Add FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY to .env.local for
@@ -90,7 +90,7 @@ export async function getUserIdFromRequest(req: Request): Promise<string | null>
   // Sanity check: ensure this looks like a Firebase token
   const iss = typeof payload.iss === "string" ? payload.iss : "";
   if (!iss.startsWith("https://securetoken.google.com/")) {
-    console.debug("[auth] JWT issuer is not Firebase — rejecting");
+    console.debug("[auth] JWT issuer is not Firebase - rejecting");
     return null;
   }
 

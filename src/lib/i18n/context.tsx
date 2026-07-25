@@ -1,6 +1,6 @@
 "use client";
 /**
- * i18n/context.tsx — React i18n context for SentinelRoute.
+ * i18n/context.tsx - React i18n context for SentinelRoute.
  *
  * Provides:
  *   - useI18n()  → { t, locale, setLocale, localeInfo, supportedLocales }
@@ -38,7 +38,7 @@ const LOCALE_STORAGE_KEY = "sr_locale";
 interface I18nContextValue {
   /** Current active locale code */
   locale:           SupportedLocale;
-  /** Translated string accessor — pass dot-notation key */
+  /** Translated string accessor - pass dot-notation key */
   t:                (key: string) => string;
   /** Full translation object for direct property access */
   translations:     Translation;

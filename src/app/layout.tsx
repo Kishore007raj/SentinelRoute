@@ -10,7 +10,7 @@ import { CompanyProvider } from "@/lib/company-context";
 import { I18nProvider } from "@/lib/i18n";
 import { logEnvStatus } from "@/lib/env";
 
-// Runs once on server cold-start — confirms all env vars are present
+// Runs once on server cold-start - confirms all env vars are present
 logEnvStatus();
 
 const geistSans = Geist({
@@ -24,7 +24,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SentinelRoute — Logistics Decision Intelligence",
+  title: "SentinelRoute - Logistics Decision Intelligence",
   description:
     "Compare shipment routes, assess operational risk, and make routing decisions you can defend.",
 };

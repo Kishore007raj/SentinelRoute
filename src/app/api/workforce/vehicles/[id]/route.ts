@@ -128,7 +128,7 @@ export async function PATCH(
     if ("currentDriverId" in body && typeof body.currentDriverId === "string") {
       const newDriverId = body.currentDriverId as string;
 
-      // Fetch driver — must belong to same company
+      // Fetch driver - must belong to same company
       const driverDoc = await db
         .collection("drivers")
         .findOne({ driverId: newDriverId, companyId });
@@ -165,7 +165,7 @@ export async function PATCH(
         );
       }
 
-      // MongoDB session — atomic bidirectional assignment
+      // MongoDB session - atomic bidirectional assignment
       const session = client.startSession();
       try {
         await session.withTransaction(async () => {

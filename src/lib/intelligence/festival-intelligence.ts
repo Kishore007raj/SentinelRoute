@@ -1,5 +1,5 @@
 /**
- * festival-intelligence.ts — Festival congestion risk engine for India.
+ * festival-intelligence.ts - Festival congestion risk engine for India.
  *
  * Provides festival-aware risk scoring for the prediction engine.
  * Each festival entry has a congestion multiplier and affected states.
@@ -23,7 +23,7 @@ export interface FestivalEntry {
   name:                 string;
   /** "national" | ISO 3166-2:IN state code e.g. "TN", "MH", "KL" */
   state:                "national" | string;
-  startDate:            string;  // "MM-DD" (annual — no year)
+  startDate:            string;  // "MM-DD" (annual - no year)
   endDate:              string;  // "MM-DD"
   congestionMultiplier: number;  // 1.0 – 2.5
   riskLevel:            "low" | "medium" | "high" | "critical";

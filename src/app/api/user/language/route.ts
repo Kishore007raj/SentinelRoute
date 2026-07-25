@@ -8,7 +8,7 @@ import { SUPPORTED_LOCALES } from "@/lib/i18n";
  * PATCH /api/user/language
  *
  * Updates the authenticated user's personal preferredLanguage.
- * Every user can change their own language — no admin role required.
+ * Every user can change their own language - no admin role required.
  *
  * Body: { language: string }
  *

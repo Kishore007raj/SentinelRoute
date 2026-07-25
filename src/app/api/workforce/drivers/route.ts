@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
 
     await db.collection("drivers").insertOne({ ...driver });
 
-    // Fire-and-forget audit event — failure must never block the response
+    // Fire-and-forget audit event - failure must never block the response
     createWorkforceAuditEvent({
       db,
       companyId,
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
       console.error("[POST /api/workforce/drivers] Audit error (ignored):", err)
     );
 
-    // Task 3: never return encrypted Aadhaar value — mask in create response
+    // Task 3: never return encrypted Aadhaar value - mask in create response
     const { aadhaarNumber: _aadhaar, ...driverSafe } = driver;
     return NextResponse.json({ driver: { ...driverSafe, aadhaarNumber: "****" } }, { status: 201 });
   } catch (err) {

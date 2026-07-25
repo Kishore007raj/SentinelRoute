@@ -1,6 +1,6 @@
 "use client";
 /**
- * company-context.tsx — Company workspace context for Module 1.
+ * company-context.tsx - Company workspace context for Module 1.
  *
  * Loads the authenticated user's company record and user profile.
  * All operational pages read companyId from this context to scope queries.
@@ -98,7 +98,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      // 503 = firebase admin not configured (dev mode) — don't block the app
+      // 503 = firebase admin not configured (dev mode) - don't block the app
       if (msg.includes("503")) {
         setStatus("none");
       } else {

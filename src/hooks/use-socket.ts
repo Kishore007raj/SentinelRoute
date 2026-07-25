@@ -1,5 +1,5 @@
 /**
- * use-socket.ts — Socket.io client hook for SentinelRoute.
+ * use-socket.ts - Socket.io client hook for SentinelRoute.
  *
  * Works in two modes:
  *  - Local dev with `npm run dev` (custom server) → real WebSocket connection
@@ -50,7 +50,7 @@ async function getSocket(): Promise<any> {
       token = await auth.currentUser.getIdToken();
     }
   } catch {
-    // Token fetch failed — connection will be rejected by server middleware
+    // Token fetch failed - connection will be rejected by server middleware
     console.warn("[socket] Could not retrieve Firebase token for handshake");
   }
 
@@ -120,7 +120,7 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
         if (onDisconnectRef.current) onDisconnectRef.current();
       };
 
-      // Proxy handlers — delegate to current ref so we don't re-subscribe
+      // Proxy handlers - delegate to current ref so we don't re-subscribe
       const proxyHandlers: Record<string, (data: unknown) => void> = {};
       const events = Object.keys(handlersRef.current);
       for (const event of events) {

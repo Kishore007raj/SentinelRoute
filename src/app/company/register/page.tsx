@@ -3,7 +3,7 @@ import { fetchApi } from "@/lib/api-client";
 /**
  * /company/register
  *
- * Company registration form — collected immediately after first sign-up.
+ * Company registration form - collected immediately after first sign-up.
  * Three sections: Company Details, Contact Information, Operations.
  */
 

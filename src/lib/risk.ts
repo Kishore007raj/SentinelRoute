@@ -1,5 +1,5 @@
 /**
- * risk.ts — Risk scoring engine for SentinelRoute.
+ * risk.ts - Risk scoring engine for SentinelRoute.
  *
  * Two public APIs:
  *   computeRiskScore(params) → { riskScore, riskLevel, riskBreakdown, predictiveAlert }
@@ -37,7 +37,7 @@ export interface RiskParams {
   warnings:          string[];
   distanceKm:        number;
   etaMinutes:        number;
-  /** Static (no-traffic) ETA in minutes — used to compute delay ratio */
+  /** Static (no-traffic) ETA in minutes - used to compute delay ratio */
   staticEtaMinutes:  number;
   cargoType:         string;
   urgency:           string;
@@ -103,11 +103,11 @@ function buildPredictiveAlert(
   cargoType: string,
   warnings: string[]
 ): string | undefined {
-  if (weatherScore > 70) return "Severe weather on corridor — consider delay";
-  if (trafficScore > 75) return "Heavy congestion detected — significant delay likely";
+  if (weatherScore > 70) return "Severe weather on corridor - consider delay";
+  if (trafficScore > 75) return "Heavy congestion detected - significant delay likely";
   if (warnings.length > 0) return warnings[0];
   if (cargoType === "Pharmaceuticals" || cargoType === "Cold Chain Goods") {
-    if (trafficScore > 40) return "Temperature-sensitive cargo — monitor delay risk";
+    if (trafficScore > 40) return "Temperature-sensitive cargo - monitor delay risk";
   }
   return undefined;
 }
@@ -187,7 +187,7 @@ export function selectRecommendedRoute(
     cargoType === "Pharmaceuticals" || cargoType === "Cold Chain Goods";
   if (isSensitive) return "safest";
 
-  // Default: balanced — but if balanced risk is >20 points worse than safest, use safest
+  // Default: balanced - but if balanced risk is >20 points worse than safest, use safest
   const balanced = candidates.find((c) => c.label === "balanced");
   const safest   = candidates.find((c) => c.label === "safest");
 

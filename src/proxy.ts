@@ -1,5 +1,5 @@
 /**
- * middleware.ts — Route protection for the (app) group.
+ * middleware.ts - Route protection for the (app) group.
  *
  * Firebase Auth is client-side only, so we use a session cookie
  * set by the client after sign-in to protect server-rendered routes.
@@ -8,7 +8,7 @@
  * Value: the Firebase ID token (set by auth/signin and auth/signup pages)
  * Cleared by: sign-out action
  *
- * Protected paths: everything under /(app) — /dashboard, /shipments, etc.
+ * Protected paths: everything under /(app) - /dashboard, /shipments, etc.
  * Public paths: /, /auth/*, /demo, /api/*
  *
  * NOTE: This is a client-side guard only. All API routes perform full
@@ -44,12 +44,12 @@ export function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for session cookie — must be a non-empty string (the Firebase ID token)
+  // Check for session cookie - must be a non-empty string (the Firebase ID token)
   const session = req.cookies.get(SESSION_COOKIE);
   const hasSession = !!(session?.value && session.value.length > 10);
 
   if (!hasSession) {
-    // Not authenticated — redirect to sign-in, preserving the intended destination
+    // Not authenticated - redirect to sign-in, preserving the intended destination
     const signInUrl = new URL("/auth/signin", req.url);
     signInUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(signInUrl);

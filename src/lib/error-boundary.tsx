@@ -1,6 +1,6 @@
 "use client";
 /**
- * error-boundary.tsx — React error boundary for SentinelRoute.
+ * error-boundary.tsx - React error boundary for SentinelRoute.
  *
  * Catches unhandled render errors in the component tree and renders a
  * clean fallback UI instead of a blank screen.
@@ -99,7 +99,7 @@ export class ErrorBoundary extends Component<Props, State> {
 // ─── Convenience wrapper ─────────────────────────────────────────────────────
 
 /**
- * withErrorBoundary — HOC version.
+ * withErrorBoundary - HOC version.
  *
  * const SafeWidget = withErrorBoundary(MyWidget);
  */

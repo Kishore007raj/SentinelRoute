@@ -1,5 +1,5 @@
 /**
- * workforce-indexes.ts — Idempotent index creation for all Module 2 collections.
+ * workforce-indexes.ts - Idempotent index creation for all Module 2 collections.
  *
  * MongoDB's createIndex() is idempotent by design:
  *   - If the index already exists with the same spec and options, it is a no-op.
@@ -7,7 +7,7 @@
  *     that would indicate a programming error and is the correct behaviour.
  *
  * Called once per process from ensureWorkforceIndexes(), guarded by a boolean flag.
- * Triggered automatically via getDb() in mongodb.ts — runs once per cold start,
+ * Triggered automatically via getDb() in mongodb.ts - runs once per cold start,
  * never blocks a request. Index creation failure is logged but never crashes the server.
  *
  * Collections covered:
@@ -24,7 +24,7 @@ let indexesEnsured = false;
 
 /**
  * Creates all MongoDB indexes for the four Module 2 workforce collections.
- * Safe to call multiple times — runs only on the first invocation per process.
+ * Safe to call multiple times - runs only on the first invocation per process.
  * Wraps all index creation in a try/catch; failures are logged, never re-thrown.
  *
  * Requirements: 2.1, 2.2, 2.3, 2.4
@@ -43,7 +43,7 @@ export async function ensureWorkforceIndexes(db: Db): Promise<void> {
     console.log("[workforce-indexes] All workforce indexes ensured.");
   } catch (err) {
     // Index creation failure must never crash the application.
-    // Log and continue — the app functions without indexes, just slower.
+    // Log and continue - the app functions without indexes, just slower.
     console.error("[workforce-indexes] Failed to ensure workforce indexes:", err);
     // Reset flag so next request retries index creation.
     indexesEnsured = false;
@@ -55,7 +55,7 @@ export async function ensureWorkforceIndexes(db: Db): Promise<void> {
 async function ensureDriversIndexes(db: Db): Promise<void> {
   const col = db.collection("drivers");
   await Promise.all([
-    // Tenant isolation — all driver queries filter by companyId
+    // Tenant isolation - all driver queries filter by companyId
     col.createIndex(
       { companyId: 1 },
       { name: "drivers_companyId", background: true }
@@ -65,7 +65,7 @@ async function ensureDriversIndexes(db: Db): Promise<void> {
       { companyId: 1, status: 1 },
       { name: "drivers_companyId_status", background: true }
     ),
-    // Primary point-lookup key — must be unique
+    // Primary point-lookup key - must be unique
     col.createIndex(
       { driverId: 1 },
       { unique: true, name: "drivers_driverId_unique", background: true }
@@ -88,7 +88,7 @@ async function ensureDriversIndexes(db: Db): Promise<void> {
 async function ensureVehiclesIndexes(db: Db): Promise<void> {
   const col = db.collection("vehicles");
   await Promise.all([
-    // Tenant isolation — all vehicle queries filter by companyId
+    // Tenant isolation - all vehicle queries filter by companyId
     col.createIndex(
       { companyId: 1 },
       { name: "vehicles_companyId", background: true }
@@ -98,7 +98,7 @@ async function ensureVehiclesIndexes(db: Db): Promise<void> {
       { companyId: 1, status: 1 },
       { name: "vehicles_companyId_status", background: true }
     ),
-    // Primary point-lookup key — must be unique
+    // Primary point-lookup key - must be unique
     col.createIndex(
       { vehicleId: 1 },
       { unique: true, name: "vehicles_vehicleId_unique", background: true }
@@ -108,17 +108,17 @@ async function ensureVehiclesIndexes(db: Db): Promise<void> {
       { vehicleId: 1, companyId: 1 },
       { name: "vehicles_vehicleId_companyId", background: true }
     ),
-    // Dashboard upcoming expirations — insurance
+    // Dashboard upcoming expirations - insurance
     col.createIndex(
       { companyId: 1, insuranceExpiry: 1 },
       { name: "vehicles_companyId_insuranceExpiry", background: true }
     ),
-    // Dashboard upcoming expirations — permit
+    // Dashboard upcoming expirations - permit
     col.createIndex(
       { companyId: 1, permitExpiry: 1 },
       { name: "vehicles_companyId_permitExpiry", background: true }
     ),
-    // Dashboard upcoming expirations — fitness certificate
+    // Dashboard upcoming expirations - fitness certificate
     col.createIndex(
       { companyId: 1, fitnessExpiry: 1 },
       { name: "vehicles_companyId_fitnessExpiry", background: true }
@@ -164,7 +164,7 @@ async function ensureWorkforceAuditsIndexes(db: Db): Promise<void> {
       { companyId: 1, targetId: 1 },
       { name: "workforce_audits_companyId_targetId", background: true }
     ),
-    // Primary point-lookup key — must be unique (immutable records)
+    // Primary point-lookup key - must be unique (immutable records)
     col.createIndex(
       { auditId: 1 },
       { unique: true, name: "workforce_audits_auditId_unique", background: true }

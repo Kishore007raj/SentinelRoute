@@ -1,17 +1,17 @@
 /**
- * geoapify.ts — Geoapify API integration for SentinelRoute.
+ * geoapify.ts - Geoapify API integration for SentinelRoute.
  *
  * Capabilities:
- *   1. Autosuggest      — free-text -> place suggestions
- *   2. Geocode          — placeId -> lat/lng + address
- *   3. Reverse Geocode  — lat/lng -> place name + address
- *   4. Route Distance   — origin coords -> destination coords -> km + duration
- *   5. Route ETA        — same as above, returns duration in minutes
+ *   1. Autosuggest      - free-text -> place suggestions
+ *   2. Geocode          - placeId -> lat/lng + address
+ *   3. Reverse Geocode  - lat/lng -> place name + address
+ *   4. Route Distance   - origin coords -> destination coords -> km + duration
+ *   5. Route ETA        - same as above, returns duration in minutes
  *
  * All functions:
  *   - Read GEOAPIFY_API_KEY from env.ts (lazy accessor)
  *   - Enforce a 10-second hard timeout
- *   - Return null / [] on failure — callers handle fallback
+ *   - Return null / [] on failure - callers handle fallback
  *
  * Server-side only. Do not import in client components.
  */
@@ -110,7 +110,7 @@ export async function geoapifyAutosuggest(query: string): Promise<GeoapifySugges
 
   const apiKey = GEOAPIFY_API_KEY();
   if (!apiKey) {
-    console.warn("[geoapify] GEOAPIFY_API_KEY not set — autosuggest unavailable");
+    console.warn("[geoapify] GEOAPIFY_API_KEY not set - autosuggest unavailable");
     return [];
   }
 
@@ -238,7 +238,7 @@ export async function geoapifyRoute(
 ): Promise<GeoapifyRouteResult[]> {
   const apiKey = GEOAPIFY_API_KEY();
   if (!apiKey) {
-    console.warn("[geoapify] GEOAPIFY_API_KEY not set — route unavailable");
+    console.warn("[geoapify] GEOAPIFY_API_KEY not set - route unavailable");
     return [];
   }
 

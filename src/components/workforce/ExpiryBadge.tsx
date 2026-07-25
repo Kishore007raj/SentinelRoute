@@ -19,7 +19,7 @@ interface ExpiryBadgeProps {
 }
 
 /**
- * ExpiryBadge — dual-mode expiry visualisation.
+ * ExpiryBadge - dual-mode expiry visualisation.
  *
  * **badge mode**
  * - `daysUntil <= 30`  → amber warning badge ("Expired" or "Expiring soon")

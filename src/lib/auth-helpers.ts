@@ -1,5 +1,5 @@
 /**
- * auth-helpers.ts — Reusable server-side authorization helpers.
+ * auth-helpers.ts - Reusable server-side authorization helpers.
  *
  * All future API routes must use these helpers instead of inline
  * verifyFirebaseToken + DB lookups. This enforces consistent, auditable
@@ -60,7 +60,7 @@ function notFound(message: string): Response {
 
 /**
  * Verifies Firebase ID token.
- * Throws a Response on failure — call with try/catch and return the thrown value.
+ * Throws a Response on failure - call with try/catch and return the thrown value.
  */
 export async function requireAuth(req: NextRequest): Promise<AuthResult> {
   const verified = await verifyFirebaseToken(req);
@@ -140,7 +140,7 @@ export async function requireCompanyAdmin(req: NextRequest): Promise<CompanyAuth
 
 /**
  * Requires auth + super_admin role.
- * Does NOT check company status — super admins are platform-level.
+ * Does NOT check company status - super admins are platform-level.
  */
 export async function requireSuperAdmin(req: NextRequest): Promise<AdminAuthResult> {
   let userId: string;
@@ -206,7 +206,7 @@ export function handleAuthError(err: unknown): NextResponse {
 
 /**
  * Roles allowed to perform READ operations on workforce data.
- * driver is intentionally absent — drivers use a separate guard.
+ * driver is intentionally absent - drivers use a separate guard.
  */
 export const WORKFORCE_READ_ROLES: UserRole[] = [
   "company_manager", "company_admin", "fleet_manager",
@@ -265,7 +265,7 @@ export async function requireWorkforceRead(
     throw forbidden("Insufficient permissions to read workforce data.");
   }
 
-  // super_admin bypasses company check — reads across companies
+  // super_admin bypasses company check - reads across companies
   if (userRecord.role === "super_admin") {
     const queryCompanyId = req.nextUrl.searchParams.get("companyId") ?? "";
     // For super_admin, company object is a placeholder; consumers must use companyId directly
@@ -298,7 +298,7 @@ export async function requireWorkforceRead(
 
 /**
  * Requires auth + approved company + a role in WORKFORCE_WRITE_ROLES.
- * super_admin always receives HTTP 403 — no write access to company data.
+ * super_admin always receives HTTP 403 - no write access to company data.
  * Returns { userId, userRecord, company, companyId }.
  */
 export async function requireWorkforceWrite(

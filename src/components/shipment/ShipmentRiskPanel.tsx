@@ -43,7 +43,7 @@ export function ShipmentRiskPanel({ shipmentId }: { shipmentId: string }) {
     }
   }, [shipmentId, isCrossCompany]);
 
-  // Auto-load on mount — defer one tick so the effect body itself never
+  // Auto-load on mount - defer one tick so the effect body itself never
   // calls setState synchronously (satisfies the linter rule).
   useEffect(() => {
     if (didAutoLoad.current) return;

@@ -19,7 +19,7 @@ import type { UserRecord } from "@/lib/types";
  *   4. Resets their UserRecord.companyId back to "platform"
  *
  * Protected by SUPER_ADMIN_SEED_SECRET + valid Firebase ID token.
- * Idempotent — safe to call multiple times.
+ * Idempotent - safe to call multiple times.
  *
  * Body: { secret: string }
  */

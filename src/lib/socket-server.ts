@@ -1,10 +1,10 @@
 /**
- * socket-server.ts — Server-side Socket.io helpers for API routes.
+ * socket-server.ts - Server-side Socket.io helpers for API routes.
  *
  * API routes import `emitToUser` / `emitToAll` to push real-time
  * events to connected clients without importing the full server.
  *
- * Safe to import in any API route — returns a no-op if Socket.io
+ * Safe to import in any API route - returns a no-op if Socket.io
  * is not initialised (e.g. during build or in test environments).
  */
 

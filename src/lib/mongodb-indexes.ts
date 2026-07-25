@@ -1,5 +1,5 @@
 /**
- * mongodb-indexes.ts — Idempotent index creation for all Module 1 collections.
+ * mongodb-indexes.ts - Idempotent index creation for all Module 1 collections.
  *
  * MongoDB's createIndex() is idempotent by design:
  *   - If the index already exists with the same spec and options, it is a no-op.
@@ -7,7 +7,7 @@
  *     that would indicate a programming error and is the correct behaviour.
  *
  * Called once per process from ensureIndexes(), which is guarded by a flag so it
- * only runs on the first getDb() call. Never blocks a request — runs fire-and-forget
+ * only runs on the first getDb() call. Never blocks a request - runs fire-and-forget
  * after the first DB connection is established.
  *
  * DO NOT modify collection schemas here. Index definitions only.
@@ -51,14 +51,14 @@ export async function ensureIndexes(db: Db): Promise<void> {
       ensureOperationalMetricsIndexes(db),
       // Module 9
       ensureAnalyticsReportsIndexes(db),
-      // Module 4/5B — assignments + executions
+      // Module 4/5B - assignments + executions
       ensureShipmentAssignmentsIndexes(db),
       ensureShipmentExecutionsIndexes(db),
     ]);
     console.log("[mongodb-indexes] All indexes ensured.");
   } catch (err) {
     // Index creation failure must never crash the application.
-    // Log and continue — the app functions without indexes, just slower.
+    // Log and continue - the app functions without indexes, just slower.
     console.error("[mongodb-indexes] Failed to ensure indexes:", err);
   }
 }
@@ -188,7 +188,7 @@ async function ensureAnalyticsReportsIndexes(db: Db): Promise<void> {
   ]);
 }
 
-// ─── incident_events (Task 7 — Module 3 Finalization) ────────────────────────
+// ─── incident_events (Task 7 - Module 3 Finalization) ────────────────────────
 
 async function ensureIncidentEventsIndexes(db: Db): Promise<void> {
   const col = db.collection("incident_events");
@@ -210,7 +210,7 @@ async function ensureIncidentEventsIndexes(db: Db): Promise<void> {
   ]);
 }
 
-// ─── risk_calculations (Task 7 — Module 3 Finalization) ──────────────────────
+// ─── risk_calculations (Task 7 - Module 3 Finalization) ──────────────────────
 
 async function ensureRiskCalculationsIndexes(db: Db): Promise<void> {
   const col = db.collection("risk_calculations");
@@ -226,7 +226,7 @@ async function ensureRiskCalculationsIndexes(db: Db): Promise<void> {
   ]);
 }
 
-// ─── intelligence_audits (Task 1 — Module 3 Finalization) ────────────────────
+// ─── intelligence_audits (Task 1 - Module 3 Finalization) ────────────────────
 
 async function ensureIntelligenceAuditsIndexes(db: Db): Promise<void> {
   const col = db.collection("intelligence_audits");
@@ -242,7 +242,7 @@ async function ensureIntelligenceAuditsIndexes(db: Db): Promise<void> {
   ]);
 }
 
-// ─── festival_calendar (Task 4 — Module 3 Finalization) ──────────────────────
+// ─── festival_calendar (Task 4 - Module 3 Finalization) ──────────────────────
 
 async function ensureFestivalCalendarIndexes(db: Db): Promise<void> {
   const col = db.collection("festival_calendar");
@@ -260,7 +260,7 @@ async function ensureFestivalCalendarIndexes(db: Db): Promise<void> {
 async function ensureCompaniesIndexes(db: Db): Promise<void> {
   const col = db.collection("companies");
   await Promise.all([
-    // Primary lookup key — must be unique
+    // Primary lookup key - must be unique
     col.createIndex(
       { companyId: 1 },
       { unique: true, name: "companies_companyId_unique", background: true }
@@ -321,7 +321,7 @@ async function ensureUsersIndexes(db: Db): Promise<void> {
 async function ensureShipmentsIndexes(db: Db): Promise<void> {
   const col = db.collection("shipments");
   await Promise.all([
-    // Primary tenant isolation — all shipment reads filter by companyId
+    // Primary tenant isolation - all shipment reads filter by companyId
     col.createIndex(
       { companyId: 1 },
       { name: "shipments_companyId", background: true }
@@ -433,7 +433,7 @@ async function ensureShipmentAssignmentsIndexes(db: Db): Promise<void> {
     col.createIndex({ companyId: 1 }, { name: "assignments_companyId", background: true }),
     col.createIndex({ driverId: 1 }, { name: "assignments_driverId", background: true }),
     col.createIndex({ vehicleId: 1 }, { name: "assignments_vehicleId", background: true }),
-    // Active assignment lookup — used in conflict checks during assign
+    // Active assignment lookup - used in conflict checks during assign
     col.createIndex(
       { companyId: 1, driverId: 1, active: 1 },
       { name: "assignments_company_driver_active", background: true }

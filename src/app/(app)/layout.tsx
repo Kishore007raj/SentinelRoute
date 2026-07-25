@@ -1,6 +1,6 @@
 "use client";
 /**
- * (app)/layout.tsx — Protected app shell.
+ * (app)/layout.tsx - Protected app shell.
  *
  * Checks Firebase auth state via useUser().
  * Then checks company verification state via useCompany().
@@ -68,11 +68,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // ── Not ready — render nothing while redirect fires ──────────────────────
+  // ── Not ready - render nothing while redirect fires ──────────────────────
   if (!user) return null;
   if (!isSuperAdmin && companyStatus !== "approved") return null;
 
-  // ── Authenticated + approved — render app shell ──────────────────────────
+  // ── Authenticated + approved - render app shell ──────────────────────────
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />

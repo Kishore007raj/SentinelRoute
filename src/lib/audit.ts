@@ -1,12 +1,12 @@
 /**
- * audit.ts — Audit event helpers for the company_audits collection.
+ * audit.ts - Audit event helpers for the company_audits collection.
  *
  * All audit records are immutable insert-only (never updated or deleted).
  * Every major company action must call createAuditEvent().
  *
  * Canonical event types are defined in AuditEventType (types.ts).
  * Legacy free-form eventType strings from the existing register/submit/admin
- * routes remain valid — this helper normalizes new events going forward.
+ * routes remain valid - this helper normalizes new events going forward.
  */
 
 import type { Db } from "mongodb";
@@ -23,7 +23,7 @@ export interface AuditEventInput {
 
 /**
  * Inserts an immutable audit record into company_audits.
- * Non-throwing — logs errors but never fails the caller.
+ * Non-throwing - logs errors but never fails the caller.
  */
 export async function createAuditEvent(input: AuditEventInput): Promise<void> {
   const { db, companyId, eventType, performedBy, details, description } = input;

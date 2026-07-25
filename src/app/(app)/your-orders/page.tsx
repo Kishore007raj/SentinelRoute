@@ -12,7 +12,7 @@ import { cn, getRiskColor, formatRelativeTime } from "@/lib/utils";
 import type { Shipment, ShipmentStatus } from "@/lib/types";
 import Link from "next/link";
 
-// Canonical status config — matches all ShipmentStatus values
+// Canonical status config - matches all ShipmentStatus values
 const statusConfig: Record<string, { label: string; icon: typeof Zap; color: string; bg: string }> = {
   active: {
     label: "Active",
@@ -59,7 +59,7 @@ function OrderRow({ shipment, index }: { shipment: Shipment; index: number }) {
       transition={{ delay: index * 0.04, duration: 0.2 }}
       whileHover={{ y: -1 }}
     >
-      {/* Link uses shipment.id — consistent with dashboard and shipments page */}
+      {/* Link uses shipment.id - consistent with dashboard and shipments page */}
       <Link href={`/shipments/${shipment.id}`}>
         <div className="rounded-xl border border-border/50 bg-card hover:border-border hover:shadow-lg hover:shadow-black/20 transition-all duration-200 overflow-hidden cursor-pointer">
           <div className="h-px w-full bg-linear-to-r from-transparent via-border/50 to-transparent" />
@@ -133,7 +133,7 @@ export default function YourOrdersPage() {
 
   useEffect(() => { setHydrated(true); }, []);
 
-  // Active = "active" or "at-risk" — in-progress shipments
+  // Active = "active" or "at-risk" - in-progress shipments
   const activeShipments    = useMemo(() => shipments.filter((s) => s.status === "active" || s.status === "at-risk"), [shipments]);
   const completedShipments = useMemo(() => shipments.filter((s) => s.status === "completed"), [shipments]);
   const cancelledShipments = useMemo(() => shipments.filter((s) => s.status === "cancelled"), [shipments]);

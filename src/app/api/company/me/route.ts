@@ -7,7 +7,7 @@ import type { Company, UserRecord } from "@/lib/types";
  * GET /api/company/me
  *
  * Returns the authenticated user's UserRecord + linked Company.
- * 404 when no UserRecord exists (new user — must register).
+ * 404 when no UserRecord exists (new user - must register).
  *
  * Self-healing for super admins:
  *   - If the caller's email is in SUPER_ADMIN_EMAILS, their UserRecord is corrected
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
         const fbUser = await adminAuthInst.getUser(userId);
         callerEmail = fbUser.email ?? null;
       } catch {
-        // non-fatal — fall through to JWT decode
+        // non-fatal - fall through to JWT decode
       }
     }
 

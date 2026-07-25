@@ -224,7 +224,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Live intelligence KPI row — sourced from MongoDB via /api/intelligence/kpis */}
+      {/* Live intelligence KPI row - sourced from MongoDB via /api/intelligence/kpis */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">

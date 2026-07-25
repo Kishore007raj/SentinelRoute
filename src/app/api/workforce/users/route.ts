@@ -140,13 +140,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Resolve userId from Firebase Auth — fall back to email as pending placeholder
+  // Resolve userId from Firebase Auth - fall back to email as pending placeholder
   let resolvedUserId: string;
   try {
     const fbUser = await getAuth().getUserByEmail(email.trim());
     resolvedUserId = fbUser.uid;
   } catch {
-    // User not yet in Firebase Auth — use email as pending invite placeholder
+    // User not yet in Firebase Auth - use email as pending invite placeholder
     resolvedUserId = email.trim();
   }
 

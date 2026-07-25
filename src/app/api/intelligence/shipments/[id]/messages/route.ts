@@ -89,7 +89,7 @@ export async function POST(
       return NextResponse.json({ error: "Cannot send messages for completed shipments" }, { status: 400 });
     }
 
-    // Ensure channel exists — extract channelId for use below
+    // Ensure channel exists - extract channelId for use below
     const existingChannel = await db.collection("shipment_channels").findOne({ shipmentId: id, companyId });
     let channelId: string;
     if (!existingChannel) {

@@ -5,13 +5,13 @@
  * No hardcoded values. All metrics are derived from real data.
  *
  * Metrics:
- *   highRiskShipments        — count of shipments with status "at-risk" or riskLevel "critical"/"high"
- *   activeAlerts             — count of operational_alerts for this company
- *   openIncidents            — count of active incidents in incident_events
- *   avgOperationalRisk        — average overallOperationalConfidence (inverted) from recent route_predictions
- *   avgDelayProbability      — average delayProbability from recent route_predictions
- *   avgDisruptionProbability — average disruptionProbability from recent route_predictions
- *   avgEtaConfidence         — average etaConfidence from recent route_predictions
+ *   highRiskShipments        - count of shipments with status "at-risk" or riskLevel "critical"/"high"
+ *   activeAlerts             - count of operational_alerts for this company
+ *   openIncidents            - count of active incidents in incident_events
+ *   avgOperationalRisk        - average overallOperationalConfidence (inverted) from recent route_predictions
+ *   avgDelayProbability      - average delayProbability from recent route_predictions
+ *   avgDisruptionProbability - average disruptionProbability from recent route_predictions
+ *   avgEtaConfidence         - average etaConfidence from recent route_predictions
  */
 
 import { NextRequest, NextResponse } from "next/server";

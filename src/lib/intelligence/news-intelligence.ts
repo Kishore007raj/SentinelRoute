@@ -1,5 +1,5 @@
 /**
- * news-intelligence.ts — NewsAPI integration for logistics disruption signals.
+ * news-intelligence.ts - NewsAPI integration for logistics disruption signals.
  *
  * Fetches India-focused news articles matching logistics disruption keywords,
  * normalizes them into Incident records, deduplicates, persists to
@@ -175,7 +175,7 @@ function normalizeArticle(article: NewsAPIArticle): Incident | null {
     verifiedStatus:    false,
     impactScore:       classification.impactScore,
     recommendedAction: classification.severity === "critical"
-      ? "Reroute immediately — major disruption reported"
+      ? "Reroute immediately - major disruption reported"
       : classification.severity === "high"
       ? "Evaluate alternate corridor routes"
       : "Monitor situation closely",
@@ -256,7 +256,7 @@ export async function getNewsRiskContribution(
   let articles: NewsAPIArticle[] = [];
 
   if (!apiKey) {
-    console.warn("[news-intelligence] NEWS_API_KEY not set — using deterministic mock news");
+    console.warn("[news-intelligence] NEWS_API_KEY not set - using deterministic mock news");
     articles = MOCK_NEWS_ARTICLES;
   } else {
     try {
@@ -288,7 +288,7 @@ export async function getNewsRiskContribution(
     }
 
     if (articles.length === 0) {
-      console.warn("[news-intelligence] No articles returned — using mock news");
+      console.warn("[news-intelligence] No articles returned - using mock news");
       articles = MOCK_NEWS_ARTICLES;
     }
   }

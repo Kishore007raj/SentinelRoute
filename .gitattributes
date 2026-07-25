@@ -1,6 +1,6 @@
 # ─── .gitattributes ──────────────────────────────────────────────────────────
 # Ensures consistent line endings and diff behaviour across platforms.
-# Windows (CRLF) ↔ Linux/macOS (LF) — Git normalises to LF in the repo,
+# Windows (CRLF) ↔ Linux/macOS (LF) -Git normalises to LF in the repo,
 # checks out with native line endings on each platform.
 
 # ─── Default: normalise all text files to LF in the repo ─────────────────────
@@ -37,12 +37,12 @@
 *.sh        text eol=lf
 *.bash      text eol=lf
 
-# ─── PowerShell — CRLF on all platforms (Windows tooling expects it) ─────────
+# ─── PowerShell -CRLF on all platforms (Windows tooling expects it) ─────────
 *.ps1       text eol=crlf
 *.psm1      text eol=crlf
 *.psd1      text eol=crlf
 
-# ─── Binary files — never diff or convert line endings ───────────────────────
+# ─── Binary files -never diff or convert line endings ───────────────────────
 *.png       binary
 *.jpg       binary
 *.jpeg      binary
@@ -68,13 +68,13 @@
 package-lock.json   text eol=lf
 yarn.lock           text eol=lf
 
-# ─── Diff drivers — better diffs for common file types ───────────────────────
+# ─── Diff drivers -better diffs for common file types ───────────────────────
 *.ts    diff=typescript
 *.tsx   diff=typescript
 *.json  diff=json
 *.md    diff=markdown
 
-# ─── Export-ignore — files excluded from `git archive` (release tarballs) ────
+# ─── Export-ignore -files excluded from `git archive` (release tarballs) ────
 # These are dev-only and should never be in a production release archive.
 .gitattributes          export-ignore
 .gitignore              export-ignore

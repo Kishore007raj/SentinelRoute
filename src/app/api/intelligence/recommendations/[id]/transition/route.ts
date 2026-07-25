@@ -94,7 +94,7 @@ export async function POST(
       { $set: updatePayload }
     );
 
-    // Audit Log — eventType is a free-form string for audit records
+    // Audit Log - eventType is a free-form string for audit records
     const auditEvent = `recommendation_${newStatus}` as any;
     await createIntelligenceAudit({
       companyId: auth.companyId,
@@ -105,7 +105,7 @@ export async function POST(
       metadata: { recommendationId: id, reason, previousStatus: recommendation.lifecycleStatus, newStatus }
     });
 
-    // Timeline Log — build a matching TimelineEventType string
+    // Timeline Log - build a matching TimelineEventType string
     let timelineType: TimelineEventType = "Recommendation Generated";
     if (action === "accept" || action === "approve") timelineType = "Recommendation Accepted";
     else if (action === "reject") timelineType = "Recommendation Rejected";

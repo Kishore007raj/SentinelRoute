@@ -1,6 +1,6 @@
 "use client";
 /**
- * LocaleSelector — Dropdown for selecting the active UI language.
+ * LocaleSelector - Dropdown for selecting the active UI language.
  *
  * Used in:
  *   - Settings page (User language preference)
@@ -8,11 +8,11 @@
  *   - Driver profile (Driver language preference)
  *
  * Props:
- *   value       — current locale code
- *   onChange    — called with the new locale code
- *   onlyAllowed — optional array of allowed codes (restricts options)
- *   size        — "sm" | "md" (default "md")
- *   showScript  — show the native script name alongside English name
+ *   value       - current locale code
+ *   onChange    - called with the new locale code
+ *   onlyAllowed - optional array of allowed codes (restricts options)
+ *   size        - "sm" | "md" (default "md")
+ *   showScript  - show the native script name alongside English name
  */
 
 import {

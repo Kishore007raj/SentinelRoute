@@ -37,7 +37,7 @@ export interface ShipmentPassProps {
   onConfirm?: () => void;
   morphLayoutId?: string;
   urgency?: string;
-  /** All routes — used for spread-aware confidence and selection feedback */
+  /** All routes - used for spread-aware confidence and selection feedback */
   allRoutes?: Route[];
   dataSource?: string;
 }
@@ -178,12 +178,12 @@ export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId, urgenc
         )}
       </AnimatePresence>
 
-      {/* ── Risk alert banner — only shown when there is a real alert ──── */}
+      {/* ── Risk alert banner - only shown when there is a real alert ──── */}
       {route.alerts.length > 0 && (
         <div className="bg-amber-400/10 border-b border-amber-400/20 px-6 py-3 flex items-center gap-3">
           <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
           <span className="text-xs text-amber-400 font-medium">
-            Risk score {route.riskScore}/100 — {route.alerts[0]}
+            Risk score {route.riskScore}/100 - {route.alerts[0]}
           </span>
         </div>
       )}
@@ -265,7 +265,7 @@ export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId, urgenc
         <div className="space-y-1">
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Confidence</p>
           <p className={cn("text-xs font-semibold", confLabel.color)}>
-            {confidence}% — {confLabel.label}
+            {confidence}% - {confLabel.label}
           </p>
           {confReasons.length > 0 && (
             <ul className="mt-1.5 space-y-1">

@@ -171,7 +171,7 @@ export function RouteMapView({
             <div className="flex items-center gap-2">
               <Wifi className="w-3.5 h-3.5 shrink-0" />
               <span>
-                Live data — Geoapify routing + OpenWeather
+                Live data - Geoapify routing + OpenWeather
                 {dataSource === "geoapify+openweather+tomtom" ? " + TomTom Traffic" : ""}
               </span>
             </div>
@@ -179,10 +179,10 @@ export function RouteMapView({
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <WifiOff className="w-3.5 h-3.5 shrink-0" />
-                <span>Limited data mode — using estimated routes</span>
+                <span>Limited data mode - using estimated routes</span>
               </div>
               <p className="text-[10px] text-amber-400/70 pl-5 leading-relaxed">
-                Live traffic unavailable — ETAs are estimates. Weather scoring less accurate. Treat risk scores as indicative.
+                Live traffic unavailable - ETAs are estimates. Weather scoring less accurate. Treat risk scores as indicative.
               </p>
             </div>
           ) : null}
@@ -356,7 +356,7 @@ export function RouteMapView({
       </div>
       )}
 
-      {/* ── Risk breakdown — human-readable ───────────────────────────────── */}
+      {/* ── Risk breakdown - human-readable ───────────────────────────────── */}
       {!isGlobal && route && (
         <div className="px-4 py-4 border-t border-border space-y-3">
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Risk factors</p>

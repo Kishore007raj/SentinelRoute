@@ -148,7 +148,7 @@ export function DriverTable({
               </p>
             </div>
 
-            {/* Employee ID — hidden on mobile (shown inline above) */}
+            {/* Employee ID - hidden on mobile (shown inline above) */}
             <div className="hidden lg:flex items-center">
               <p className="text-sm text-muted-foreground font-mono truncate">
                 {driver.employeeId || "—"}
@@ -216,7 +216,7 @@ export function DriverTable({
                   Edit
                 </Button>
 
-                {/* Suspend — active drivers only */}
+                {/* Suspend - active drivers only */}
                 {driver.status === "active" && (
                   <Button
                     variant="outline"
@@ -228,7 +228,7 @@ export function DriverTable({
                   </Button>
                 )}
 
-                {/* Activate — suspended drivers only */}
+                {/* Activate - suspended drivers only */}
                 {driver.status === "suspended" && (
                   <Button
                     variant="outline"

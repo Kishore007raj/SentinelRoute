@@ -1,7 +1,7 @@
 import type * as React from "react";
 import { cn } from "@/lib/utils";
 
-// recharts v3 changed TooltipProps — use a compatible local type
+// recharts v3 changed TooltipProps - use a compatible local type
 interface RechartsTooltipProps {
   active?: boolean;
   payload?: Array<{ name?: string; value?: number | string; [key: string]: unknown }>;

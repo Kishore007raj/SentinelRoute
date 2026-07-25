@@ -1,5 +1,5 @@
 /**
- * i18n/server.ts — Server-side translation utilities.
+ * i18n/server.ts - Server-side translation utilities.
  *
  * Used in API routes, Server Components, and background jobs to produce
  * localised text for notifications, error messages, and audit descriptions.
@@ -23,7 +23,7 @@ import { FALLBACK_LOCALE } from "./types";
 
 /**
  * Returns a bound translation function for the given locale string.
- * Accepts any string (BCP-47, short code, null) — resolves safely.
+ * Accepts any string (BCP-47, short code, null) - resolves safely.
  *
  * @param locale  raw locale string, e.g. "hi", "en-IN", null
  * @returns       (key: string) => string
@@ -62,7 +62,7 @@ export function serverTWithFallback(
 
   return (key: string) => {
     const val = getKey(preferredT, key);
-    // If preferred translation equals the key itself, the key wasn't found — try fallback
+    // If preferred translation equals the key itself, the key wasn't found - try fallback
     if (val === key) {
       const fb = getKey(fallbackT, key);
       if (fb === key) return getKey(defaultT, key);

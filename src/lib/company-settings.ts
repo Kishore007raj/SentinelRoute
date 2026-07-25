@@ -1,5 +1,5 @@
 /**
- * company-settings.ts — Helpers for the company_settings collection.
+ * company-settings.ts - Helpers for the company_settings collection.
  *
  * company_settings stores per-company configuration: language, timezone,
  * riskThreshold, autoApprovalEnabled.
@@ -39,7 +39,7 @@ export async function getOrCreateCompanySettings(
 
 /**
  * Inserts default company settings and returns the created document.
- * Safe to call multiple times — uses upsert to avoid duplicates.
+ * Safe to call multiple times - uses upsert to avoid duplicates.
  */
 export async function createDefaultCompanySettings(
   db: Db,

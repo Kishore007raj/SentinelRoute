@@ -1,6 +1,6 @@
 "use client";
 /**
- * use-i18n-company.ts — Syncs the active UI locale from company settings.
+ * use-i18n-company.ts - Syncs the active UI locale from company settings.
  *
  * After the company context loads, reads:
  *   1. User's personal preferredLanguage (UserRecord)
@@ -11,7 +11,7 @@
  *
  * Usage: mount once inside the (app) layout after CompanyProvider is ready.
  *
- *   useI18nCompany();  // no args, no return — side-effect only
+ *   useI18nCompany();  // no args, no return - side-effect only
  */
 
 import { useEffect } from "react";
@@ -32,7 +32,7 @@ export function useI18nCompany(): void {
 
     const resolved = resolveLocale(preferred);
 
-    // Only call setLocale if it actually changes — avoids unnecessary re-renders
+    // Only call setLocale if it actually changes - avoids unnecessary re-renders
     if (resolved !== locale) {
       setLocale(resolved);
     }

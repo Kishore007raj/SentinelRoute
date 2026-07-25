@@ -2,13 +2,13 @@
  * GET /api/workforce/dashboard
  *
  * Returns live workforce statistics for the authenticated user's company.
- * Auth: requireWorkforceRead — roles: DASHBOARD_ROLES.
+ * Auth: requireWorkforceRead - roles: DASHBOARD_ROLES.
  * driver role → 403 (blocked before auth helper check in role matrix).
  * super_admin → accepts optional ?companyId= query param; without it returns
  * aggregate stats across all companies (no companyId filter applied).
  *
  * Index initialisation: ensureWorkforceIndexes runs once per process from
- * getDb() in mongodb.ts — not called here.
+ * getDb() in mongodb.ts - not called here.
  *
  * Response 200:
  *   totalDrivers, activeDrivers, totalVehicles, availableVehicles,
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
   // For super_admin without the param, companyId === "" (empty string from helper).
   const useGlobalScope = isSuperAdmin && !companyId;
 
-  // Builds the base filter object — either scoped or empty (global).
+  // Builds the base filter object - either scoped or empty (global).
   const baseFilter = useGlobalScope ? {} : { companyId };
 
   // ── 4. Compute thirtyDaysFromNow (ISO date string, calendar days) ─────────
@@ -118,7 +118,7 @@ export async function GET(req: NextRequest) {
         status: { $in: ["inactive", "maintenance"] },
       }),
 
-      // 7. Recent activity — 10 most recent, sorted by timestamp desc
+      // 7. Recent activity - 10 most recent, sorted by timestamp desc
       audits
         .find(baseFilter)
         .sort({ timestamp: -1 })

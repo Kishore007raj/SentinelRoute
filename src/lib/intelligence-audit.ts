@@ -1,9 +1,9 @@
 /**
- * intelligence-audit.ts — Immutable audit trail for Module 3 operational events.
+ * intelligence-audit.ts - Immutable audit trail for Module 3 operational events.
  *
  * Collection: intelligence_audits
  * All records are insert-only (never updated, never deleted).
- * Fire-and-forget writes — failures are logged but never block business operations.
+ * Fire-and-forget writes - failures are logged but never block business operations.
  *
  * Mirrors the pattern from workforce-audit.ts.
  */
@@ -70,7 +70,7 @@ export interface IntelligenceAuditRecord {
   incidentId?: string;
   userId?:     string;
   eventType:   IntelligenceEventType;
-  timestamp:   string;       // UTC ISO — immutable
+  timestamp:   string;       // UTC ISO - immutable
   source:      string;       // "PredictionEngine" | "AlertService" | "NewsIntelligence" | etc.
   metadata:    Record<string, unknown>;
 }
@@ -91,7 +91,7 @@ export interface IntelligenceAuditInput {
 
 /**
  * Inserts an immutable audit record into intelligence_audits.
- * Non-throwing — failures logged, never re-thrown.
+ * Non-throwing - failures logged, never re-thrown.
  * Always fire-and-forget from callers.
  */
 export async function createIntelligenceAudit(

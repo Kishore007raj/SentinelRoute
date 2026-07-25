@@ -31,9 +31,9 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy",            value: "strict-origin-when-cross-origin" },
           // Restrict browser feature access
           { key: "Permissions-Policy",         value: "camera=(), microphone=(), geolocation=()" },
-          // Strict transport security — 1 year, include subdomains
+          // Strict transport security -1 year, include subdomains
           { key: "Strict-Transport-Security",  value: "max-age=31536000; includeSubDomains; preload" },
-          // Content-Security-Policy — tightened for SentinelRoute
+          // Content-Security-Policy -tightened for SentinelRoute
           // - default-src: self only
           // - script-src: self + Next.js inline scripts (sha256 nonce approach via unsafe-inline
           //   is acceptable for Next.js 16 which uses script nonces via middleware in prod)

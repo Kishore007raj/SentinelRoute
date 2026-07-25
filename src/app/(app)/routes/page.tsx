@@ -138,7 +138,7 @@ function DominantRoute({ route, onSelect, selected, cargoType, urgency, allRoute
           )}
           variant="ghost"
         >
-          {selected ? "Selected — Confirm Dispatch" : "Select This Route"}
+          {selected ? "Selected - Confirm Dispatch" : "Select This Route"}
         </Button>
       </div>
     </motion.div>
@@ -221,7 +221,7 @@ export default function RoutesPage() {
   const { user } = useUser();
 
   // Capture pending shipment at mount time.
-  // After dispatch, store clears pendingShipment — if we read it reactively,
+  // After dispatch, store clears pendingShipment - if we read it reactively,
   // the map phase falls back to null and shows wrong data.
   // Capturing once at mount guarantees origin/destination stay correct
   // through the entire cards → pass → map flow.
@@ -240,7 +240,7 @@ export default function RoutesPage() {
   const [dataSource, setDataSource] = useState<string | undefined>(undefined);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  // Cache AI explanations per route ID — avoids re-calling Gemini when switching back
+  // Cache AI explanations per route ID - avoids re-calling Gemini when switching back
   const aiCacheRef = useRef<Record<string, string | null>>({});
 
   useEffect(() => {
@@ -284,7 +284,7 @@ export default function RoutesPage() {
     };
 
     fetchRoutes();
-  // shipmentData is captured once at mount — stable reference, no re-runs needed
+  // shipmentData is captured once at mount - stable reference, no re-runs needed
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -301,7 +301,7 @@ export default function RoutesPage() {
     const selected = routes.find((r) => r.id === id);
     if (!selected || !shipmentData) return;
 
-    // Return cached result immediately — no Gemini call needed
+    // Return cached result immediately - no Gemini call needed
     if (id in aiCacheRef.current) {
       setAiExplanation(aiCacheRef.current[id]);
       setAiLoading(false);
@@ -311,7 +311,7 @@ export default function RoutesPage() {
     setAiExplanation(null);
     setAiLoading(true);
 
-    // Hard 10s client-side timeout for AI insight — never leave loading state open
+    // Hard 10s client-side timeout for AI insight - never leave loading state open
     const aiTimeout = setTimeout(() => {
       setAiLoading(false);
       // explanation stays null → AiInsightBox renders deterministic fallback
@@ -602,16 +602,16 @@ export default function RoutesPage() {
                   {dataSource === "mappls+openweather" ? (
                     <div className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 mt-0.5" />
-                      <span>Live data — Mappls routing + OpenWeather active</span>
+                      <span>Live data - Mappls routing + OpenWeather active</span>
                     </div>
                   ) : (
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-0.5" />
-                        <span>Estimated routes — live data unavailable</span>
+                        <span>Estimated routes - live data unavailable</span>
                       </div>
                       <p className="text-[10px] text-amber-400/70 pl-3.5 leading-relaxed">
-                        Traffic data not available — verify ETAs before dispatch. Weather scoring is approximate. Use safest route for time-sensitive cargo.
+                        Traffic data not available - verify ETAs before dispatch. Weather scoring is approximate. Use safest route for time-sensitive cargo.
                       </p>
                     </div>
                   )}
@@ -639,7 +639,7 @@ export default function RoutesPage() {
                   referenceRoute={recommended}
                 />
               ))}
-              {/* Simulation disclosure — shown when any alternative is a synthesized estimate */}
+              {/* Simulation disclosure - shown when any alternative is a synthesized estimate */}
               {alternatives.some((r) => r.isSimulated) && (
                 <p className="text-[10px] text-muted-foreground/50 leading-relaxed px-1">
                   Alternative routes are simulated estimates based on the primary corridor.

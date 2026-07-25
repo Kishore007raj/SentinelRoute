@@ -17,12 +17,12 @@ const RouteMapView = dynamic(() => import("@/components/shipment/RouteMapView").
 import type { Route } from "@/lib/types";
 import Link from "next/link";
 
-// Demo routes — use canonical Route shape (eta string, etaMinutes number, distance string)
+// Demo routes - use canonical Route shape (eta string, etaMinutes number, distance string)
 const demoRoutes: Route[] = [
   {
     id: "route-fastest",
     label: "fastest",
-    name: "Route A — Fastest",
+    name: "Route A - Fastest",
     eta: "6h 12m",
     etaMinutes: 372,
     distance: "345 km",
@@ -37,7 +37,7 @@ const demoRoutes: Route[] = [
   {
     id: "route-balanced",
     label: "balanced",
-    name: "Route B — Balanced",
+    name: "Route B - Balanced",
     eta: "7h 06m",
     etaMinutes: 426,
     distance: "362 km",
@@ -52,7 +52,7 @@ const demoRoutes: Route[] = [
   {
     id: "route-safest",
     label: "safest",
-    name: "Route C — Safest",
+    name: "Route C - Safest",
     eta: "8h 24m",
     etaMinutes: 504,
     distance: "398 km",
@@ -268,7 +268,7 @@ export default function DemoPage() {
                 if (isSelected && phase === "pass") {
                   return (
                     <motion.div key={`pass-${route.id}`} layout className="md:col-span-3 max-w-lg mx-auto w-full">
-                      {/* ShipmentPass uses `shipment` prop — canonical shape */}
+                      {/* ShipmentPass uses `shipment` prop - canonical shape */}
                       <ShipmentPass
                         route={route}
                         shipment={{

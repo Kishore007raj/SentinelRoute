@@ -157,7 +157,7 @@ function SignInForm() {
       {/* ── Left panel ── */}
       <div className="hidden lg:flex w-[420px] shrink-0 flex-col justify-between bg-card border-r border-border p-10">
         <div>
-          {/* Logo — sphere */}
+          {/* Logo - sphere */}
           <div className="flex items-center gap-2.5 mb-12">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
@@ -175,7 +175,7 @@ function SignInForm() {
             Not just tracking. Defensible routing decisions backed by risk intelligence.
           </p>
 
-          {/* Feature list — each with its own sphere */}
+          {/* Feature list - each with its own sphere */}
           <div className="mt-8 space-y-5">
             {features.map(({ icon: Icon, label, text, sphere }) => (
               <div key={label} className="flex items-start gap-3">
@@ -199,7 +199,7 @@ function SignInForm() {
           <p className="text-xs font-semibold text-foreground mb-1">
             &ldquo;Reduced route disruptions by 35% in Q1.&rdquo;
           </p>
-          <p className="text-[10px] text-muted-foreground">— Fleet Operations Lead, Tier-1 Logistics Co.</p>
+          <p className="text-[10px] text-muted-foreground">- Fleet Operations Lead, Tier-1 Logistics Co.</p>
         </div>
       </div>
 
@@ -282,7 +282,7 @@ function SignInForm() {
               {errors.password && <p className="text-[11px] text-red-400">{errors.password}</p>}
             </div>
 
-            {/* Primary CTA — sphere button */}
+            {/* Primary CTA - sphere button */}
             <button
               type="submit"
               disabled={loading}
@@ -340,7 +340,7 @@ function SignInForm() {
               <Link href="/demo" className="text-foreground underline underline-offset-2 hover:opacity-80 font-medium">
                 try the interactive demo
               </Link>{" "}
-              — no login required
+              - no login required
             </p>
           </div>
         </motion.div>

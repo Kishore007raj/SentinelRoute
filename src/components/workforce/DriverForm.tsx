@@ -191,7 +191,7 @@ export function DriverForm({
         return;
       }
 
-      // Success — notify parent and close
+      // Success - notify parent and close
       onSuccess();
       onOpenChange(false);
     } catch {
@@ -341,7 +341,7 @@ export function DriverForm({
               label="Language Preferences"
               htmlFor="languagePreferences"
               error={errors.languagePreferences}
-              hint="Comma-separated — e.g. English, Hindi, Tamil"
+              hint="Comma-separated - e.g. English, Hindi, Tamil"
             >
               <Input
                 id="languagePreferences"

@@ -1,5 +1,5 @@
 /**
- * mongodb.ts — MongoClient singleton for Next.js.
+ * mongodb.ts - MongoClient singleton for Next.js.
  *
  * Fails fast at module load time if MONGODB_URI is missing.
  * Uses a global promise cache so the connection is reused across
@@ -15,7 +15,7 @@ import { ensureWorkforceIndexes } from "@/lib/workforce-indexes";
 import { MONGODB_URI } from "@/lib/env";
 
 
-// ─── URI validation — fail fast ─────────────────────────────────────────────────
+// ─── URI validation - fail fast ─────────────────────────────────────────────────
 
 const uri = MONGODB_URI();
 
@@ -43,7 +43,7 @@ function createClientPromise(): Promise<MongoClient> {
 /**
  * In development: attach to global so the promise survives module
  * re-evaluation on hot-reload (prevents multiple open connections).
- * In production: module is evaluated once per process — no global needed.
+ * In production: module is evaluated once per process - no global needed.
  */
 const clientPromise: Promise<MongoClient> =
   process.env.NODE_ENV === "development"
@@ -52,7 +52,7 @@ const clientPromise: Promise<MongoClient> =
 
 /**
  * Returns the sentinelroute Db instance.
- * Reuses the cached MongoClient — never opens a second connection.
+ * Reuses the cached MongoClient - never opens a second connection.
  * Triggers index creation on first call (idempotent, fire-and-forget).
  */
 export async function getDb(): Promise<Db> {

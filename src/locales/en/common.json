@@ -369,7 +369,7 @@
     "source": "Source",
     "predictiveIntelligence": "Predictive Intelligence",
     "safestContext": "Safest route selected for {cargo} cargo (risk: {risk}). Longer ETA accepted to minimise disruption probability and protect cargo integrity.",
-    "fastestContext": "Fastest route selected (risk: {risk}). Speed was prioritised — monitor for congestion and weather alerts during transit.",
+    "fastestContext": "Fastest route selected (risk: {risk}). Speed was prioritised - monitor for congestion and weather alerts during transit.",
     "balancedContext": "Balanced route selected (risk: {risk}). Optimal tradeoff between ETA and disruption risk for {cargo} cargo."
   }
 }

@@ -30,7 +30,7 @@ function decryptAadhaar(encrypted: string): string {
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     return decrypted.toString();
   } catch {
-    // Decryption failure — mask rather than expose raw encrypted bytes
+    // Decryption failure - mask rather than expose raw encrypted bytes
     return "****";
   }
 }
@@ -62,7 +62,7 @@ export async function GET(
     return handleAuthError(err);
   }
 
-  // super_admin must have supplied ?companyId= — enforced by requireWorkforceRead
+  // super_admin must have supplied ?companyId= - enforced by requireWorkforceRead
   if (userRecord.role === "super_admin" && !companyId) {
     return NextResponse.json(
       { error: "super_admin must provide ?companyId= query parameter" },
@@ -211,7 +211,7 @@ export async function PATCH(
 
     // ── Activation from suspended ─────────────────────────────────────────────
     const updateFields: Record<string, unknown> = { ...body, updatedAt: now };
-    // Remove status from body to handle separately — already captured in newStatus
+    // Remove status from body to handle separately - already captured in newStatus
     delete updateFields.status;
     if (newStatus) updateFields.status = newStatus;
 
@@ -304,7 +304,7 @@ export async function DELETE(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { _id, ...updatedDoc } = updated!;
 
-    // Fire-and-forget audit — design maps inactive to driver_suspended
+    // Fire-and-forget audit - design maps inactive to driver_suspended
     createWorkforceAuditEvent({
       db,
       companyId,

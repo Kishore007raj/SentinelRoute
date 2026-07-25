@@ -27,7 +27,7 @@ import { logger } from "@/lib/logger";
  *   6. Integrity hash → SHA-256 of each route decision
  *
  * Falls back to static routes if external APIs are unavailable.
- * Response shape is identical to Layer 1 — no frontend changes required.
+ * Response shape is identical to Layer 1 - no frontend changes required.
  */
 
 // ─── Request handler ──────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
 
   if (geoapifyRoutes.length === 0) {
     if (oLat && oLng && dLat && dLng) {
-      console.warn(`[analyze-routes] Geoapify routing failed for ${origin}→${destination} — using synthetic fallback`);
+      console.warn(`[analyze-routes] Geoapify routing failed for ${origin}→${destination} - using synthetic fallback`);
       // Fallback: use haversine distance * 1.3 routing factor
       const R = 6371; // km
       const dLatRad = (dLat - oLat) * Math.PI / 180;
@@ -269,7 +269,7 @@ export async function POST(req: NextRequest) {
       return {
         id:          `route-${gRoute.label}`,
         label:       gRoute.label,
-        name:        `Route ${String.fromCharCode(64 + routeIndex)} — ${capitalize(gRoute.label)}`,
+        name:        `Route ${String.fromCharCode(64 + routeIndex)} - ${capitalize(gRoute.label)}`,
         eta:         formatMinutes(gRoute.durationMinutes + expectedDelay),
         etaMinutes:  gRoute.durationMinutes + expectedDelay,
         distance:    `${gRoute.distanceKm} km`,
@@ -360,7 +360,7 @@ function buildSummary(
 ): string {
   switch (label) {
     case "fastest":
-      return `Fastest path from ${origin} to ${destination} (${formatMinutes(etaMins)}, ${distanceKm} km). Primary corridor — higher exposure to congestion.`;
+      return `Fastest path from ${origin} to ${destination} (${formatMinutes(etaMins)}, ${distanceKm} km). Primary corridor - higher exposure to congestion.`;
     case "balanced":
       return `Balanced route from ${origin} to ${destination}. Good tradeoff between travel time and disruption risk.`;
     case "safest":
@@ -377,7 +377,7 @@ function buildAlerts(
 ): string[] {
   const alerts: string[] = [];
 
-  // TomTom incidents first — they are the most specific and actionable
+  // TomTom incidents first - they are the most specific and actionable
   for (const incident of tomtomIncidents) {
     if (!alerts.includes(incident)) alerts.push(incident);
   }
@@ -385,7 +385,7 @@ function buildAlerts(
   if (weatherScore > 70 && weatherAlert) alerts.push(weatherAlert);
   else if (weatherScore > 40 && weatherAlert) alerts.push(weatherAlert);
 
-  if (trafficScore > 70) alerts.push("Heavy congestion detected — significant delay likely");
+  if (trafficScore > 70) alerts.push("Heavy congestion detected - significant delay likely");
   else if (trafficScore > 40) alerts.push("Moderate congestion on this corridor");
 
   if (predictiveAlert && !alerts.some((a) => a.startsWith(predictiveAlert.slice(0, 20)))) {

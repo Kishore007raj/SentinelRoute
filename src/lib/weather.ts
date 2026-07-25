@@ -1,5 +1,5 @@
 /**
- * weather.ts — OpenWeather API client for SentinelRoute.
+ * weather.ts - OpenWeather API client for SentinelRoute.
  *
  * Provides:
  *   1. Current weather for a corridor (origin + destination)
@@ -11,13 +11,13 @@
  *   - Sample weather at both origin and destination using coordinates
  *   - Take the worse of the two (most conservative risk estimate)
  *   - Convert weather conditions to a risk score
- *   - No hardcoded city tables — all lookups use lat/lng
+ *   - No hardcoded city tables - all lookups use lat/lng
  *
  * API: OpenWeather Current Weather Data + 5 Day Forecast
  * Docs: https://openweathermap.org/current
  *       https://openweathermap.org/forecast5
  *
- * Server-side only — uses OPENWEATHER_API_KEY from env.ts (no NEXT_PUBLIC_ prefix).
+ * Server-side only - uses OPENWEATHER_API_KEY from env.ts (no NEXT_PUBLIC_ prefix).
  */
 
 import { OPENWEATHER_API_KEY } from "./env";
@@ -135,7 +135,7 @@ function conditionCodeToRisk(code: number): number {
   if (code === 781)               return 95; // Tornado
   if (code === 800)               return 5;  // Clear
   if (code >= 801 && code <= 804) return 10; // Clouds
-  return 20; // Unknown — neutral
+  return 20; // Unknown - neutral
 }
 
 function windRiskBonus(windSpeedMs: number, gustMs?: number): number {
@@ -191,8 +191,8 @@ export function weatherToAlertText(weather: OWCurrentWeather): string | null {
   if (code >= 500 && code < 600) return `Rain on corridor: ${desc}`;
   if (code >= 600 && code < 700) return `Snow/ice conditions: ${desc}`;
   if (code === 741)               return `Dense fog reducing visibility`;
-  if (code === 781)               return `Tornado warning — avoid this corridor`;
-  if (weather.wind.speed > 14)    return `Strong winds (${Math.round(weather.wind.speed)} m/s) — delay likely`;
+  if (code === 781)               return `Tornado warning - avoid this corridor`;
+  if (weather.wind.speed > 14)    return `Strong winds (${Math.round(weather.wind.speed)} m/s) - delay likely`;
 
   return null;
 }
@@ -284,7 +284,7 @@ export async function fetchForecastByCoords(
     const timer = setTimeout(() => controller.abort(), 10000);
 
     const res = await fetch(url, {
-      next: { revalidate: 3600 }, // cache for 1 hour — forecast data
+      next: { revalidate: 3600 }, // cache for 1 hour - forecast data
       signal: controller.signal,
     });
     clearTimeout(timer);
@@ -306,10 +306,10 @@ export async function fetchForecastByCoords(
 /**
  * Derives WeatherIntelligence from current weather + 5-day forecast.
  *
- * rain probability   — max pop (probability of precipitation) across next 24h forecast items
- * storm risk         — based on thunderstorm condition codes in forecast
- * visibility risk    — worst visibility across current + forecast
- * temp anomaly       — deviation from India's approximate seasonal norm (~28°C)
+ * rain probability   - max pop (probability of precipitation) across next 24h forecast items
+ * storm risk         - based on thunderstorm condition codes in forecast
+ * visibility risk    - worst visibility across current + forecast
+ * temp anomaly       - deviation from India's approximate seasonal norm (~28°C)
  */
 export async function getWeatherIntelligence(
   lat: number,
@@ -335,14 +335,14 @@ export async function getWeatherIntelligence(
 
   if (!current) return NEUTRAL;
 
-  // ── Rain probability — from forecast pop values (next 24h = 8 x 3h slots) ──
+  // ── Rain probability - from forecast pop values (next 24h = 8 x 3h slots) ──
   const next24hItems = forecast?.list?.slice(0, 8) ?? [];
   const maxPop = next24hItems.length > 0
     ? Math.max(...next24hItems.map(f => f.pop ?? 0))
     : 0;
   const rainProbability = Math.round(maxPop * 100);
 
-  // ── Storm risk — thunderstorm code in current or next 24h ─────────────────
+  // ── Storm risk - thunderstorm code in current or next 24h ─────────────────
   const hasThunderstorm =
     current.weather.some(w => w.id >= 200 && w.id < 300) ||
     next24hItems.some(f => f.weather.some(w => w.id >= 200 && w.id < 300));
@@ -351,7 +351,7 @@ export async function getWeatherIntelligence(
   // ── Visibility risk ────────────────────────────────────────────────────────
   const visibilityRisk = visibilityRiskBonus(current.visibility);
 
-  // ── Temperature anomaly — difference from ~28°C seasonal norm for India ───
+  // ── Temperature anomaly - difference from ~28°C seasonal norm for India ───
   const INDIA_NORM_TEMP = 28;
   const temperatureAnomaly = Math.round(current.main.temp - INDIA_NORM_TEMP);
 
@@ -404,7 +404,7 @@ export async function getRouteWeather(
 
   const apiKey = OPENWEATHER_API_KEY();
   if (!apiKey) {
-    console.warn("[weather] OPENWEATHER_API_KEY not set — using neutral weather score");
+    console.warn("[weather] OPENWEATHER_API_KEY not set - using neutral weather score");
     return NEUTRAL;
   }
 
@@ -415,7 +415,7 @@ export async function getRouteWeather(
   ]);
 
   if (!originWeather && !destinationWeather) {
-    console.warn("[weather] Both weather fetches failed — using neutral score");
+    console.warn("[weather] Both weather fetches failed - using neutral score");
     return NEUTRAL;
   }
 
@@ -423,7 +423,7 @@ export async function getRouteWeather(
   const originScore      = originWeather      ? weatherToRiskScore(originWeather)      : 20;
   const destinationScore = destinationWeather ? weatherToRiskScore(destinationWeather) : 20;
 
-  // Use the worse of the two — conservative estimate for the corridor
+  // Use the worse of the two - conservative estimate for the corridor
   const weatherScore = Math.max(originScore, destinationScore);
 
   // Generate alert from the worse endpoint
@@ -457,7 +457,7 @@ export async function getRouteWeatherByCoords(
 
   const apiKey = OPENWEATHER_API_KEY();
   if (!apiKey) {
-    console.warn("[weather] OPENWEATHER_API_KEY not set — using neutral weather score");
+    console.warn("[weather] OPENWEATHER_API_KEY not set - using neutral weather score");
     return NEUTRAL;
   }
 
@@ -467,7 +467,7 @@ export async function getRouteWeatherByCoords(
   ]);
 
   if (!originWeather && !destinationWeather) {
-    console.warn("[weather] Both coord-based weather fetches failed — using neutral score");
+    console.warn("[weather] Both coord-based weather fetches failed - using neutral score");
     return NEUTRAL;
   }
 
@@ -509,7 +509,7 @@ export interface WeatherSnapshot {
 
 /**
  * Persists a weather snapshot to the weather_snapshots collection.
- * Fire-and-forget — failures are logged but never rethrow.
+ * Fire-and-forget - failures are logged but never rethrow.
  */
 export async function saveWeatherSnapshot(snapshot: WeatherSnapshot): Promise<void> {
   try {

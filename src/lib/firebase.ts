@@ -1,8 +1,8 @@
 /**
- * firebase.ts — Firebase app, Auth and Storage initialisation.
+ * firebase.ts - Firebase app, Auth and Storage initialisation.
  *
  * Reads NEXT_PUBLIC_ env vars directly from process.env.
- * Safe to import on both client and server — initialization is
+ * Safe to import on both client and server - initialization is
  * skipped when the API key is absent (e.g. during SSR of public pages).
  *
  * NOTE: Firestore is not used. The app uses MongoDB exclusively.

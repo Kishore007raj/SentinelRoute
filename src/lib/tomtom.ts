@@ -1,15 +1,15 @@
 /**
- * tomtom.ts — TomTom Traffic API client for SentinelRoute.
+ * tomtom.ts - TomTom Traffic API client for SentinelRoute.
  *
  * Fetches real traffic incidents and flow data for a route corridor.
- * Server-side only — uses TRAFFIC_API_KEY (never NEXT_PUBLIC_).
+ * Server-side only - uses TRAFFIC_API_KEY (never NEXT_PUBLIC_).
  *
  * Two endpoints used:
- *   1. Traffic Incidents API — accidents, closures, events, construction
- *   2. Traffic Flow API     — current speed vs free-flow speed (congestion score)
+ *   1. Traffic Incidents API - accidents, closures, events, construction
+ *   2. Traffic Flow API     - current speed vs free-flow speed (congestion score)
  *
  * Hard 10s timeout on every call.
- * Always returns a safe fallback — never throws to callers.
+ * Always returns a safe fallback - never throws to callers.
  */
 
 import { TRAFFIC_API_KEY } from "./env";
@@ -25,7 +25,7 @@ const FALLBACK: TrafficResult = {
   isLive:         false,
 };
 
-// In-process cooldown after a 401 — the key won't become valid mid-session,
+// In-process cooldown after a 401 - the key won't become valid mid-session,
 // so skip all TomTom calls until the next deployment rather than logging
 // a 401 on every single request.
 let invalidKeyUntil = 0;
@@ -98,7 +98,7 @@ async function fetchIncidents(
   apiKey: string,
   signal: AbortSignal
 ): Promise<{ incidents: string[]; hasRoadClosure: boolean; unauthorized?: boolean }> {
-  // Use v4 directly — v5 requires additional API key scopes not available on free tier
+  // Use v4 directly - v5 requires additional API key scopes not available on free tier
   const url =
     `https://api.tomtom.com/traffic/services/4/incidentDetails/s3/${bbox}/10/-1` +
     `?key=${apiKey}` +
@@ -168,7 +168,7 @@ async function fetchIncidents(
     }
   }
 
-  // Cap at 3 incidents — most relevant first (closures already at front)
+  // Cap at 3 incidents - most relevant first (closures already at front)
   return { incidents: incidents.slice(0, 3), hasRoadClosure };
 }
 
@@ -224,7 +224,7 @@ async function fetchFlowScore(
   }
 
   const ratio = flow.currentSpeed / flow.freeFlowSpeed;
-  // Convert ratio to a 0–100 congestion score (inverted — lower speed = higher score)
+  // Convert ratio to a 0–100 congestion score (inverted - lower speed = higher score)
   const score = Math.round(Math.max(0, Math.min(100, (1 - ratio) * 110)));
   console.log(
     `[tomtom] Flow at (${midLat.toFixed(3)},${midLon.toFixed(3)}): ` +
@@ -240,7 +240,7 @@ export class TomTomTrafficProvider implements TrafficProvider {
    * Fetches real traffic data for the corridor between origin and destination.
    *
    * Runs incidents + flow in parallel with a shared 10s AbortController.
-   * Returns FALLBACK on any error — callers must handle isLive: false.
+   * Returns FALLBACK on any error - callers must handle isLive: false.
    *
    * @param originCoords  [lng, lat] of origin city
    * @param destCoords    [lng, lat] of destination city
@@ -251,11 +251,11 @@ export class TomTomTrafficProvider implements TrafficProvider {
   ): Promise<TrafficResult> {
   const apiKey = TRAFFIC_API_KEY();
   if (!apiKey) {
-    console.warn("[tomtom] TRAFFIC_API_KEY not set — skipping live traffic");
+    console.warn("[tomtom] TRAFFIC_API_KEY not set - skipping live traffic");
     return FALLBACK;
   }
 
-  // Skip all calls if the key was already rejected — it won't fix itself mid-session
+  // Skip all calls if the key was already rejected - it won't fix itself mid-session
   if (Date.now() < invalidKeyUntil) {
     return FALLBACK;
   }
@@ -273,10 +273,10 @@ export class TomTomTrafficProvider implements TrafficProvider {
 
     clearTimeout(timer);
 
-    // If either call got a 401, the key is invalid — log once and cool down
+    // If either call got a 401, the key is invalid - log once and cool down
     if (incidentResult.unauthorized || flowResult.unauthorized) {
       invalidKeyUntil = Date.now() + INVALID_KEY_COOLDOWN_MS;
-      console.error("[tomtom] API key rejected (401) — disabling TomTom for this session. Set TRAFFIC_API_KEY in Vercel environment variables.");
+      console.error("[tomtom] API key rejected (401) - disabling TomTom for this session. Set TRAFFIC_API_KEY in Vercel environment variables.");
       return FALLBACK;
     }
 
@@ -284,7 +284,7 @@ export class TomTomTrafficProvider implements TrafficProvider {
 
     // Mark as live when incidents API succeeded.
     // Flow score may be -1 in areas with limited TomTom coverage (common in India)
-    // — in that case we still use real incident data and fall back to OSRM for traffic score.
+    // - in that case we still use real incident data and fall back to OSRM for traffic score.
     const isLive = true; // incidents fetch succeeded (no throw, no 401)
 
     console.log(
@@ -303,7 +303,7 @@ export class TomTomTrafficProvider implements TrafficProvider {
     clearTimeout(timer);
     const name = (err as { name?: string }).name ?? "";
     if (name === "AbortError") {
-      console.warn("[tomtom] Request timed out after 10s — using fallback");
+      console.warn("[tomtom] Request timed out after 10s - using fallback");
     } else {
       console.error("[tomtom] Fetch error:", err);
     }

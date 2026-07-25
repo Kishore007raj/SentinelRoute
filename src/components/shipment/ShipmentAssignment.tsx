@@ -1,6 +1,6 @@
 "use client";
 /**
- * ShipmentAssignment — allows dispatchers to assign a driver + vehicle to a shipment.
+ * ShipmentAssignment - allows dispatchers to assign a driver + vehicle to a shipment.
  *
  * - Fetches available drivers (active, not suspended) and available vehicles from the company
  * - Validates availability client-side before submit
@@ -66,7 +66,7 @@ export function ShipmentAssignment({ shipment, onAssigned }: Props) {
         ));
       }
     } catch {
-      // silent — UI degrades gracefully
+      // silent - UI degrades gracefully
     } finally {
       setLoadingData(false);
     }
@@ -106,7 +106,7 @@ export function ShipmentAssignment({ shipment, onAssigned }: Props) {
       onAssigned?.(data.shipment);
       setTimeout(() => setSuccess(false), 3000);
     } catch {
-      setError("Network error — could not save assignment");
+      setError("Network error - could not save assignment");
     } finally {
       setSubmitting(false);
     }

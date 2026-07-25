@@ -1,5 +1,5 @@
 /**
- * i18n/types.ts — TypeScript types for the SentinelRoute i18n system.
+ * i18n/types.ts - TypeScript types for the SentinelRoute i18n system.
  *
  * The Translation interface is derived from the English locale structure.
  * This ensures type safety: any access to a translation key that doesn't
