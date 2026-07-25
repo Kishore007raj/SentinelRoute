@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, use, useCallback } from "react";
 import { ArrowLeft, Building2, ShieldAlert, CheckCircle2, Clock, Ban, Users, Package, Truck, Key, Activity, Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -19,34 +19,32 @@ import {
 } from "@/components/ui/dialog";
 
 export default function CompanyInspectionPage({ params }: { params: Promise<{ id: string }> }) {
-  const router = useRouter();
   const { id } = use(params);
 
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   
   const [actionModal, setActionModal] = useState<{ isOpen: boolean; action: string | null }>({ isOpen: false, action: null });
   const [actionNote, setActionNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchCompanyData();
-  }, [id]);
-
-  const fetchCompanyData = async () => {
+  const fetchCompanyData = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(`/api/admin/companies/${id}`);
       if (!res.ok) throw new Error("Failed to load");
       const json = await res.json();
       setData(json);
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Failed to load company details");
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchCompanyData();
+  }, [fetchCompanyData]);
 
   const handleAction = async () => {
     if (!actionModal.action) return;
@@ -64,8 +62,8 @@ export default function CompanyInspectionPage({ params }: { params: Promise<{ id
       toast.success(`Company ${actionModal.action}d successfully`);
       setActionModal({ isOpen: false, action: null });
       setActionNote("");
-      await fetchCompanyData(); // refresh
-    } catch (err) {
+      await fetchCompanyData();
+    } catch {
       toast.error("An error occurred");
     } finally {
       setSubmitting(false);
@@ -108,9 +106,9 @@ export default function CompanyInspectionPage({ params }: { params: Promise<{ id
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-5xl mx-auto">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild className="hover:bg-accent -ml-2">
-          <Link href="/admin/companies"><ArrowLeft className="w-4 h-4" /></Link>
-        </Button>
+        <Link href="/admin/companies" className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "hover:bg-accent -ml-2")}>
+          <ArrowLeft className="w-4 h-4" />
+        </Link>
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">{company.companyName}</h1>
@@ -206,17 +204,15 @@ export default function CompanyInspectionPage({ params }: { params: Promise<{ id
             <div className="p-5 flex-1">
               {documents && documents.length > 0 ? (
                 <div className="space-y-3">
-                  {documents.map((doc: any) => (
+                  {documents.map((doc: { documentId: string; type: string; uploadedAt: string; fileUrl?: string }) => (
                     <div key={doc.documentId} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
                       <div className="flex flex-col">
                         <span className="text-sm font-medium">{doc.type}</span>
                         <span className="text-xs text-muted-foreground">{format(new Date(doc.uploadedAt), "MMM d, yyyy")}</span>
                       </div>
-                      <Button variant="ghost" size="icon-sm" asChild>
-                        <a href={doc.fileUrl} target="_blank" rel="noreferrer">
-                          <Download className="w-4 h-4 text-muted-foreground" />
-                        </a>
-                      </Button>
+                      <a href={doc.fileUrl} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "ghost", size: "icon-sm" })}>
+                        <Download className="w-4 h-4 text-muted-foreground" />
+                      </a>
                     </div>
                   ))}
                 </div>

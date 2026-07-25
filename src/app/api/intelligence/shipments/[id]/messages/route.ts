@@ -56,8 +56,8 @@ export async function GET(
     return NextResponse.json({ 
       messages: messages.map(({_id, ...rest}) => decryptObjectFields(rest, ["message", "caption", "notes", "textPayload"])) 
     });
-  } catch (err: any) {
-    if (err.message === "Unauthorized") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     console.error("[GET /api/intelligence/shipments/[id]/messages]", err);
@@ -156,8 +156,8 @@ export async function POST(
     emitToCompany(companyId, "feed:updated", { type: "timeline", shipmentId: id });
 
     return NextResponse.json({ success: true, message });
-  } catch (err: any) {
-    if (err.message === "Unauthorized") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     console.error("[POST /api/intelligence/shipments/[id]/messages]", err);

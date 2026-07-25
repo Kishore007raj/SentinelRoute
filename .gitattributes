@@ -1,0 +1,99 @@
+# ─── .gitattributes ──────────────────────────────────────────────────────────
+# Ensures consistent line endings and diff behaviour across platforms.
+# Windows (CRLF) ↔ Linux/macOS (LF) — Git normalises to LF in the repo,
+# checks out with native line endings on each platform.
+
+# ─── Default: normalise all text files to LF in the repo ─────────────────────
+* text=auto eol=lf
+
+# ─── Source code ─────────────────────────────────────────────────────────────
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.mts       text eol=lf
+*.js        text eol=lf
+*.mjs       text eol=lf
+*.cjs       text eol=lf
+*.jsx       text eol=lf
+
+# ─── Config & data files ─────────────────────────────────────────────────────
+*.json      text eol=lf
+*.jsonc     text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+*.toml      text eol=lf
+*.ini       text eol=lf
+*.env       text eol=lf
+*.env.*     text eol=lf
+
+# ─── Styles & markup ─────────────────────────────────────────────────────────
+*.css       text eol=lf
+*.scss      text eol=lf
+*.html      text eol=lf
+*.md        text eol=lf
+*.mdx       text eol=lf
+*.txt       text eol=lf
+
+# ─── Shell scripts ────────────────────────────────────────────────────────────
+*.sh        text eol=lf
+*.bash      text eol=lf
+
+# ─── PowerShell — CRLF on all platforms (Windows tooling expects it) ─────────
+*.ps1       text eol=crlf
+*.psm1      text eol=crlf
+*.psd1      text eol=crlf
+
+# ─── Binary files — never diff or convert line endings ───────────────────────
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.webp      binary
+*.avif      binary
+*.ico       binary
+*.svg       text eol=lf
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.otf       binary
+*.eot       binary
+*.pdf       binary
+*.zip       binary
+*.tar.gz    binary
+*.tgz       binary
+*.gz        binary
+*.7z        binary
+
+# ─── Next.js / Node.js generated ─────────────────────────────────────────────
+# Treat lockfiles as text so diffs are readable, but keep LF
+package-lock.json   text eol=lf
+yarn.lock           text eol=lf
+
+# ─── Diff drivers — better diffs for common file types ───────────────────────
+*.ts    diff=typescript
+*.tsx   diff=typescript
+*.json  diff=json
+*.md    diff=markdown
+
+# ─── Export-ignore — files excluded from `git archive` (release tarballs) ────
+# These are dev-only and should never be in a production release archive.
+.gitattributes          export-ignore
+.gitignore              export-ignore
+.github/                export-ignore
+.vscode/                export-ignore
+.cursor/                export-ignore
+.claude/                export-ignore
+.kiro/                  export-ignore
+.windsurfrules          export-ignore
+.cursorrules            export-ignore
+.opencode.json          export-ignore
+.mcp.json               export-ignore
+CLAUDE.md               export-ignore
+GEMINI.md               export-ignore
+AGENTS.md               export-ignore
+docs/                   export-ignore
+assets/                 export-ignore
+scripts/                export-ignore
+vitest.config.mts       export-ignore
+eslint.config.mjs       export-ignore
+postcss.config.mjs      export-ignore
+src/__tests__/          export-ignore

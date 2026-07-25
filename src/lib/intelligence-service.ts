@@ -1,5 +1,5 @@
 import { getDb } from "./mongodb";
-import { Incident, IncidentCategory } from "./types";
+import type { Incident } from "./types";
 
 
 
@@ -19,12 +19,12 @@ export async function getActiveIncidents(companyId?: string): Promise<Incident[]
   ]);
 
   const mappedDbIncidents = dbIncidents.map(doc => {
-    const { _id, ...rest } = doc;
+    const { _id: _omit1, ...rest } = doc;
     return rest as unknown as Incident;
   });
 
   const mappedEventIncidents = eventIncidents.map(doc => {
-    const { _id, ...rest } = doc;
+    const { _id: _omit2, ...rest } = doc;
     return rest as unknown as Incident;
   });
 

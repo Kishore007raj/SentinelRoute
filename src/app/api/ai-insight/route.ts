@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateExplanation } from "@/lib/gemini";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { heavyLimiter, getClientIp } from "@/lib/rate-limit";
+import { ApiErrors } from "@/lib/api-errors";
 import type { Route } from "@/lib/types";
 
 /**
@@ -9,16 +11,17 @@ import type { Route } from "@/lib/types";
  * Requires valid Firebase authentication.
  */
 export async function POST(req: NextRequest) {
+  // ── Rate limit ────────────────────────────────────────────────────────────
+  const ip = getClientIp(req);
+  const rl = heavyLimiter.check(ip);
+  if (rl.limited) return ApiErrors.rateLimited(rl.retryAfter);
+
   // ── Auth: require valid Firebase token ────────────────────────────────────
   try {
     await verifyFirebaseToken(req);
   } catch (err) {
     if (err instanceof Response) return err;
-    console.error("[ai-insight] Auth service error:", err);
-    return NextResponse.json(
-      { error: "Authentication service unavailable" },
-      { status: 503 }
-    );
+    return ApiErrors.serviceUnavailable("Authentication service", err);
   }
   let body: {
     origin: string;

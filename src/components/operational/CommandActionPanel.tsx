@@ -27,8 +27,8 @@ export function CommandActionPanel({ recommendations }: { recommendations: Opera
         throw new Error(data.error || "Failed to process action");
       }
       toast.success(`Action ${action} successful`);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setProcessing(null);
     }

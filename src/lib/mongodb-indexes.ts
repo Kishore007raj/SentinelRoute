@@ -51,6 +51,9 @@ export async function ensureIndexes(db: Db): Promise<void> {
       ensureOperationalMetricsIndexes(db),
       // Module 9
       ensureAnalyticsReportsIndexes(db),
+      // Module 4/5B — assignments + executions
+      ensureShipmentAssignmentsIndexes(db),
+      ensureShipmentExecutionsIndexes(db),
     ]);
     console.log("[mongodb-indexes] All indexes ensured.");
   } catch (err) {
@@ -416,6 +419,51 @@ async function ensureCompanySettingsIndexes(db: Db): Promise<void> {
     col.createIndex(
       { language: 1 },
       { name: "company_settings_language", background: true }
+    ),
+  ]);
+}
+
+// ─── shipment_assignments (Module 4) ─────────────────────────────────────────
+
+async function ensureShipmentAssignmentsIndexes(db: Db): Promise<void> {
+  const col = db.collection("shipment_assignments");
+  await Promise.all([
+    col.createIndex({ assignmentId: 1 }, { unique: true, name: "assignments_id_unique", background: true }),
+    col.createIndex({ shipmentId: 1 }, { name: "assignments_shipmentId", background: true }),
+    col.createIndex({ companyId: 1 }, { name: "assignments_companyId", background: true }),
+    col.createIndex({ driverId: 1 }, { name: "assignments_driverId", background: true }),
+    col.createIndex({ vehicleId: 1 }, { name: "assignments_vehicleId", background: true }),
+    // Active assignment lookup — used in conflict checks during assign
+    col.createIndex(
+      { companyId: 1, driverId: 1, active: 1 },
+      { name: "assignments_company_driver_active", background: true }
+    ),
+    col.createIndex(
+      { companyId: 1, vehicleId: 1, active: 1 },
+      { name: "assignments_company_vehicle_active", background: true }
+    ),
+  ]);
+}
+
+// ─── shipment_executions (Module 5B) ─────────────────────────────────────────
+
+async function ensureShipmentExecutionsIndexes(db: Db): Promise<void> {
+  const col = db.collection("shipment_executions");
+  await Promise.all([
+    // Primary lookup: one execution per shipment
+    col.createIndex({ shipmentId: 1 }, { unique: true, name: "executions_shipmentId_unique", background: true }),
+    col.createIndex({ companyId: 1 }, { name: "executions_companyId", background: true }),
+    col.createIndex({ driverId: 1 }, { name: "executions_driverId", background: true }),
+    col.createIndex({ status: 1 }, { name: "executions_status", background: true }),
+    // Active fleet list query: company-scoped, filter by driving/paused status
+    col.createIndex(
+      { companyId: 1, status: 1 },
+      { name: "executions_companyId_status", background: true }
+    ),
+    // Sort + filter for fleet ops dashboard
+    col.createIndex(
+      { companyId: 1, status: 1, lastUpdated: -1 },
+      { name: "executions_company_status_updated", background: true }
     ),
   ]);
 }

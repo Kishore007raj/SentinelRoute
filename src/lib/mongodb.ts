@@ -31,7 +31,7 @@ const dbName = "sentinelroute";
 // ─── Global cache (survives Next.js hot-reloads in dev) ───────────────────────
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 

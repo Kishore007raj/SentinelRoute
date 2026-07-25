@@ -127,7 +127,7 @@ export default function PlatformHealthCenter() {
                 <span className="text-muted-foreground">V8 Heap Usage</span>
                 <span className="font-medium font-mono">{health.system.memory.processHeapUsed} MB / {health.system.memory.processHeapTotal} MB</span>
               </div>
-              <Progress value={heapUsagePercent} className="h-2" indicatorClassName="bg-amber-500" />
+              <Progress value={heapUsagePercent} className="h-2" />
             </div>
 
             <div className="space-y-2">
@@ -135,7 +135,7 @@ export default function PlatformHealthCenter() {
                 <span className="text-muted-foreground">Node RSS</span>
                 <span className="font-medium font-mono">{health.system.memory.rss} MB</span>
               </div>
-              <Progress value={Math.min((health.system.memory.rss / health.system.memory.total) * 100, 100)} className="h-2" indicatorClassName="bg-indigo-500" />
+              <Progress value={Math.min((health.system.memory.rss / health.system.memory.total) * 100, 100)} className="h-2" />
             </div>
           </CardContent>
         </Card>

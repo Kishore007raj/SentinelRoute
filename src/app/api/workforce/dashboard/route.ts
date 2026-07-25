@@ -21,11 +21,18 @@ import {
   requireWorkforceRead,
   handleAuthError,
 } from "@/lib/auth-helpers";
+import { apiLimiter, getClientIp } from "@/lib/rate-limit";
+import { ApiErrors } from "@/lib/api-errors";
+import { logger } from "@/lib/logger";
 import type { WorkforceAudit, Driver, Vehicle } from "@/lib/types";
 
 // ─── GET /api/workforce/dashboard ────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = apiLimiter.check(ip);
+  if (rl.limited) return ApiErrors.rateLimited(rl.retryAfter);
+
   // ── 1. Authenticate & authorise ───────────────────────────────────────────
   let userId: string;
   let userRecord: Awaited<ReturnType<typeof requireWorkforceRead>>["userRecord"];
@@ -190,7 +197,7 @@ export async function GET(req: NextRequest) {
           timestamp:  new Date().toISOString(),
         })
         .catch((err) =>
-          console.error("[GET /api/workforce/dashboard] Audit write failed:", err)
+          logger.error("workforce.dashboard.auditWriteFailed", { companyId }, err)
         );
     }
 
@@ -208,10 +215,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err) {
-    console.error("[GET /api/workforce/dashboard] Unexpected error:", err);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    logger.error("workforce.dashboard.unhandled", {}, err);
+    return ApiErrors.internal(err, "workforce.dashboard");
   }
 }

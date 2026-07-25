@@ -1,6 +1,6 @@
 import { getDb } from "./mongodb";
 import { createWorkforceAuditEvent } from "./workforce-audit";
-import { OperationalEngine } from "./intelligence/operational-engine";
+import { OperationalEngine, type OperationalEvent } from "./intelligence/operational-engine";
 import { emitToCompany } from "./socket-server";
 
 type EventType = 
@@ -27,7 +27,7 @@ type EventType =
 interface DomainEvent {
   type: EventType;
   companyId: string;
-  payload: any;
+  payload: unknown;
 }
 
 /**
@@ -64,7 +64,7 @@ async function handleEvent(event: DomainEvent) {
 
     case "VEHICLE_UPDATED": {
       // Sync assignments: if vehicle is out of service, unassign from active shipments
-      const { vehicleId, status } = payload;
+      const { vehicleId, status } = payload as { vehicleId: string; status: string };
       if (status === "maintenance" || status === "inactive") {
         const affectedShipments = await db.collection("shipments").find({
           companyId,
@@ -95,7 +95,7 @@ async function handleEvent(event: DomainEvent) {
 
     case "DRIVER_UPDATED": {
       // Sync assignments: if driver is inactive, unassign from active shipments
-      const { driverId, status } = payload;
+      const { driverId, status } = payload as { driverId: string; status: string };
       if (status === "inactive" || status === "on_leave") {
         const affectedShipments = await db.collection("shipments").find({
           companyId,
@@ -126,7 +126,11 @@ async function handleEvent(event: DomainEvent) {
   }
 
   // ── Operational Intelligence Platform (Module 6) ──
-  await OperationalEngine.processEvent(event as any);
+  // Only dispatch to OperationalEngine for event types it handles
+  const operationalTypes: EventType[] = ["VEHICLE_UPDATED", "DRIVER_UPDATED", "INCIDENT_REPORTED", "SHIPMENT_UPDATED"];
+  if (operationalTypes.includes(type)) {
+    await OperationalEngine.processEvent(event as unknown as OperationalEvent);
+  }
 
   // ── Real-Time Operations Platform (Module 7) ──
   // Broadcast the domain event to all clients in the company

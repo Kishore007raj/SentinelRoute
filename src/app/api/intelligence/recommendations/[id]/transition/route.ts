@@ -43,7 +43,7 @@ export async function POST(
 
     let newStatus: RecommendationLifecycleStatus;
     const now = new Date().toISOString();
-    const updatePayload: Record<string, any> = {};
+    const updatePayload: Record<string, unknown> = {};
 
     switch (action) {
       case "view":

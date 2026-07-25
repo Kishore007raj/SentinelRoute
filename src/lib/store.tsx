@@ -50,6 +50,7 @@ async function fetchWithResilience(
     const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
     try {
       // Strip any existing signal from options — we own the abort controller
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { signal: _ignored, ...rest } = options as RequestInit & { signal?: unknown };
       const res = await fetch(url, { ...rest, signal: controller.signal });
       clearTimeout(timer);
@@ -141,10 +142,10 @@ type Action =
   | { type: "CLEAR_PENDING" }
   | { type: "ADD_SHIPMENT";   payload: Shipment }
   | { type: "UPDATE_STATUS";  payload: { id: string; status: ShipmentStatus; lastUpdate: string } }
-  | { type: "SET_OPERATIONAL_DATA"; payload: { feed: any; health: any } }
+  | { type: "SET_OPERATIONAL_DATA"; payload: { feed: unknown; health: unknown } }
   | { type: "PRESENCE_UPDATE"; payload: PresenceUser }
   | { type: "PRESENCE_SYNC"; payload: Record<string, PresenceUser> }
-  | { type: "KPI_UPDATE"; payload: any };
+  | { type: "KPI_UPDATE"; payload: unknown };
 
 const initialState: StoreState = {
   shipments:       [],
@@ -395,7 +396,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }), [fetchShipments, fetchOperationalData]);
 
-  const { emit, reconnect } = useSocket({
+  const { emit } = useSocket({
     on: socketHandlers,
     onConnect: () => {
       if (company?.companyId) {
@@ -525,11 +526,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     ).catch((err) => console.error("[store] completeShipment:", err));
   }, [user, getToken, refreshToken, handleAuthFailure]);
 
-  // ── Derived ────────────────────────────────────────────────────────────────
+  // ── Derived — memoized to prevent recomputation on every render ───────────
 
-  const activeShipments    = state.shipments.filter((s) => s.status === "active" || s.status === "at-risk");
-  const completedShipments = state.shipments.filter((s) => s.status === "completed");
-  const atRiskShipments    = state.shipments.filter((s) => s.status === "at-risk");
+  const activeShipments    = useMemo(
+    () => state.shipments.filter((s) => s.status === "active" || s.status === "at-risk"),
+    [state.shipments]
+  );
+  const completedShipments = useMemo(
+    () => state.shipments.filter((s) => s.status === "completed"),
+    [state.shipments]
+  );
+  const atRiskShipments    = useMemo(
+    () => state.shipments.filter((s) => s.status === "at-risk"),
+    [state.shipments]
+  );
 
   return (
     <StoreContext.Provider value={{

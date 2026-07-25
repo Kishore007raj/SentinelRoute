@@ -175,7 +175,7 @@ export async function GET(req: Request) {
       basedOnCount: aggregated.reduce((s, r) => s + (r.shipmentCount as number), 0),
       computedAt:   new Date().toISOString(),
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof Response) {
       return new NextResponse(err.body, {
         status:  err.status,

@@ -54,7 +54,8 @@ function SummaryCard({ label, value, subtext, icon, trend, glowColor = "primary"
 }
 
 // These interfaces match what KPIEngine returns
-interface KPIs {
+export interface KPIs {
+  healthScore?: number;
   shipments?: { total: number; active: number; completed: number; cancelled: number; atRisk: number; successRate: number };
   fleet?: { total: number; available: number; assigned: number; maintenance: number; availabilityRate: number; utilizationRate: number };
   drivers?: { total: number; available: number; assigned: number; offDuty: number; utilizationRate: number };

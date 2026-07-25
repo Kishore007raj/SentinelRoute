@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useCompany } from "@/lib/company-context";
 import { HealthGauge } from "@/components/analytics/HealthGauge";
-import { ExecutiveSummaryCards } from "@/components/analytics/ExecutiveSummaryCards";
+import { ExecutiveSummaryCards, type KPIs } from "@/components/analytics/ExecutiveSummaryCards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, AlertTriangle, Calendar, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function ExecutiveDashboardPage() {
   const { company } = useCompany();
-  const [kpis, setKpis] = useState<any>(null);
+  const [kpis, setKpis] = useState<KPIs | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

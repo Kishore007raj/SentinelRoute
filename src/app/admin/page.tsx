@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Building2, Package, Users, AlertTriangle, Activity, Database, Server, Clock } from "lucide-react";
-import { formatNumber } from "@/lib/utils";
 
 interface DashboardStats {
   companies: { total: number; active: number; pending: number; };
@@ -17,23 +16,23 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/admin/dashboard");
       if (!res.ok) throw new Error("Failed to fetch dashboard stats");
       const data = await res.json();
       setStats(data);
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   if (loading) {
     return (
@@ -69,7 +68,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold">{formatNumber(stats.companies.total)}</span>
+            <span className="text-3xl font-bold">{stats.companies.total.toLocaleString()}</span>
           </div>
           <div className="mt-2 text-xs text-muted-foreground flex items-center gap-2">
             <span className="text-emerald-500 font-medium">{stats.companies.active} active</span>
@@ -87,7 +86,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold">{formatNumber(stats.users.total)}</span>
+            <span className="text-3xl font-bold">{stats.users.total.toLocaleString()}</span>
           </div>
           <div className="mt-2 text-xs text-muted-foreground">
             Registered accounts across all tenants
@@ -103,8 +102,8 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold">{formatNumber(stats.shipments.active)}</span>
-            <span className="text-sm text-muted-foreground font-medium">/ {formatNumber(stats.shipments.total)}</span>
+            <span className="text-3xl font-bold">{stats.shipments.active.toLocaleString()}</span>
+            <span className="text-sm text-muted-foreground font-medium">/ {stats.shipments.total.toLocaleString()}</span>
           </div>
           <div className="mt-2 text-xs text-muted-foreground">
             Currently in transit or drafting
@@ -120,7 +119,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold">{formatNumber(stats.incidents.open)}</span>
+            <span className="text-3xl font-bold">{stats.incidents.open.toLocaleString()}</span>
           </div>
           <div className="mt-2 text-xs text-muted-foreground">
             Unresolved operational disruptions

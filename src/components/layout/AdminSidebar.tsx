@@ -119,17 +119,13 @@ export function AdminSidebar() {
                 const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href + "/"));
                 return (
                   <SidebarMenuItem key={item.label}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      className={cn(
-                        "h-10 px-3 transition-all duration-200 rounded-lg",
+                    <SidebarMenuButton className="p-0 h-10 w-full hover:bg-transparent">
+                      <Link href={item.href} className={cn(
+                        "flex items-center gap-3 w-full h-full px-3 transition-all duration-200 rounded-lg",
                         isActive
                           ? "bg-amber-500/10 text-amber-700 font-medium ring-1 ring-amber-500/20 shadow-sm hover:bg-amber-500/15"
                           : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                      )}
-                    >
-                      <Link href={item.href} className="flex items-center gap-3 w-full">
+                      )}>
                         <item.icon className={cn("w-4 h-4", isActive ? "text-amber-600" : "")} />
                         <span>{item.label}</span>
                       </Link>

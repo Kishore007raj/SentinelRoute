@@ -9,10 +9,11 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { ArrowRight, Activity, Map, Navigation, ShieldCheck, Truck } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import type { ShipmentExecution } from "@/lib/types";
 
 export default function FleetOpsPage() {
   const { company } = useCompany();
-  const [activeExecutions, setActiveExecutions] = useState<any[]>([]);
+  const [activeExecutions, setActiveExecutions] = useState<ShipmentExecution[]>([]);
 
   useEffect(() => {
     if (!company) return;

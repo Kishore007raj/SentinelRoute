@@ -11,6 +11,9 @@ import { TomTomTrafficProvider } from "@/lib/tomtom";
 import { getFestivalRiskContribution } from "@/lib/intelligence/festival-intelligence";
 import { getNewsRiskContribution } from "@/lib/intelligence/news-intelligence";
 import { getDb } from "@/lib/mongodb";
+import { heavyLimiter, getClientIp } from "@/lib/rate-limit";
+import { ApiErrors } from "@/lib/api-errors";
+import { logger } from "@/lib/logger";
 
 /**
  * POST /api/analyze-routes
@@ -30,16 +33,20 @@ import { getDb } from "@/lib/mongodb";
 // ─── Request handler ──────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  // ── Rate limit ────────────────────────────────────────────────────────────
+  const ip = getClientIp(req);
+  const rl = heavyLimiter.check(ip);
+  if (rl.limited) return ApiErrors.rateLimited(rl.retryAfter);
+
   // ── Auth: require valid Firebase token ────────────────────────────────────
+  let userId = "anonymous";
   try {
-    await verifyFirebaseToken(req);
+    const user = await verifyFirebaseToken(req);
+    userId = user.uid;
   } catch (err) {
     if (err instanceof Response) return err;
-    console.error("[analyze-routes] Auth service error:", err);
-    return NextResponse.json(
-      { error: "Authentication service unavailable" },
-      { status: 503 }
-    );
+    logger.error("analyze-routes.authError", { ip }, err);
+    return ApiErrors.serviceUnavailable("Authentication service", err);
   }
 
   let raw: Record<string, unknown>;

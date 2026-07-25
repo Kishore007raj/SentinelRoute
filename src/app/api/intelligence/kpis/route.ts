@@ -117,7 +117,7 @@ export async function GET(req: Request) {
       basedOnPredictions: recentPredictions.length,
       computedAt:         new Date().toISOString(),
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof Response) {
       return new NextResponse(err.body, {
         status:  err.status,

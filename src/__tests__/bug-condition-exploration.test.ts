@@ -111,7 +111,7 @@ describe("Bug Condition Exploration — Firebase Storage Upload Failure (Task 1)
    *   5. onUploaded(doc) callback is never called
    */
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   let fetchMock: Mock;
 
   beforeEach(() => {

@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { Search, ChevronLeft, ChevronRight, CheckCircle2, Clock, Ban, ShieldAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
@@ -78,7 +79,7 @@ export default function TenantManagementPage() {
             />
           </div>
           <div className="w-full sm:w-[180px]">
-            <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
+            <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val || "all"); setPage(1); }}>
               <SelectTrigger className="h-9 bg-background border-border">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
@@ -136,11 +137,9 @@ export default function TenantManagementPage() {
                       {company.createdAt ? format(new Date(company.createdAt), "MMM d, yyyy") : "Unknown"}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <Button variant="ghost" size="sm" asChild className="hover:bg-amber-500/10 hover:text-amber-500">
-                        <Link href={`/admin/companies/${company.companyId}`}>
-                          Inspect
-                        </Link>
-                      </Button>
+                      <Link href={`/admin/companies/${company.companyId}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "hover:bg-amber-500/10 hover:text-amber-500")}>
+                        Inspect
+                      </Link>
                     </td>
                   </tr>
                 ))

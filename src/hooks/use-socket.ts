@@ -146,7 +146,7 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
       // Execute inner cleanup if socket resolved before unmount
       if (cleanupRef.fn) cleanupRef.fn();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [user?.uid]);
 
   const emit = useCallback((event: string, data?: unknown) => {

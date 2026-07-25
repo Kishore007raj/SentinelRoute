@@ -5,6 +5,7 @@ import { Server as SocketIOServer } from "socket.io";
 import { validateStartup, logEnvStatus } from "./src/lib/env";
 import { adminAuth } from "./src/lib/firebase-admin";
 import { getDb } from "./src/lib/mongodb";
+import { logger } from "./src/lib/logger";
 
 // ── Startup validation — fail fast if critical env vars are missing ──────────
 validateStartup();
@@ -237,6 +238,12 @@ app.prepare().then(() => {
   });
 
   httpServer.listen(port, () => {
+    logger.info("server.ready", {
+      port,
+      env:      process.env.NODE_ENV ?? "development",
+      socketPath: "/api/socket",
+      node:     process.version,
+    });
     console.log(`> Ready on http://localhost:${port} (${dev ? "dev" : "prod"})`);
     console.log(`> Socket.io listening on /api/socket`);
   });

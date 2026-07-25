@@ -9,6 +9,9 @@ import { utcNow } from "@/lib/time";
 import type { UserRecord } from "@/lib/types";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 import { addTimelineEvent } from "@/lib/timeline-service";
+import { apiLimiter, getClientIp } from "@/lib/rate-limit";
+import { ApiErrors } from "@/lib/api-errors";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/shipments
@@ -26,15 +29,19 @@ import { addTimelineEvent } from "@/lib/timeline-service";
 // ─── GET /api/shipments ───────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
+  // Rate limit
+  const ip = getClientIp(req);
+  const rl = apiLimiter.check(ip);
+  if (rl.limited) return ApiErrors.rateLimited(rl.retryAfter);
+
   let userId: string;
 
   try {
     const user = await verifyFirebaseToken(req);
     userId = user.uid;
   } catch (err) {
-    // verifyFirebaseToken throws a Response on 401 — return it directly
     if (err instanceof Response) return err;
-    console.error("[GET /api/shipments] Auth service error:", err);
+    logger.error("shipments.GET.authError", {}, err);
     return NextResponse.json(
       { error: "Authentication service unavailable" },
       { status: 503 }
@@ -99,6 +106,11 @@ export async function GET(req: NextRequest) {
 // ─── POST /api/shipments ──────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  // Rate limit
+  const ip = getClientIp(req);
+  const rl = apiLimiter.check(ip);
+  if (rl.limited) return ApiErrors.rateLimited(rl.retryAfter);
+
   let userId: string;
 
   try {

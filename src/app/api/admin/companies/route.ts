@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { requireSuperAdmin, handleAuthError } from "@/lib/auth-helpers";
+import { adminLimiter, getClientIp } from "@/lib/rate-limit";
+import { ApiErrors } from "@/lib/api-errors";
 import type { Company, UserRecord } from "@/lib/types";
 
 export async function GET(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = adminLimiter.check(ip);
+  if (rl.limited) return ApiErrors.rateLimited(rl.retryAfter);
+
   try {
     await requireSuperAdmin(req);
     const db = await getDb();
@@ -11,18 +17,19 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const statusFilter = searchParams.get("status");
     const searchStr = searchParams.get("search");
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "20", 10);
-    const skip = (page - 1) * limit;
+    const page  = Math.max(1, parseInt(searchParams.get("page")  ?? "1",  10));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
+    const skip  = (page - 1) * limit;
 
-    const query: any = {};
+    const query: Record<string, unknown> = {};
     if (statusFilter && statusFilter !== "all") {
       query.status = statusFilter;
     }
     if (searchStr) {
+      const escaped = searchStr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       query.$or = [
-        { companyName: { $regex: searchStr, $options: "i" } },
-        { companyId: { $regex: searchStr, $options: "i" } }
+        { companyName: { $regex: escaped, $options: "i" } },
+        { companyId:   { $regex: escaped, $options: "i" } },
       ];
     }
 
@@ -33,10 +40,9 @@ export async function GET(req: NextRequest) {
         .skip(skip)
         .limit(limit)
         .toArray(),
-      db.collection<Company>("companies").countDocuments(query)
+      db.collection<Company>("companies").countDocuments(query),
     ]);
 
-    // Lookup admin emails
     const companyIds = [...new Set(companies.map((c) => c.companyId))];
     const adminUsers = await db
       .collection<UserRecord>("users")
@@ -52,11 +58,11 @@ export async function GET(req: NextRequest) {
       adminUserEmail: adminEmailMap.get(c.companyId) ?? null,
     }));
 
-    return NextResponse.json({ 
-      companies: cleaned, 
+    return NextResponse.json({
+      companies: cleaned,
       total,
       page,
-      pages: Math.ceil(total / limit)
+      pages: Math.ceil(total / limit),
     });
   } catch (err) {
     return handleAuthError(err);

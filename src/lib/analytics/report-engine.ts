@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/mongodb";
 import { createAuditEvent } from "@/lib/audit";
 import { KPIEngine } from "./kpi-engine";
+import type { DateRange } from "./analytics-utils";
 
 export type ReportType = "shipment" | "fleet" | "driver" | "risk" | "incident" | "operational" | "executive";
 
@@ -8,7 +9,11 @@ export interface ReportGenerationRequest {
   companyId: string;
   userId: string;
   type: ReportType;
-  filters: Record<string, any>;
+  filters: {
+    dateRange?: DateRange;
+    query?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
   format: "csv" | "excel" | "pdf";
 }
 

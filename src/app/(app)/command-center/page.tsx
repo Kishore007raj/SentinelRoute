@@ -233,8 +233,9 @@ export default function CommandCenterPage() {
   const { atRiskShipments, activeShipments, operationalFeed } = useStore();
 
   const activeRecommendations = useMemo(() => {
-    if (!operationalFeed?.recommendations) return [];
-    return operationalFeed.recommendations
+    const feed = operationalFeed as { recommendations?: OperationalRecommendation[] } | null;
+    if (!feed?.recommendations) return [];
+    return feed.recommendations
       .filter((r: OperationalRecommendation) => r.lifecycleStatus === "generated" || r.status === "pending" || r.lifecycleStatus === "viewed")
       .sort((a: OperationalRecommendation, b: OperationalRecommendation) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [operationalFeed]);

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useUser } from "@/lib/auth-context";
-import type { PendingShipment } from "@/lib/types";
+import type { PendingShipment, Route } from "@/lib/types";
 import { RouteMapView } from "@/components/shipment/RouteMapView";
 
 const VEHICLE_OPTIONS = ["Mini Truck", "Container Truck", "Reefer Truck", "Express Van"];
@@ -247,7 +247,7 @@ export default function CreateShipmentPage() {
     riskRange: string;
     distance: string;
     routesFound: number;
-    routes: any[]; // We will pass these to RouteMapView
+    routes: Route[]; // We will pass these to RouteMapView
   } | null>(null);
 
   // Live preview — fires when both confirmed locations change
@@ -284,15 +284,15 @@ export default function CreateShipmentPage() {
         const data = await res.json();
         const routes: { eta: string; distance: string; riskScore: number; label: string }[] = data.routes ?? [];
         if (routes.length === 0) { setRoutePreview(null); return; }
-        const balanced = routes.find((r: any) => r.label === "balanced") ?? routes[0];
-        const minRisk  = Math.min(...routes.map((r: any) => r.riskScore));
-        const maxRisk  = Math.max(...routes.map((r: any) => r.riskScore));
+        const balanced = routes.find((r) => r.label === "balanced") ?? routes[0];
+        const minRisk  = Math.min(...routes.map((r) => r.riskScore));
+        const maxRisk  = Math.max(...routes.map((r) => r.riskScore));
         setRoutePreview({
           eta:         balanced.eta,
           distance:    balanced.distance,
           riskRange:   `${minRisk} – ${maxRisk}`,
           routesFound: routes.length,
-          routes:      routes,
+          routes:      routes as Route[],
         });
       } catch (err) {
         if ((err as { name?: string }).name !== "AbortError") setRoutePreview(null);
@@ -519,9 +519,9 @@ export default function CreateShipmentPage() {
                     { label: "Fastest ETA",      value: routePreview.eta,         color: "text-foreground" },
                     { label: "Distance",          value: routePreview.distance,    color: "text-foreground" },
                     { label: "Risk range",        value: routePreview.riskRange,   color: "text-amber-400" },
-                    { label: "Traffic severity",  value: `${routePreview.routes.find((r:any) => r.label === "balanced")?.riskBreakdown?.traffic ?? 0}%`, color: "text-red-400" },
-                    { label: "Weather risk",      value: `${routePreview.routes.find((r:any) => r.label === "balanced")?.riskBreakdown?.weather ?? 0}%`, color: "text-blue-400" },
-                    { label: "Disruption prob.",  value: `${routePreview.routes.find((r:any) => r.label === "balanced")?.riskBreakdown?.disruption ?? 0}%`, color: "text-purple-400" },
+                    { label: "Traffic severity",  value: `${(routePreview.routes as any[]).find((r) => r.label === "balanced")?.riskBreakdown?.traffic ?? 0}%`, color: "text-red-400" },
+                    { label: "Weather risk",      value: `${(routePreview.routes as any[]).find((r) => r.label === "balanced")?.riskBreakdown?.weather ?? 0}%`, color: "text-blue-400" },
+                    { label: "Disruption prob.",  value: `${(routePreview.routes as any[]).find((r) => r.label === "balanced")?.riskBreakdown?.disruption ?? 0}%`, color: "text-purple-400" },
                     { label: "Routes available",  value: String(routePreview.routesFound), color: "text-primary" },
                   ].map(({ label, value, color }) => (
                     <div key={label} className="flex items-center justify-between py-3 border-b border-border/30">
@@ -533,7 +533,7 @@ export default function CreateShipmentPage() {
 
                 <div className="h-64 mt-4 w-full rounded-lg overflow-hidden border border-border">
                   <RouteMapView 
-                    route={routePreview.routes.find((r: any) => r.label === "balanced") || routePreview.routes[0]}
+                    route={(routePreview.routes as any[]).find((r) => r.label === "balanced") || routePreview.routes[0]}
                     routes={routePreview.routes}
                     status="active"
                     origin={origin?.name}

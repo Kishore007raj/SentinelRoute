@@ -29,7 +29,7 @@ export async function GET(req: Request) {
 
     const incidents = await getActiveIncidents(companyId);
     return NextResponse.json({ incidents });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof Response) return new NextResponse(err.body, { status: err.status, headers: { "Content-Type": "application/json" } });
     console.error("[GET /api/intelligence/incidents]", err);
     return NextResponse.json({ error: "Failed to fetch incidents" }, { status: 500 });
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
     }).catch(() => {});
 
     return NextResponse.json({ incident }, { status: 201 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof Response) return new NextResponse(err.body, { status: err.status, headers: { "Content-Type": "application/json" } });
     console.error("[POST /api/intelligence/incidents]", err);
     return NextResponse.json({ error: "Failed to create incident" }, { status: 500 });

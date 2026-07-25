@@ -1,50 +1,52 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Clock, Activity, MessageSquare, AlertTriangle, ShieldCheck, MapPin, Navigation, CloudRain, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Clock, Activity, AlertTriangle, ShieldCheck, Navigation, CloudRain, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { useSocket } from "@/hooks/use-socket";
+import type { ShipmentTimelineEvent } from "@/lib/types";
 
 export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
   const { t } = useI18n();
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<ShipmentTimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const fetchTimeline = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/intelligence/shipments/${shipmentId}/timeline`);
+      if (res.ok) {
+        const data = await res.json();
+        setEvents(data.timeline || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [shipmentId]);
 
   useSocket({
     on: {
-      "timeline:new": (data: any) => {
-        if (data.shipmentId === shipmentId && data.event) {
+      "timeline:new": (data: unknown) => {
+        const d = data as { shipmentId?: string; event?: { eventId: string; timestamp: string } };
+        if (d.shipmentId === shipmentId && d.event) {
           setEvents(prev => {
-            if (prev.some(e => e.eventId === data.event.eventId)) return prev;
-            return [data.event, ...prev].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            if (prev.some((e: { eventId: string }) => e.eventId === d.event!.eventId)) return prev;
+            return [d.event, ...prev].sort((a: { timestamp: string }, b: { timestamp: string }) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
           });
         }
       },
       "sync:refresh_feed": () => {
-         fetchTimeline();
+        fetchTimeline();
       }
     }
   });
 
-  async function fetchTimeline() {
-    try {
-        const res = await fetch(`/api/intelligence/shipments/${shipmentId}/timeline`);
-        if (res.ok) {
-          const data = await res.json();
-          setEvents(data.timeline || []);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
   useEffect(() => {
     fetchTimeline();
-  }, [shipmentId]);
+  }, [fetchTimeline]);
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground animate-pulse border border-border rounded-xl">{t('shipmentDetail.loadingTimeline')}</div>;
   if (events.length === 0) return <div className="p-6 text-sm text-muted-foreground border border-border rounded-xl">{t('shipmentDetail.noTimelineEvents')}</div>;
@@ -66,7 +68,7 @@ export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
     if (!acc[date]) acc[date] = [];
     acc[date].push(event);
     return acc;
-  }, {} as Record<string, any[]>);
+  }, {} as Record<string, ShipmentTimelineEvent[]>);
 
   return (
     <div className="panel p-6 bg-card border border-border rounded-xl space-y-6">
@@ -84,7 +86,7 @@ export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
             </div>
             <div className="space-y-6">
               <AnimatePresence initial={false}>
-                {(dateEvents as any[]).map((event: any) => {
+                {dateEvents.map((event) => {
                   const style = getStyle(event.type);
                   return (
                     <motion.div 

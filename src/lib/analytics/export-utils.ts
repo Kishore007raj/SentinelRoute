@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-export function exportToCSV(data: any[], filename: string) {
+export function exportToCSV(data: Record<string, unknown>[], filename: string) {
   if (!data || data.length === 0) return;
 
   const headers = Object.keys(data[0]);
@@ -24,7 +24,7 @@ export function exportToCSV(data: any[], filename: string) {
   }
 }
 
-export function exportToExcel(data: any[], filename: string, sheetName: string = "Data") {
+export function exportToExcel(data: Record<string, unknown>[], filename: string, sheetName: string = "Data") {
   if (!data || data.length === 0) return;
 
   const worksheet = XLSX.utils.json_to_sheet(data);
@@ -34,12 +34,12 @@ export function exportToExcel(data: any[], filename: string, sheetName: string =
   XLSX.writeFile(workbook, `${filename}.xlsx`);
 }
 
-export function exportToPDF(data: any[], filename: string, title: string) {
+export function exportToPDF(data: Record<string, unknown>[], filename: string, title: string) {
   if (!data || data.length === 0) return;
 
   const doc = new jsPDF();
   const headers = Object.keys(data[0]);
-  const rows = data.map(obj => headers.map(key => obj[key]));
+  const rows = data.map(obj => headers.map(key => String(obj[key] ?? "")));
 
   doc.setFontSize(18);
   doc.text(title, 14, 22);

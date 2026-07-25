@@ -5,10 +5,13 @@ import { MessageSquare, Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCompany } from "@/lib/company-context";
 import { useSocket } from "@/hooks/use-socket";
+import type { ShipmentMessage } from "@/lib/types";
+
+import type { ShipmentMessage } from "@/lib/types";
 
 export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
   const { userRecord } = useCompany();
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<ShipmentMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -19,11 +22,12 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
 
   useSocket({
     on: {
-      "message:new": (msg: any) => {
-        if (msg.shipmentId === shipmentId) {
+      "message:new": (msg: unknown) => {
+        const m = msg as { shipmentId?: string; messageId?: string; message?: string; senderType?: string; senderName?: string; timestamp?: string };
+        if (m.shipmentId === shipmentId) {
           setMessages(prev => {
-            if (prev.some(m => m.messageId === msg.messageId)) return prev;
-            return [...prev, msg];
+            if (prev.some((existing: { messageId?: string }) => existing.messageId === m.messageId)) return prev;
+            return [...prev, m];
           });
         }
       }

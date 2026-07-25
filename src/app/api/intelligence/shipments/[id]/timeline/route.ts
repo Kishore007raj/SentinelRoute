@@ -48,8 +48,8 @@ export async function GET(
     const timeline = await getShipmentTimeline(id);
 
     return NextResponse.json({ timeline });
-  } catch (err: any) {
-    if (err.message === "Unauthorized") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     console.error("[GET /api/intelligence/shipments/[id]/timeline]", err);

@@ -49,7 +49,7 @@ export function useAnalyticsFilters(defaultPreset: DateRangePreset = "monthly") 
     }
   }, [filters, router, searchParams]);
 
-  const updateFilter = useCallback((key: keyof AnalyticsFilters, value: any) => {
+  const updateFilter = useCallback((key: keyof AnalyticsFilters, value: unknown) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   }, []);
 

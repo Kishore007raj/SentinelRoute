@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import dynamic from "next/dynamic";
-import { Shield, Clock, MapPin, AlertTriangle, Wifi, WifiOff, Layers, Truck } from "lucide-react";
+import { Shield, Clock, MapPin, AlertTriangle, Wifi, WifiOff, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Route, Incident, ShipmentExecution } from "@/lib/types";
 import { AiInsightBox } from "./AiInsightBox";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker } from "react-leaflet";
+import type { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useStore } from "@/lib/store";
 import { useUser } from "@/lib/auth-context";
@@ -89,7 +89,7 @@ export function RouteMapView({
   execution,
 }: RouteMapViewProps) {
   const [isClient, setIsClient] = useState(false);
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
   const { activeShipments } = useStore();
   const { user } = useUser();
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -121,7 +121,9 @@ export function RouteMapView({
   }, [user]);
 
   // Fix missing marker icons natively in Leaflet
-  const DefaultIcon = typeof window !== 'undefined' ? (require("leaflet") as any).icon({
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const L = typeof window !== "undefined" ? require("leaflet") as typeof import("leaflet") : null;
+  const DefaultIcon = L ? L.icon({
     iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
     iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
     shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",

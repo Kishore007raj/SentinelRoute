@@ -50,7 +50,7 @@ export interface FestivalRiskContribution {
  */
 export async function getFestivalRiskContribution(
   companyId:     string,
-  shipment?:     any,
+  shipment?:     Partial<{ id: string; plannedDeparture: string; plannedArrival: string; origin: string; destination: string }>,
   referenceDate?: Date
 ): Promise<FestivalRiskContribution> {
   const now = referenceDate ?? new Date();

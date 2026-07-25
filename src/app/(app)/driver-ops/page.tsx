@@ -81,8 +81,8 @@ export default function DriverOpsPage() {
       }
       toast.success(`Trip ${action} successful`);
       fetchExecution();
-    } catch (e: any) {
-      toast.error(e.message || "Action failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Action failed");
     }
   };
 
@@ -99,8 +99,8 @@ export default function DriverOpsPage() {
       }
       toast.success(`Checkpoint ${action} successful`);
       fetchExecution();
-    } catch (e: any) {
-      toast.error(e.message || "Action failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Action failed");
     }
   };
 
@@ -123,8 +123,8 @@ export default function DriverOpsPage() {
       }
       toast.success("Location pinged");
       fetchExecution();
-    } catch (e: any) {
-      toast.error(e.message || "Location ping failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Location ping failed");
     }
   };
 

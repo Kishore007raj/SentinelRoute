@@ -62,7 +62,7 @@ export async function PATCH(
     }).catch(() => {});
 
     return NextResponse.json({ success: true, alert: { ...alert, status } });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof Response) {
       return new NextResponse(err.body, { status: err.status, headers: { "Content-Type": "application/json" } });
     }

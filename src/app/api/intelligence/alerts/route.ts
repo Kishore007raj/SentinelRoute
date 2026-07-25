@@ -32,7 +32,7 @@ export async function GET(req: Request) {
 
     const alerts = await getOperationalAlerts(companyId);
     return NextResponse.json({ alerts });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof Response) {
       return new NextResponse(err.body, { status: err.status, headers: { "Content-Type": "application/json" } });
     }

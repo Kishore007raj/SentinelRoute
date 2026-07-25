@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react";
 
 interface AnalyticsLineChartProps {
   title: string;
-  data: any[];
+  data: unknown[];
   xAxisKey: string;
   lines: { key: string; name: string; color: string }[];
   isLoading?: boolean;

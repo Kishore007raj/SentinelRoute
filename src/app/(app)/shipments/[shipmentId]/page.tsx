@@ -38,6 +38,7 @@ const DecisionWorkspace = dynamic(
 
 import { getRiskColor, cn, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import { useStore } from "@/lib/store";
+import type { ShipmentTimelineEvent } from "@/lib/types";
 import type { Shipment, ShipmentExecution } from "@/lib/types";
 import { ShipmentRiskPanel } from "@/components/shipment/ShipmentRiskPanel";
 import { ShipmentTimeline } from "@/components/shipment/ShipmentTimeline";
@@ -46,21 +47,13 @@ import { ShipmentAssignment } from "@/components/shipment/ShipmentAssignment";
 
 // ─── Status configuration ─────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<string, { label: string; className: string; dot: string }> = {
-  active:    { label: "Active",     className: "bg-primary/10 text-primary border-primary/20",         dot: "bg-primary" },
-  "at-risk": { label: "At Risk",    className: "bg-amber-500/10 text-amber-400 border-amber-500/20",   dot: "bg-amber-400" },
-  completed: { label: "Completed",  className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", dot: "bg-emerald-400" },
-  cancelled: { label: "Cancelled",  className: "bg-red-500/10 text-red-400 border-red-500/20",         dot: "bg-red-400" },
-  draft:     { label: "Draft",      className: "bg-muted/40 text-muted-foreground border-border",       dot: "bg-muted-foreground" },
-};
-
 // ─── Audit tab ────────────────────────────────────────────────────────────────
 // Renders intelligence_audits for this shipment from the existing timeline API
 // (same data, different presentation — shows action/source/timestamp detail)
 
 function ShipmentAuditTab({ shipmentId, companyId }: { shipmentId: string; companyId?: string }) {
   const { user } = useUser();
-  const [events, setEvents]   = useState<any[]>([]);
+  const [events, setEvents]   = useState<ShipmentTimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -137,9 +130,9 @@ function ShipmentAuditTab({ shipmentId, companyId }: { shipmentId: string; compa
                     {ev.confidence}% confidence
                   </span>
                 )}
-                {ev.affectedMetrics?.length > 0 && (
+                {(ev.affectedMetrics?.length ?? 0) > 0 && (
                   <span className="text-[10px] text-muted-foreground/60">
-                    affects: {ev.affectedMetrics.join(", ")}
+                    affects: {ev.affectedMetrics!.join(", ")}
                   </span>
                 )}
               </div>
@@ -601,8 +594,6 @@ export default function ShipmentDetailPage({
   }
 
   if (!shipment) notFound();
-
-  const statusCfg = STATUS_CONFIG[shipment.status] ?? STATUS_CONFIG.active;
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8">

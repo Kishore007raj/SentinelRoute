@@ -148,7 +148,7 @@ export async function POST(
     }
 
     return NextResponse.json({ success: true, prediction, alert });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof Response) {
       return new NextResponse(err.body, { status: err.status, headers: { "Content-Type": "application/json" } });
     }
