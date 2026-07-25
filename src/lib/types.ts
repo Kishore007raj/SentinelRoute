@@ -428,7 +428,11 @@ export type AuditEventType =
   | "vehicle_changed"
   | "eta_changed"
   | "route_deviation"
-  | "trip_cancelled";
+  | "trip_cancelled"
+  // Module 9 Audit Events
+  | "report_generated"
+  | "analytics_exported"
+  | "dashboard_accessed";
 
 // ─── Module 2 — Workforce Management types ───────────────────────────────────
 

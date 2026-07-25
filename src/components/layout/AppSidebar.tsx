@@ -219,6 +219,50 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
               );
             })()}
 
+            {/* ─── Executive Analytics nav (Module 9) ────────────────────── */}
+            {(() => {
+              const execRoles: UserRole[] = ["company_admin", "operations_manager", "super_admin"];
+              if (!execRoles.includes(userRecord?.role as UserRole)) return null;
+              
+              const execItems = [
+                { label: "Executive Summary", href: "/executive", icon: BarChart3 },
+                { label: "Shipments", href: "/executive/shipments", icon: Package },
+                { label: "Fleet", href: "/executive/fleet", icon: Truck },
+                { label: "Drivers", href: "/executive/drivers", icon: Users },
+                { label: "Operational", href: "/executive/operational", icon: Activity },
+                { label: "Risk", href: "/executive/risk", icon: AlertTriangle },
+                { label: "Predictions", href: "/executive/predictions", icon: TrendingUp },
+              ];
+              if (isSuperAdmin) {
+                execItems.push({ label: "Company", href: "/executive/company", icon: Building2 });
+              }
+              return (
+                <div className="mt-4">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest px-3 mb-2">Executive Analytics</p>
+                  <div className="space-y-1">
+                    {execItems.map((item) => {
+                      const isActive = typeof window !== "undefined" && (window.location.pathname === item.href || window.location.pathname.startsWith(item.href + "/"));
+                      return (
+                        <Link key={item.href} href={item.href}>
+                          <div className={cn(
+                            "relative flex items-center gap-3 px-3 py-3 text-sm font-medium transition-all duration-200 rounded-lg overflow-hidden",
+                            isActive
+                              ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20 shadow-sm"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+                          )}>
+                            {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
+                            <item.icon className="w-4 h-4 shrink-0" />
+                            {item.label}
+                            {isActive && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
           </div>
         </div>
 
@@ -418,6 +462,57 @@ export function AppSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu className="space-y-1">
                   {intellItems.map((item) => {
+                    const isActive = typeof window !== "undefined" && (window.location.pathname === item.href || window.location.pathname.startsWith(item.href + "/"));
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          render={<Link href={item.href} />}
+                          isActive={isActive}
+                          tooltip={item.label}
+                          className={cn(
+                            "relative rounded-lg transition-all duration-200 py-3 overflow-hidden",
+                            isActive
+                              ? "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20 shadow-sm"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                          )}
+                        >
+                          {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
+                          <item.icon className="w-4 h-4 shrink-0" />
+                          <span className="text-sm font-medium">{item.label}</span>
+                          {isActive && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })()}
+
+        {/* ─── Executive Analytics nav (Module 9) ──────────────────────── */}
+        {(() => {
+          const execRoles: UserRole[] = ["company_admin", "operations_manager", "super_admin"];
+          if (!execRoles.includes(userRecord?.role as UserRole)) return null;
+          
+          const execItems = [
+            { label: "Executive Summary", href: "/executive", icon: BarChart3 },
+            { label: "Shipments", href: "/executive/shipments", icon: Package },
+            { label: "Fleet", href: "/executive/fleet", icon: Truck },
+            { label: "Drivers", href: "/executive/drivers", icon: Users },
+            { label: "Operational", href: "/executive/operational", icon: Activity },
+            { label: "Risk", href: "/executive/risk", icon: AlertTriangle },
+            { label: "Predictions", href: "/executive/predictions", icon: TrendingUp },
+          ];
+          if (isSuperAdmin) {
+            execItems.push({ label: "Company", href: "/executive/company", icon: Building2 });
+          }
+          return (
+            <SidebarGroup>
+              <SidebarGroupLabel className="label-meta px-3 mb-2">Executive Analytics</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  {execItems.map((item) => {
                     const isActive = typeof window !== "undefined" && (window.location.pathname === item.href || window.location.pathname.startsWith(item.href + "/"));
                     return (
                       <SidebarMenuItem key={item.href}>

@@ -49,6 +49,8 @@ export async function ensureIndexes(db: Db): Promise<void> {
       // Module 6
       ensureOperationalRecommendationsIndexes(db),
       ensureOperationalMetricsIndexes(db),
+      // Module 9
+      ensureAnalyticsReportsIndexes(db),
     ]);
     console.log("[mongodb-indexes] All indexes ensured.");
   } catch (err) {
@@ -170,6 +172,16 @@ async function ensureOperationalMetricsIndexes(db: Db): Promise<void> {
   await Promise.all([
     col.createIndex({ companyId: 1, calculatedAt: -1 }, { name: "metrics_companyId_time", background: true }),
     col.createIndex({ companyId: 1, type: 1, calculatedAt: -1 }, { name: "metrics_companyId_type_time", background: true }),
+  ]);
+}
+
+// ─── Module 9 ─────────────────────────────────────────────────────────────────
+
+async function ensureAnalyticsReportsIndexes(db: Db): Promise<void> {
+  const col = db.collection("analytics_reports");
+  await Promise.all([
+    col.createIndex({ reportId: 1 }, { unique: true, name: "analytics_reports_id_unique", background: true }),
+    col.createIndex({ companyId: 1, createdAt: -1 }, { name: "analytics_reports_companyId_createdAt", background: true }),
   ]);
 }
 
