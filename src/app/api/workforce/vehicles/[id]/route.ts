@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Db } from "mongodb";
-import clientPromise from "@/lib/mongodb";
 import type { Vehicle, Driver } from "@/lib/types";
-import { getDb } from "@/lib/mongodb";
+import { getDb, getMongoClient } from "@/lib/mongodb";
 import {
   requireWorkforceRead,
   requireWorkforceWrite,
@@ -110,7 +109,7 @@ export async function PATCH(
 
   try {
     const db    = await getDb();
-    const client = await clientPromise;
+    const client = await getMongoClient();
     const now   = new Date().toISOString();
 
     // ── Fetch the target vehicle ───────────────────────────────────────────
@@ -339,7 +338,7 @@ export async function DELETE(
 
   try {
     const db    = await getDb();
-    const client = await clientPromise;
+    const client = await getMongoClient();
     const now   = new Date().toISOString();
 
     const vehicleDoc = await db

@@ -26,9 +26,17 @@
 function requireBuildEnv(key: string): string {
   const value = process.env[key];
   if (!value || value.trim() === "") {
-    // Only warn in development - in production the value is inlined at compile
-    // time so process.env access in workers will be empty regardless.
-    if (process.env.NODE_ENV !== "production") {
+    // Only warn in development AND only when running inside the Next.js
+    // compiler process (not in server.ts / tsx). NEXT_PUBLIC_ vars are
+    // inlined at compile time so they won't be present in the raw Node
+    // process that runs server.ts before next.prepare() completes.
+    // We detect the Next.js context by checking for the NEXT_RUNTIME env var
+    // or the __NEXT_PRIVATE_ prefix that Next.js sets internally.
+    const isNextCompilerContext =
+      typeof process.env.NEXT_RUNTIME !== "undefined" ||
+      typeof process.env.__NEXT_PRIVATE_PREBUNDLED_REACT !== "undefined";
+
+    if (process.env.NODE_ENV !== "production" && isNextCompilerContext) {
       console.warn(`[env] ⚠️  Missing environment variable: "${key}" - fill in .env.local`);
     }
     return "";

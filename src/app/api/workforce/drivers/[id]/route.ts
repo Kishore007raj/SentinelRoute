@@ -1,8 +1,7 @@
 import { dispatchEvent } from "@/lib/event-dispatcher";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { getDb } from "@/lib/mongodb";
-import clientPromise from "@/lib/mongodb";
+import { getDb, getMongoClient } from "@/lib/mongodb";
 import {
   requireWorkforceRead,
   requireWorkforceWrite,
@@ -160,7 +159,7 @@ export async function PATCH(
     if (newStatus === "suspended") {
       const currentVehicleId = existing.assignedVehicleId as string | null;
 
-      const mongoClient = await clientPromise;
+      const mongoClient = await getMongoClient();
       const session = mongoClient.startSession();
       try {
         await session.withTransaction(async () => {
