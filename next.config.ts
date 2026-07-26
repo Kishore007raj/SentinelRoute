@@ -46,12 +46,17 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com",
-              "style-src 'self' 'unsafe-inline' https://www.gstatic.com",
+              // script-src: Google's auth SDK (apis.google.com) and gstatic scripts are required
+              // for signInWithPopup. accounts.google.com serves the OAuth consent popup scripts.
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://apis.google.com https://accounts.google.com",
+              // style-src: Google Fonts stylesheets + gstatic
+              "style-src 'self' 'unsafe-inline' https://www.gstatic.com https://fonts.googleapis.com",
               "img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://unpkg.com https://*.tile.openstreetmap.org https://lh3.googleusercontent.com https://www.gstatic.com",
-              "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://accounts.google.com https://firebase.googleapis.com wss://ws.sentinel-route.com",
+              // connect-src: Firebase Auth endpoints + Google APIs for the OAuth token exchange
+              "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://accounts.google.com https://firebase.googleapis.com https://apis.google.com wss://ws.sentinel-route.com",
               "frame-src 'self' https://accounts.google.com https://*.firebaseapp.com",
-              "font-src 'self'",
+              // font-src: Google Fonts files served from fonts.gstatic.com
+              "font-src 'self' https://fonts.gstatic.com data:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
