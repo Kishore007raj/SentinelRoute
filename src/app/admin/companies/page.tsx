@@ -11,9 +11,10 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { fetchApi } from "@/lib/api-client";
 import { useUser } from "@/lib/auth-context";
+import { Company } from "@/lib/types";
 
 export default function TenantManagementPage() {
-  const [companies, setCompanies] = useState<unknown[]>([]);
+  const [companies, setCompanies] = useState<(Company & { adminUserEmail?: string })[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
