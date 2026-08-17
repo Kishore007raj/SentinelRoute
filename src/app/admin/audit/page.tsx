@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { fetchApi } from "@/lib/api-client";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useUser } from "@/lib/auth-context";
 
 interface AuditLog {
   auditId:     string;
@@ -44,7 +45,10 @@ export default function GlobalAuditCenter() {
   const [companyId, setCompanyId]   = useState("");
   const search = useDebounce(searchRaw, 400);
 
+  const { user, loading: authLoading } = useUser();
+
   const fetchLogs = useCallback(async () => {
+    if (!user) return; // Auth not ready yet
     setLoading(true);
     setError(null);
     try {
@@ -71,12 +75,17 @@ export default function GlobalAuditCenter() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, eventType, companyId]);
+  }, [page, search, eventType, companyId, user]);
 
   // Reset to page 1 when any filter changes
   useEffect(() => { setPage(1); }, [search, eventType, companyId]);
 
-  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+  // Gate on auth — only fetch once Firebase user is resolved
+  useEffect(() => {
+    if (!authLoading && user) {
+      fetchLogs();
+    }
+  }, [fetchLogs, authLoading, user]);
 
   const hasFilters = searchRaw || eventType || companyId;
   const clearFilters = () => {

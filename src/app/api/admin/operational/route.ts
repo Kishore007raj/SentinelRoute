@@ -99,9 +99,13 @@ export async function GET(req: NextRequest) {
 
     const aggregated = activeShipments.map((s) => {
       const execution = execMap.get(s.id as string) ?? null;
+      const resolvedName = companyMap.get(s.companyId as string);
       return {
         ...s,
-        tenantName: companyMap.get(s.companyId as string) ?? "Unknown Tenant",
+        // Show companyId as fallback if no company record found — avoids "Unknown Tenant"
+        // while making the missing relationship visible to the admin
+        tenantName: resolvedName ?? (s.companyId ? `[${String(s.companyId)}]` : "No Tenant"),
+        tenantResolved: !!resolvedName,
         execution,
       };
     });

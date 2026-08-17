@@ -9,7 +9,7 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
-import { fetchApi } from "@/lib/api-client";
+import { useUser } from "@/lib/auth-context";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +51,7 @@ interface CompanyData {
 
 export default function CompanyInspectionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { user, loading: authLoading } = useUser();
 
   const [data, setData] = useState<CompanyData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,48 +61,70 @@ export default function CompanyInspectionPage({ params }: { params: Promise<{ id
   const [submitting, setSubmitting] = useState(false);
 
   const fetchCompanyData = useCallback(async () => {
+    if (!user) return; // Wait for Firebase auth to resolve before fetching
     try {
       setLoading(true);
-      const res = await fetchApi(`/api/admin/companies/${id}`);
-      if (!res.ok) throw new Error("Failed to load");
+      // Get token directly from the resolved Firebase user — no race with auth.currentUser
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/admin/companies/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `Server ${res.status}`);
+      }
       const json = await res.json();
       setData(json);
-    } catch {
-      toast.error("Failed to load company details");
+    } catch (err) {
+      toast.error("Failed to load company details", {
+        description: err instanceof Error ? err.message : undefined,
+      });
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, user]);
 
+  // Only fetch once Firebase auth has fully resolved
   useEffect(() => {
-    fetchCompanyData();
-  }, [fetchCompanyData]);
+    if (!authLoading && user) {
+      fetchCompanyData();
+    }
+  }, [authLoading, user, fetchCompanyData]);
 
   const handleAction = async () => {
-    if (!actionModal.action) return;
+    if (!actionModal.action || !user) return;
     
     try {
       setSubmitting(true);
-      const res = await fetchApi(`/api/admin/companies/${id}`, {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/admin/companies/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: actionModal.action, note: actionNote })
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: actionModal.action, note: actionNote }),
       });
       
-      if (!res.ok) throw new Error("Failed to perform action");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? "Action failed");
+      }
       
       toast.success(`Company ${actionModal.action}d successfully`);
       setActionModal({ isOpen: false, action: null });
       setActionNote("");
       await fetchCompanyData();
-    } catch {
-      toast.error("An error occurred");
+    } catch (err) {
+      toast.error("An error occurred", {
+        description: err instanceof Error ? err.message : undefined,
+      });
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="w-8 h-8 border-2 border-border border-t-amber-500 rounded-full animate-spin" />

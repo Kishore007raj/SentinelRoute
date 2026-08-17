@@ -10,17 +10,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Link from "next/link";
 import { format } from "date-fns";
 import { fetchApi } from "@/lib/api-client";
+import { useUser } from "@/lib/auth-context";
 
 export default function TenantManagementPage() {
-  const [companies, setCompanies] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<unknown[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const { user, loading: authLoading } = useUser();
 
   useEffect(() => {
+    if (authLoading || !user) return; // Wait for Firebase auth
+
     const fetchCompanies = async () => {
       setLoading(true);
       try {
@@ -42,7 +46,7 @@ export default function TenantManagementPage() {
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [page, search, statusFilter]);
+  }, [page, search, statusFilter, authLoading, user]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {

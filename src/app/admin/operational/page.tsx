@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { fetchApi } from "@/lib/api-client";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useUser } from "@/lib/auth-context";
 
 interface ShipmentExecution {
   status:           string;
@@ -23,6 +24,7 @@ interface ActiveRoute {
   shipmentCode?:        string;
   companyId:            string;
   tenantName:           string;
+  tenantResolved:       boolean;
   status:               string;
   origin?:              string;
   originName?:          string;
@@ -57,6 +59,7 @@ export default function GlobalOperationalMonitor() {
   const [pages, setPages]       = useState(1);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
+  const { user, loading: authLoading } = useUser();
 
   const [searchRaw, setSearchRaw] = useState("");
   const search = useDebounce(searchRaw, 350);
@@ -83,7 +86,9 @@ export default function GlobalOperationalMonitor() {
     }
   }, [page]);
 
-  useEffect(() => { fetchRoutes(); }, [fetchRoutes]);
+  useEffect(() => {
+    if (!authLoading && user) fetchRoutes();
+  }, [authLoading, user, fetchRoutes]);
 
   // Auto-refresh every 30 s
   useEffect(() => {
@@ -192,8 +197,15 @@ export default function GlobalOperationalMonitor() {
                     className="border-b border-border/50 hover:bg-muted/20 transition-colors"
                   >
                     <td className="px-4 py-3">
-                      <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
+                      <span className={`text-xs font-semibold uppercase tracking-wider ${
+                        route.tenantResolved ? "text-indigo-400" : "text-amber-500"
+                      }`}>
                         {route.tenantName}
+                        {!route.tenantResolved && (
+                          <span className="ml-1 text-[10px] text-amber-500/70 normal-case font-normal">
+                            (orphaned)
+                          </span>
+                        )}
                       </span>
                     </td>
                     <td className="px-4 py-3">

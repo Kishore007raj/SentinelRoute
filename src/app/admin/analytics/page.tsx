@@ -12,6 +12,7 @@ import { BarChart3, Building2, Package, Users, TrendingUp, TrendingDown, Minus }
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchApi } from "@/lib/api-client";
 import { AnalyticsLineChart } from "@/components/analytics/charts/LineChart";
+import { useUser } from "@/lib/auth-context";
 
 interface PlatformAnalyticsData {
   companyGrowth: {
@@ -39,7 +40,11 @@ interface PlatformAnalyticsData {
 }
 
 function TrendBadge({ pct }: { pct: number | null }) {
-  if (pct === null) return <span className="text-xs text-muted-foreground">No prior data</span>;
+  // null = no previous baseline (e.g. first 30 days of activity)
+  // This is NOT a -100% decline. Show "New" instead.
+  if (pct === null) return (
+    <span className="text-xs text-muted-foreground italic">No prior period data</span>
+  );
   if (pct > 0) return (
     <span className="flex items-center gap-1 text-xs font-semibold text-emerald-500">
       <TrendingUp className="w-3.5 h-3.5" /> +{pct.toFixed(1)}% MoM
@@ -61,6 +66,7 @@ export default function GlobalAnalyticsCenter() {
   const [data, setData]     = useState<PlatformAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState<string | null>(null);
+  const { user, loading: authLoading } = useUser();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -79,7 +85,10 @@ export default function GlobalAnalyticsCenter() {
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  // Gate on auth — fetchApi needs the Firebase token
+  useEffect(() => {
+    if (!authLoading && user) fetchData();
+  }, [authLoading, user, fetchData]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">

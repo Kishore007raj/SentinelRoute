@@ -6,6 +6,7 @@ import {
   Activity, Database, Server, Clock, Truck, UserCheck,
 } from "lucide-react";
 import { fetchApi } from "@/lib/api-client";
+import { useUser } from "@/lib/auth-context";
 
 interface DashboardStats {
   companies: { total: number; active: number; pending: number; suspended: number; rejected: number };
@@ -20,6 +21,7 @@ export default function AdminDashboardPage() {
   const [stats, setStats]   = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState<string | null>(null);
+  const { user, loading: authLoading } = useUser();
 
   const fetchStats = useCallback(async () => {
     try {
@@ -38,7 +40,12 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
-  useEffect(() => { fetchStats(); }, [fetchStats]);
+  // Gate on auth so fetchApi always has the token ready
+  useEffect(() => {
+    if (!authLoading && user) {
+      fetchStats();
+    }
+  }, [authLoading, user, fetchStats]);
 
   if (loading) {
     return (
@@ -81,12 +88,22 @@ export default function AdminDashboardPage() {
           <div className="text-3xl font-bold">{stats.companies.total.toLocaleString()}</div>
           <div className="mt-2 text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="text-emerald-500 font-medium">{stats.companies.active} active</span>
-            <span className="text-border">•</span>
-            <span className="text-amber-500 font-medium">{stats.companies.pending} pending</span>
+            {stats.companies.pending > 0 && (
+              <>
+                <span className="text-border">•</span>
+                <span className="text-amber-500 font-medium">{stats.companies.pending} pending</span>
+              </>
+            )}
             {stats.companies.suspended > 0 && (
               <>
                 <span className="text-border">•</span>
                 <span className="text-rose-500 font-medium">{stats.companies.suspended} suspended</span>
+              </>
+            )}
+            {stats.companies.rejected > 0 && (
+              <>
+                <span className="text-border">•</span>
+                <span className="text-muted-foreground font-medium">{stats.companies.rejected} rejected</span>
               </>
             )}
           </div>
