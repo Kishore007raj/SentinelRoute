@@ -1,4 +1,4 @@
-# Module 9 — Analytics & Reporting / Business Intelligence
+# Analytics & Reporting / Business Intelligence  
 
 ## Overview
 

@@ -22,10 +22,83 @@ export type { PendingShipment } from "./types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface PresenceUser {
-  userId: string;
-  status: "online" | "offline";
-  role?: string;
+  userId:    string;
+  status:    "online" | "offline";
+  role?:     string;
   entityId?: string;
+}
+
+/**
+ * Operational feed data from /api/operational/feed.
+ * Typed loosely to accommodate the Module 7 feed shape without duplicating the
+ * full server schema here. All access should be narrowed at the call site.
+ */
+export interface OperationalFeedData {
+  recommendations?: unknown[];
+  alerts?:          unknown[];
+  incidents?:       unknown[];
+  health?:          unknown;
+  [key: string]:    unknown;
+}
+
+/**
+ * Operational health snapshot from /api/operational/health.
+ */
+export interface OperationalHealthData {
+  score?:               number;
+  status?:              string;
+  activeShipments?:     number;
+  averageRisk?:         number;
+  driverAvailability?:  number;
+  vehicleAvailability?: number;
+  incidentDensity?:     number;
+  routeConfidence?:     number;
+  delayedShipments?:    number;
+  complianceScore?:     number;
+  calculatedAt?:        string;
+  [key: string]:        unknown;
+}
+
+/**
+ * Live KPI snapshot stored from the kpi:updated socket event or /api/analytics/kpis.
+ */
+export interface StoredKPIData {
+  shipments?: {
+    total:               number;
+    active:              number;
+    completed:           number;
+    cancelled:           number;
+    atRisk:              number;
+    delayed:             number;
+    successRate:         number;
+    deliveryPerformance: number;
+  };
+  fleet?: {
+    total:            number;
+    available:        number;
+    assigned:         number;
+    maintenance:      number;
+    availabilityRate: number;
+    utilizationRate:  number;
+  };
+  drivers?: {
+    total:          number;
+    active:         number;
+    available:      number;
+    assigned:       number;
+    offDuty:        number;
+    suspended:      number;
+    utilizationRate: number;
+  };
+  incidents?: {
+    total:    number;
+    critical: number;
+    high:     number;
+    medium:   number;
+    low:      number;
+  };
+  healthScore?: number;
+  [key: string]: unknown;
 }
 
 // ─── API resilience helpers ───────────────────────────────────────────────────
@@ -125,14 +198,14 @@ async function fetchWithAuth(
 // ─── State ────────────────────────────────────────────────────────────────────
 
 interface StoreState {
-  shipments:       Shipment[];
-  pendingShipment: PendingShipment | null;
-  loading:         boolean;
-  operationalFeed: any | null;
-  operationalHealth: any | null;
-  presence: Record<string, PresenceUser>;
-  kpis: any | null;
-  lastSync: number;
+  shipments:         Shipment[];
+  pendingShipment:   PendingShipment | null;
+  loading:           boolean;
+  operationalFeed:   OperationalFeedData | null;
+  operationalHealth: OperationalHealthData | null;
+  presence:          Record<string, PresenceUser>;
+  kpis:              StoredKPIData | null;
+  lastSync:          number;
 }
 
 type Action =
@@ -142,10 +215,10 @@ type Action =
   | { type: "CLEAR_PENDING" }
   | { type: "ADD_SHIPMENT";   payload: Shipment }
   | { type: "UPDATE_STATUS";  payload: { id: string; status: ShipmentStatus; lastUpdate: string } }
-  | { type: "SET_OPERATIONAL_DATA"; payload: { feed: unknown; health: unknown } }
+  | { type: "SET_OPERATIONAL_DATA"; payload: { feed: OperationalFeedData | null; health: OperationalHealthData | null } }
   | { type: "PRESENCE_UPDATE"; payload: PresenceUser }
   | { type: "PRESENCE_SYNC"; payload: Record<string, PresenceUser> }
-  | { type: "KPI_UPDATE"; payload: unknown };
+  | { type: "KPI_UPDATE"; payload: StoredKPIData };
 
 const initialState: StoreState = {
   shipments:       [],
@@ -230,10 +303,10 @@ interface StoreContextValue {
   activeShipments:     Shipment[];
   completedShipments:  Shipment[];
   atRiskShipments:     Shipment[];
-  operationalFeed:     any | null;
-  operationalHealth:   any | null;
+  operationalFeed:     OperationalFeedData | null;
+  operationalHealth:   OperationalHealthData | null;
   presence:            Record<string, PresenceUser>;
-  kpis:                any | null;
+  kpis:                StoredKPIData | null;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -300,11 +373,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         fetchWithAuth("/api/operational/feed", { method: "GET" }, getToken, refreshToken, handleAuthFailure),
         fetchWithAuth("/api/operational/health", { method: "GET" }, getToken, refreshToken, handleAuthFailure)
       ]);
-      const feedJson = feedRes.ok ? await feedRes.json() : null;
-      const healthJson = healthRes.ok ? await healthRes.json() : null;
+      const feedJson   = feedRes.ok   ? (await feedRes.json()   as { data?: OperationalFeedData })   : null;
+      const healthJson = healthRes.ok ? (await healthRes.json() as { data?: OperationalHealthData }) : null;
       dispatch({ 
         type: "SET_OPERATIONAL_DATA", 
-        payload: { feed: feedJson?.data || null, health: healthJson?.data || null } 
+        payload: { feed: feedJson?.data ?? null, health: healthJson?.data ?? null } 
       });
     } catch (err) {
       console.error("[store] fetchOperationalData:", err);
@@ -380,14 +453,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     },
     // Module 7: operational feed
     "feed:updated": (data: unknown) => {
-      dispatch({ type: "SET_OPERATIONAL_DATA", payload: { feed: data, health: latestOperational.current.health } });
+      dispatch({ type: "SET_OPERATIONAL_DATA", payload: { feed: data as OperationalFeedData, health: latestOperational.current.health } });
     },
     "health:updated": (data: unknown) => {
-      dispatch({ type: "SET_OPERATIONAL_DATA", payload: { feed: latestOperational.current.feed, health: data } });
+      dispatch({ type: "SET_OPERATIONAL_DATA", payload: { feed: latestOperational.current.feed, health: data as OperationalHealthData } });
     },
     // Module 7: KPIs
     "kpi:updated": (data: unknown) => {
-      dispatch({ type: "KPI_UPDATE", payload: data });
+      if (data && typeof data === "object") {
+        dispatch({ type: "KPI_UPDATE", payload: data as StoredKPIData });
+      }
     },
     // Module 7: Auto-refresh trigger
     "sync:refresh_feed": () => {

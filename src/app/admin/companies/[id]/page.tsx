@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
+import { fetchApi } from "@/lib/api-client";
 import {
   Dialog,
   DialogContent,
@@ -61,7 +62,7 @@ export default function CompanyInspectionPage({ params }: { params: Promise<{ id
   const fetchCompanyData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/admin/companies/${id}`);
+      const res = await fetchApi(`/api/admin/companies/${id}`);
       if (!res.ok) throw new Error("Failed to load");
       const json = await res.json();
       setData(json);
@@ -81,7 +82,7 @@ export default function CompanyInspectionPage({ params }: { params: Promise<{ id
     
     try {
       setSubmitting(true);
-      const res = await fetch(`/api/admin/companies/${id}`, {
+      const res = await fetchApi(`/api/admin/companies/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: actionModal.action, note: actionNote })
