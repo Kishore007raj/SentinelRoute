@@ -51,7 +51,7 @@ export function OperationalFeed() {
               Real-time events and system recommendations
             </CardDescription>
           </div>
-          {healthScore && (
+          {healthScore && healthScore.score !== undefined && (
             <div className="text-right">
               <div className={`text-2xl font-bold ${getHealthColor(healthScore.score)}`}>
                 {healthScore.score}
@@ -62,7 +62,7 @@ export function OperationalFeed() {
             </div>
           )}
         </div>
-        {healthScore && (
+        {healthScore && healthScore.score !== undefined && (
           <div className="mt-2 space-y-1">
              <Progress value={healthScore.score} className="h-2" />
              <div className="flex justify-between text-xs text-muted-foreground">
@@ -80,9 +80,9 @@ export function OperationalFeed() {
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3"
             >
               Recommendations
-              {feedData && feedData.recommendations.length > 0 && (
+              {feedData && (feedData.recommendations?.length ?? 0) > 0 && (
                 <Badge variant="secondary" className="ml-2 bg-primary/10 text-primary hover:bg-primary/20">
-                  {feedData.recommendations.length}
+                  {feedData.recommendations?.length}
                 </Badge>
               )}
             </TabsTrigger>
@@ -142,9 +142,9 @@ export function OperationalFeed() {
              <ScrollArea className="h-[400px] w-full p-4">
               {loading ? (
                 <div className="animate-pulse bg-muted h-20 rounded-lg mb-2" />
-              ) : feedData?.events && feedData.events.length > 0 ? (
+              ) : feedData?.events && (feedData.events?.length ?? 0) > 0 ? (
                 <div className="space-y-4">
-                  {feedData.events.map((event: FeedEvent, i: number) => (
+                  {feedData.events?.map((event: FeedEvent, i: number) => (
                     <div key={i} className="flex gap-3">
                       <div className="mt-0.5">
                         {event.type.includes("Alert") || event.type.includes("Incident") ? (

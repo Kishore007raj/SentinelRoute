@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import { signOut } from "firebase/auth";
 import { usePathname } from "next/navigation";
-import type { Shipment, ShipmentStatus, RiskLevel, Route, PendingShipment } from "./types";
+import type { Shipment, ShipmentStatus, RiskLevel, Route, PendingShipment, OperationalRecommendation } from "./types";
 import { getRiskLabel } from "./utils";
 import { useUser } from "./auth-context";
 import { auth } from "./firebase";
@@ -34,7 +34,8 @@ export interface PresenceUser {
  * full server schema here. All access should be narrowed at the call site.
  */
 export interface OperationalFeedData {
-  recommendations?: unknown[];
+  recommendations?: OperationalRecommendation[];
+  events?:          { type: string; description?: string; timestamp: string }[];
   alerts?:          unknown[];
   incidents?:       unknown[];
   health?:          unknown;
