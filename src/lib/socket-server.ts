@@ -60,3 +60,18 @@ export function emitPresenceUpdate(
 ): void {
   emitToCompany(companyId, "presence:updated", presenceData);
 }
+
+/**
+ * Notify all analytics listeners in a company room that data has changed
+ * and they should re-fetch KPIs / trends.
+ *
+ * Call this fire-and-forget after any operational mutation that affects
+ * analytics data (shipment created/completed/cancelled, driver/vehicle
+ * status changes, incidents, recommendations, etc.).
+ *
+ * Room: company:<companyId>
+ * Event: analytics:refresh
+ */
+export function emitAnalyticsRefresh(companyId: string): void {
+  emitToCompany(companyId, "analytics:refresh", { ts: Date.now() });
+}

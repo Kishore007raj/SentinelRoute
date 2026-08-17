@@ -393,6 +393,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     "sync:refresh_feed": () => {
       fetchShipments();
       fetchOperationalData();
+    },
+    // Module 9: analytics data changed — pages listening for this will re-fetch KPIs
+    "analytics:refresh": () => {
+      // Propagate via kpi:updated with null to signal pages should refetch
+      // Pages subscribe directly to analytics:refresh via useSocket
     }
   }), [fetchShipments, fetchOperationalData]);
 

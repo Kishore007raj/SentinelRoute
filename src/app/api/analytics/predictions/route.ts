@@ -1,26 +1,36 @@
+/**
+ * GET /api/analytics/predictions
+ *
+ * Route prediction confidence trend from route_predictions collection.
+ * Requires ANALYTICS_READ_ROLES.
+ */
 import { NextRequest, NextResponse } from "next/server";
-import { requireCompany, handleAuthError } from "@/lib/auth-helpers";
+import { requireAnalyticsAccess, handleAuthError } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/mongodb";
-import { buildDateFilter, DateRangePreset } from "@/lib/analytics/analytics-utils";
+import { buildDateFilter, type DateRangePreset } from "@/lib/analytics/analytics-utils";
+import { apiLimiter, getClientIp } from "@/lib/rate-limit";
+import { ApiErrors } from "@/lib/api-errors";
 
 export async function GET(req: NextRequest) {
-  try {
-    const { company } = await requireCompany(req);
-    const searchParams = req.nextUrl.searchParams;
+  const ip = getClientIp(req);
+  const rl = apiLimiter.check(ip);
+  if (rl.limited) return ApiErrors.rateLimited(rl.retryAfter);
 
-    const start = searchParams.get("start") || undefined;
-    const end = searchParams.get("end") || undefined;
-    const preset = (searchParams.get("preset") as DateRangePreset) || undefined;
+  try {
+    const { companyId } = await requireAnalyticsAccess(req);
+    const searchParams  = req.nextUrl.searchParams;
+
+    const start  = searchParams.get("start")  ?? undefined;
+    const end    = searchParams.get("end")    ?? undefined;
+    const preset = (searchParams.get("preset") as DateRangePreset) ?? undefined;
 
     const dateFilter = buildDateFilter({ start, end, preset });
-    const matchStage: Record<string, unknown> = { companyId: company.companyId };
-    
-    if (dateFilter) {
-      matchStage.createdAt = dateFilter;
-    }
+    const matchStage: Record<string, unknown> = { companyId };
+    // route_predictions uses both timestamp and createdAt — prefer createdAt
+    if (dateFilter) matchStage.createdAt = dateFilter;
 
     const db = await getDb();
-    
+
     const pipeline = [
       { $match: matchStage },
       {
@@ -28,39 +38,40 @@ export async function GET(req: NextRequest) {
           confidenceTrend: [
             {
               $group: {
-                _id: { $dateToString: { format: "%Y-%m-%d", date: { $toDate: "$createdAt" } } },
-                avgConfidence: { $avg: "$confidenceScore" },
-                count: { $sum: 1 }
-              }
+                _id:           { $dateToString: { format: "%Y-%m-%d", date: { $toDate: "$createdAt" } } },
+                // etaConfidence is the right field from RoutePrediction
+                avgConfidence: { $avg: "$etaConfidence" },
+                count:         { $sum: 1 },
+              },
             },
-            { $sort: { _id: 1 } }
+            { $sort: { _id: 1 } },
           ],
           summary: [
             {
               $group: {
-                _id: null,
-                total: { $sum: 1 },
-                avgConfidence: { $avg: "$confidenceScore" }
-              }
-            }
-          ]
-        }
-      }
+                _id:           null,
+                total:         { $sum: 1 },
+                avgConfidence: { $avg: "$etaConfidence" },
+              },
+            },
+          ],
+        },
+      },
     ];
 
     const results = await db.collection("route_predictions").aggregate(pipeline).toArray();
-    const data = results[0];
+    const data    = results[0];
 
-    const formattedData = {
-      summary: data.summary[0] || { total: 0, avgConfidence: 0 },
-      confidenceTrend: data.confidenceTrend.map((d: { _id: string; avgConfidence: number; count: number }) => ({
+    type ConfRaw = { _id: string; avgConfidence: number; count: number };
+
+    return NextResponse.json({
+      summary: data.summary[0] ?? { total: 0, avgConfidence: 0 },
+      confidenceTrend: (data.confidenceTrend as ConfRaw[]).map((d) => ({
         date:       d._id,
         confidence: d.avgConfidence,
         volume:     d.count,
-      }))
-    };
-
-    return NextResponse.json(formattedData);
+      })),
+    });
   } catch (error) {
     return handleAuthError(error);
   }

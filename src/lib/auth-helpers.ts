@@ -202,6 +202,63 @@ export function handleAuthError(err: unknown): NextResponse {
   return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 }
 
+// ─── Analytics RBAC ──────────────────────────────────────────────────────────
+
+/**
+ * Roles allowed to read executive analytics data.
+ * Mirrors the sidebar gate in AppSidebar.tsx.
+ */
+export const ANALYTICS_READ_ROLES: UserRole[] = [
+  "company_admin",
+  "operations_manager",
+  "super_admin",
+];
+
+/**
+ * requireAnalyticsAccess - Requires an approved company + analytics-capable role.
+ * Never trusts companyId from the request body — always resolves from authenticated user.
+ */
+export async function requireAnalyticsAccess(
+  req: NextRequest
+): Promise<CompanyAuthResult & { companyId: string }> {
+  let userId: string;
+  try {
+    const verified = await verifyFirebaseToken(req);
+    userId = verified.uid;
+  } catch (err) {
+    if (err instanceof Response) throw err;
+    throw unauthorized("Authentication service unavailable");
+  }
+
+  const db = await getDb();
+  const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
+  if (!userRecord) throw notFound("User record not found. Please complete company registration.");
+
+  if (!ANALYTICS_READ_ROLES.includes(userRecord.role)) {
+    throw forbidden("Analytics access requires company_admin or operations_manager role.");
+  }
+
+  // super_admin: can optionally scope to a specific company via ?companyId=
+  if (userRecord.role === "super_admin") {
+    const queryCompanyId = req.nextUrl.searchParams.get("companyId") ?? "";
+    const company = queryCompanyId
+      ? (await db.collection<Company>("companies").findOne({ companyId: queryCompanyId }) ?? ({} as Company))
+      : ({} as Company);
+    return { userId, userRecord, company, companyId: queryCompanyId };
+  }
+
+  if (!userRecord.companyId) throw notFound("No company associated with this account.");
+
+  const company = await db.collection<Company>("companies").findOne({ companyId: userRecord.companyId });
+  if (!company) throw notFound("Company record not found.");
+  if (company.status === "suspended") throw forbidden("Company account is suspended. Contact support.");
+  if (company.status !== "approved") {
+    throw forbidden(`Company is ${company.status}. Operational access requires an approved company.`);
+  }
+
+  return { userId, userRecord, company, companyId: userRecord.companyId };
+}
+
 // ─── Workforce Role Matrix ─────────────────────────────────────────────────
 
 /**

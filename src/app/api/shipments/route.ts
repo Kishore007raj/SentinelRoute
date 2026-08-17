@@ -335,6 +335,12 @@ export async function POST(req: NextRequest) {
 
   // Emit real-time event to the user's connected clients
   emitToUser(userId, "shipment:created", { shipment });
+  // Notify analytics listeners in the company room that KPI data changed
+  if (shipment.companyId) {
+    import("@/lib/socket-server").then(({ emitAnalyticsRefresh }) => {
+      emitAnalyticsRefresh(shipment.companyId!);
+    }).catch(() => {});
+  }
 
   // Write "Shipment Created" timeline event so the timeline is never empty
   addTimelineEvent(

@@ -1,6 +1,6 @@
 import { dispatchEvent } from "@/lib/event-dispatcher";
 import { NextRequest, NextResponse } from "next/server";
-import { requireCompany } from "@/lib/auth-helpers";
+import { requireCompany, handleAuthError } from "@/lib/auth-helpers";
 import { getActiveIncidents, storeIncident } from "@/lib/intelligence-service";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 import type { Incident, IncidentCategory } from "@/lib/types";
@@ -30,9 +30,7 @@ export async function GET(req: NextRequest) {
     const incidents = await getActiveIncidents(companyId);
     return NextResponse.json({ incidents });
   } catch (err: unknown) {
-    if (err instanceof Response) return new NextResponse(err.body, { status: err.status, headers: { "Content-Type": "application/json" } });
-    console.error("[GET /api/intelligence/incidents]", err);
-    return NextResponse.json({ error: "Failed to fetch incidents" }, { status: 500 });
+    return handleAuthError(err);
   }
 }
 
@@ -104,8 +102,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ incident }, { status: 201 });
   } catch (err: unknown) {
-    if (err instanceof Response) return new NextResponse(err.body, { status: err.status, headers: { "Content-Type": "application/json" } });
-    console.error("[POST /api/intelligence/incidents]", err);
-    return NextResponse.json({ error: "Failed to create incident" }, { status: 500 });
+    return handleAuthError(err);
   }
 }

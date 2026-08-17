@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireCompany } from "@/lib/auth-helpers";
+import { requireCompany, handleAuthError } from "@/lib/auth-helpers";
 import { getOperationalAlerts } from "@/lib/alert-service";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 
@@ -33,10 +33,6 @@ export async function GET(req: NextRequest) {
     const alerts = await getOperationalAlerts(companyId);
     return NextResponse.json({ alerts });
   } catch (err: unknown) {
-    if (err instanceof Response) {
-      return new NextResponse(err.body, { status: err.status, headers: { "Content-Type": "application/json" } });
-    }
-    console.error("[GET /api/intelligence/alerts]", err);
-    return NextResponse.json({ error: "Failed to fetch alerts" }, { status: 500 });
+    return handleAuthError(err);
   }
 }

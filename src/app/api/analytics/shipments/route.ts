@@ -1,27 +1,35 @@
+/**
+ * GET /api/analytics/shipments
+ *
+ * Shipment volume, status distribution, and daily breakdown for the
+ * authenticated user's company. Requires ANALYTICS_READ_ROLES.
+ */
 import { NextRequest, NextResponse } from "next/server";
-import { requireCompany, handleAuthError } from "@/lib/auth-helpers";
+import { requireAnalyticsAccess, handleAuthError } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/mongodb";
-import { buildDateFilter, DateRangePreset } from "@/lib/analytics/analytics-utils";
+import { buildDateFilter, type DateRangePreset } from "@/lib/analytics/analytics-utils";
+import { apiLimiter, getClientIp } from "@/lib/rate-limit";
+import { ApiErrors } from "@/lib/api-errors";
 
 export async function GET(req: NextRequest) {
-  try {
-    const { company } = await requireCompany(req);
-    const searchParams = req.nextUrl.searchParams;
+  const ip = getClientIp(req);
+  const rl = apiLimiter.check(ip);
+  if (rl.limited) return ApiErrors.rateLimited(rl.retryAfter);
 
-    const start = searchParams.get("start") || undefined;
-    const end = searchParams.get("end") || undefined;
-    const preset = (searchParams.get("preset") as DateRangePreset) || undefined;
+  try {
+    const { companyId } = await requireAnalyticsAccess(req);
+    const searchParams  = req.nextUrl.searchParams;
+
+    const start  = searchParams.get("start")  ?? undefined;
+    const end    = searchParams.get("end")    ?? undefined;
+    const preset = (searchParams.get("preset") as DateRangePreset) ?? undefined;
 
     const dateFilter = buildDateFilter({ start, end, preset });
-    const matchStage: Record<string, unknown> = { companyId: company.companyId };
-    
-    if (dateFilter) {
-      matchStage.createdAt = dateFilter;
-    }
+    const matchStage: Record<string, unknown> = { companyId };
+    if (dateFilter) matchStage.createdAt = dateFilter;
 
     const db = await getDb();
-    
-    // Aggregate status distribution and volume
+
     const pipeline = [
       { $match: matchStage },
       {
@@ -33,38 +41,38 @@ export async function GET(req: NextRequest) {
             {
               $group: {
                 _id: { $dateToString: { format: "%Y-%m-%d", date: { $toDate: "$createdAt" } } },
-                count: { $sum: 1 }
-              }
+                count: { $sum: 1 },
+              },
             },
-            { $sort: { _id: 1 } }
+            { $sort: { _id: 1 } },
           ],
           summary: [
             {
               $group: {
-                _id: null,
-                total: { $sum: 1 },
-                avgDistance: { $avg: "$route.distance" },
-                avgDuration: { $avg: "$route.duration" }
-              }
-            }
-          ]
-        }
-      }
+                _id:         null,
+                total:       { $sum: 1 },
+                // distanceKm is stored as a numeric field on Shipment
+                avgDistance: { $avg: "$distanceKm" },
+              },
+            },
+          ],
+        },
+      },
     ];
 
     const results = await db.collection("shipments").aggregate(pipeline).toArray();
-    const data = results[0];
+    const data    = results[0];
 
-    const formattedData = {
-      summary: data.summary[0] || { total: 0, avgDistance: 0, avgDuration: 0 },
-      statusDistribution: data.statusDistribution.reduce((acc: Record<string, number>, curr: { _id: string; count: number }) => {
-        acc[curr._id] = curr.count;
-        return acc;
-      }, {}),
-      dailyVolume: data.dailyVolume.map((d: { _id: string; count: number }) => ({ date: d._id, volume: d.count }))
-    };
-
-    return NextResponse.json(formattedData);
+    return NextResponse.json({
+      summary: data.summary[0] ?? { total: 0, avgDistance: 0 },
+      statusDistribution: (data.statusDistribution as { _id: string; count: number }[]).reduce(
+        (acc: Record<string, number>, curr) => { acc[curr._id] = curr.count; return acc; },
+        {}
+      ),
+      dailyVolume: (data.dailyVolume as { _id: string; count: number }[]).map(
+        (d) => ({ date: d._id, volume: d.count })
+      ),
+    });
   } catch (error) {
     return handleAuthError(error);
   }

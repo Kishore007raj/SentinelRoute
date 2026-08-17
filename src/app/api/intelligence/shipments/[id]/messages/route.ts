@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireCompany } from "@/lib/auth-helpers";
+import { requireCompany, handleAuthError } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/mongodb";
 import { ShipmentMessage } from "@/lib/types";
 import { addTimelineEvent } from "@/lib/timeline-service";
@@ -57,11 +57,7 @@ export async function GET(
       messages: messages.map(({ _id: _omit, ...rest }) => decryptObjectFields(rest, ["message", "caption", "notes", "textPayload"])) 
     });
   } catch (err: unknown) {
-    if (err instanceof Error && err.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    console.error("[GET /api/intelligence/shipments/[id]/messages]", err);
-    return NextResponse.json({ error: "Failed to fetch messages" }, { status: 500 });
+    return handleAuthError(err);
   }
 }
 
@@ -160,10 +156,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, message });
   } catch (err: unknown) {
-    if (err instanceof Error && err.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    console.error("[POST /api/intelligence/shipments/[id]/messages]", err);
-    return NextResponse.json({ error: "Failed to post message" }, { status: 500 });
+    return handleAuthError(err);
   }
 }

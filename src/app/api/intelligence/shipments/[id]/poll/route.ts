@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireCompany } from "@/lib/auth-helpers";
+import { requireCompany, handleAuthError } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/mongodb";
 import { calculateRoutePrediction } from "@/lib/prediction-engine";
 import { evaluateAlerts } from "@/lib/alert-service";
@@ -149,10 +149,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, prediction, alert });
   } catch (err: unknown) {
-    if (err instanceof Response) {
-      return new NextResponse(err.body, { status: err.status, headers: { "Content-Type": "application/json" } });
-    }
-    console.error(`[POST /api/intelligence/shipments/[id]/poll]`, err);
-    return NextResponse.json({ error: "Failed to process polling" }, { status: 500 });
+    return handleAuthError(err);
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireCompany } from "@/lib/auth-helpers";
+import { requireCompany, handleAuthError } from "@/lib/auth-helpers";
 import { getShipmentTimeline } from "@/lib/timeline-service";
 import { getDb } from "@/lib/mongodb";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
@@ -49,10 +49,6 @@ export async function GET(
 
     return NextResponse.json({ timeline });
   } catch (err: unknown) {
-    if (err instanceof Error && err.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    console.error("[GET /api/intelligence/shipments/[id]/timeline]", err);
-    return NextResponse.json({ error: "Failed to fetch timeline" }, { status: 500 });
+    return handleAuthError(err);
   }
 }

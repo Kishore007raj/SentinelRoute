@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { requireCompany } from "@/lib/auth-helpers";
+import { requireCompany, handleAuthError } from "@/lib/auth-helpers";
 import { emitToCompany } from "@/lib/socket-server";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 import { RecommendationLifecycleStatus, TimelineEventType } from "@/lib/types";
@@ -139,7 +139,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, status: newStatus });
   } catch (error) {
-    console.error("[recommendations transition] error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return handleAuthError(error);
   }
 }

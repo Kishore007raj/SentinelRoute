@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireCompany } from "@/lib/auth-helpers";
+import { requireCompany, handleAuthError } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/mongodb";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 
@@ -146,13 +146,6 @@ export async function GET(req: NextRequest) {
       computedAt: new Date().toISOString(),
     });
   } catch (err: unknown) {
-    if (err instanceof Response) {
-      return new NextResponse(err.body, {
-        status:  err.status,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    console.error("[GET /api/intelligence/heatmap]", err);
-    return NextResponse.json({ error: "Failed to fetch heatmap data" }, { status: 500 });
+    return handleAuthError(err);
   }
 }

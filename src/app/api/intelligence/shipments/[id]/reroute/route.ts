@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireCompany } from "@/lib/auth-helpers";
+import { requireCompany, handleAuthError } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/mongodb";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 import { addTimelineEvent } from "@/lib/timeline-service";
@@ -102,10 +102,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, action });
   } catch (err: unknown) {
-    if (err instanceof Response) {
-      return new NextResponse(err.body, { status: err.status, headers: { "Content-Type": "application/json" } });
-    }
-    console.error(`[POST /api/intelligence/shipments/[id]/reroute]`, err);
-    return NextResponse.json({ error: "Failed to process rerouting" }, { status: 500 });
+    return handleAuthError(err);
   }
 }

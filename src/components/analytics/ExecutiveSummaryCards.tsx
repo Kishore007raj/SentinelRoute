@@ -56,9 +56,18 @@ function SummaryCard({ label, value, subtext, icon, trend, glowColor = "primary"
 // These interfaces match what KPIEngine returns
 export interface KPIs {
   healthScore?: number;
-  shipments?: { total: number; active: number; completed: number; cancelled: number; atRisk: number; successRate: number };
+  shipments?: {
+    total: number;
+    active: number;
+    completed: number;
+    cancelled: number;
+    atRisk: number;
+    delayed: number;
+    successRate: number;
+    deliveryPerformance: number;
+  };
   fleet?: { total: number; available: number; assigned: number; maintenance: number; availabilityRate: number; utilizationRate: number };
-  drivers?: { total: number; available: number; assigned: number; offDuty: number; utilizationRate: number };
+  drivers?: { total: number; active: number; available: number; assigned: number; offDuty: number; suspended: number; utilizationRate: number };
   incidents?: { total: number; critical: number; high: number; medium: number; low: number };
 }
 
@@ -122,9 +131,9 @@ export function ExecutiveSummaryCards({ kpis, isLoading }: { kpis: KPIs | null; 
       glowColor: "amber"
     },
     {
-      label: "Avg ETA Accuracy",
-      value: "94.2%", // Mocked for now, requires historical route variance analysis
-      subtext: "Within 15 minutes",
+      label: "Delivery Performance",
+      value: `${kpis.shipments?.deliveryPerformance ?? 0}%`,
+      subtext: `${kpis.shipments?.completed ?? 0} completed shipments`,
       icon: <Clock className="w-5 h-5" />,
       glowColor: "primary"
     }

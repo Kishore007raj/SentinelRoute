@@ -51,6 +51,8 @@ export async function ensureIndexes(db: Db): Promise<void> {
       ensureOperationalMetricsIndexes(db),
       // Module 9
       ensureAnalyticsReportsIndexes(db),
+      ensureAnalyticsShipmentsIndexes(db),
+      ensureAnalyticsIncidentsIndexes(db),
       // Module 4/5B - assignments + executions
       ensureShipmentAssignmentsIndexes(db),
       ensureShipmentExecutionsIndexes(db),
@@ -185,6 +187,45 @@ async function ensureAnalyticsReportsIndexes(db: Db): Promise<void> {
   await Promise.all([
     col.createIndex({ reportId: 1 }, { unique: true, name: "analytics_reports_id_unique", background: true }),
     col.createIndex({ companyId: 1, createdAt: -1 }, { name: "analytics_reports_companyId_createdAt", background: true }),
+    // Filter by report type within a company
+    col.createIndex(
+      { companyId: 1, reportType: 1, createdAt: -1 },
+      { name: "analytics_reports_companyId_type_created", background: true }
+    ),
+  ]);
+}
+
+/**
+ * Compound indexes that power the KPI Aggregation Engine queries.
+ * Shipments: company-scoped status counts with date filtering.
+ */
+async function ensureAnalyticsShipmentsIndexes(db: Db): Promise<void> {
+  const col = db.collection("shipments");
+  await Promise.all([
+    // KPI Engine: company + status group-by with date range on createdAt
+    col.createIndex(
+      { companyId: 1, status: 1, createdAt: -1 },
+      { name: "shipments_analytics_company_status_created", background: true }
+    ),
+    // Trend Engine: shipment_volume aggregation by createdAt bucket
+    col.createIndex(
+      { companyId: 1, createdAt: 1 },
+      { name: "shipments_analytics_company_created_asc", background: true }
+    ),
+  ]);
+}
+
+/**
+ * Compound indexes for incident analytics queries.
+ */
+async function ensureAnalyticsIncidentsIndexes(db: Db): Promise<void> {
+  const col = db.collection("incidents");
+  await Promise.all([
+    // Incident KPI + trend: company-scoped with severity and date
+    col.createIndex(
+      { companyId: 1, severity: 1, startTime: -1 },
+      { name: "incidents_analytics_company_severity_time", background: true }
+    ),
   ]);
 }
 
