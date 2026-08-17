@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { format } from "date-fns";
+import { fetchApi } from "@/lib/api-client";
 
 export default function TenantManagementPage() {
   const [companies, setCompanies] = useState<any[]>([]);
@@ -23,7 +24,7 @@ export default function TenantManagementPage() {
     const fetchCompanies = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/admin/companies?page=${page}&limit=10&search=${encodeURIComponent(search)}&status=${statusFilter}`);
+        const res = await fetchApi(`/api/admin/companies?page=${page}&limit=10&search=${encodeURIComponent(search)}&status=${statusFilter}`);
         if (!res.ok) throw new Error("Failed to load");
         const data = await res.json();
         setCompanies(data.companies);

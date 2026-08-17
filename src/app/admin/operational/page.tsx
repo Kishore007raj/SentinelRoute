@@ -1,141 +1,287 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Activity, MapPin, Truck, AlertTriangle, Search, Filter } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Activity, MapPin, Truck, AlertTriangle, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { fetchApi } from "@/lib/api-client";
+import { useDebounce } from "@/hooks/use-debounce";
+
+interface ShipmentExecution {
+  status:           string;
+  averageSpeed?:    number;
+  lastKnownLocation?: { lat: number; lng: number; updatedAt: string };
+  currentETA?:      string;
+  travelledDistance?: number;
+  remainingDistance?: number;
+  lastUpdated?:     string;
+}
+
+interface ActiveRoute {
+  id:                   string;
+  shipmentCode?:        string;
+  companyId:            string;
+  tenantName:           string;
+  status:               string;
+  origin?:              string;
+  originName?:          string;
+  destination?:         string;
+  destinationName?:     string;
+  riskScore?:           number;
+  riskLevel?:           string;
+  eta?:                 string;
+  assignedDriverName?:  string;
+  assignedVehicleNumber?: string;
+  execution:            ShipmentExecution | null;
+}
+
+interface OperationalResponse {
+  activeRoutes: ActiveRoute[];
+  total:        number;
+  page:         number;
+  pages:        number;
+}
+
+const RISK_BADGE: Record<string, string> = {
+  critical: "bg-rose-500/10 text-rose-500 border-rose-500/20",
+  high:     "bg-orange-500/10 text-orange-500 border-orange-500/20",
+  medium:   "bg-amber-500/10 text-amber-500 border-amber-500/20",
+  low:      "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+};
 
 export default function GlobalOperationalMonitor() {
-  const [routes, setRoutes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [routes, setRoutes]     = useState<ActiveRoute[]>([]);
+  const [total, setTotal]       = useState(0);
+  const [page, setPage]         = useState(1);
+  const [pages, setPages]       = useState(1);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchRoutes = async () => {
-      try {
-        const res = await fetch("/api/admin/operational");
-        if (res.ok) {
-          const data = await res.json();
-          setRoutes(data.activeRoutes || []);
-        }
-      } catch (err) {
-        console.error("Failed to fetch operational data", err);
-      } finally {
-        setLoading(false);
+  const [searchRaw, setSearchRaw] = useState("");
+  const search = useDebounce(searchRaw, 350);
+
+  const fetchRoutes = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: "50" });
+      // Pass search as companyId filter if it looks like an ID, else just display-filter
+      const res = await fetchApi(`/api/admin/operational?${params.toString()}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `Server ${res.status}`);
       }
-    };
-    
-    fetchRoutes();
-    const interval = setInterval(fetchRoutes, 30000); // 30s refresh for admin view
-    return () => clearInterval(interval);
-  }, []);
+      const data = await res.json() as OperationalResponse;
+      setRoutes(data.activeRoutes ?? []);
+      setTotal(data.total ?? 0);
+      setPages(data.pages ?? 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load operational data");
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
 
-  const filteredRoutes = routes.filter(r => 
-    r.tenantName.toLowerCase().includes(search.toLowerCase()) || 
-    r.shipmentId.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => { fetchRoutes(); }, [fetchRoutes]);
+
+  // Auto-refresh every 30 s
+  useEffect(() => {
+    const interval = setInterval(fetchRoutes, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchRoutes]);
+
+  // Client-side filter by tenant name or shipment code (already server-paginated)
+  const filtered = search
+    ? routes.filter(
+        (r) =>
+          r.tenantName.toLowerCase().includes(search.toLowerCase()) ||
+          (r.id ?? "").toLowerCase().includes(search.toLowerCase()) ||
+          (r.shipmentCode ?? "").toLowerCase().includes(search.toLowerCase())
+      )
+    : routes;
+
+  const atRiskCount = routes.filter((r) => r.status === "at-risk").length;
 
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-theme(spacing.24))]">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Activity className="w-6 h-6 text-indigo-500" />
             Global Operational Monitor
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Cross-tenant live tracking and active route overview.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Cross-tenant active shipments with execution state.
+          </p>
         </div>
-        
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search tenant or shipment ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9"
-            />
-          </div>
-          <div className="p-2 border border-border rounded-md bg-card shadow-sm hidden sm:flex">
-            <Filter className="w-4 h-4 text-muted-foreground" />
-          </div>
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Filter tenant or shipment…"
+            value={searchRaw}
+            onChange={(e) => setSearchRaw(e.target.value)}
+            className="pl-9 h-9"
+          />
         </div>
       </div>
 
-      <div className="flex flex-1 min-h-0 gap-6">
-        {/* Map View Placeholder */}
-        <div className="flex-[2] bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col relative">
-          <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/-98.5795,39.8283,3.5,0/1200x800?access_token=pk.eyJ1IjoiZHVtbXkiLCJhIjoiY2R1bW15In0.dummy')] bg-cover bg-center opacity-40 mix-blend-luminosity pointer-events-none" />
-          
-          <div className="relative z-10 flex-1 p-6 flex flex-col">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-background/80 backdrop-blur-md border border-border rounded-full text-xs font-semibold shadow-sm w-fit">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              Live Tracking Engine Active
-            </div>
-            
-            <div className="mt-auto bg-background/90 backdrop-blur-md border border-border rounded-lg p-4 shadow-lg max-w-sm">
-              <h3 className="font-semibold text-sm mb-3">Global Overview</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground text-xs">Active Routes</p>
-                  <p className="font-bold text-lg">{routes.length}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">At Risk</p>
-                  <p className="font-bold text-lg text-rose-500">{routes.filter(r => r.status === "at-risk").length}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* Summary bar */}
+      <div className="flex items-center gap-6 shrink-0 text-sm">
+        <span className="text-muted-foreground">
+          <span className="font-semibold text-foreground">{total}</span> active shipments
+        </span>
+        {atRiskCount > 0 && (
+          <span className="flex items-center gap-1.5 text-rose-500 font-medium">
+            <AlertTriangle className="w-4 h-4" />
+            {atRiskCount} at-risk
+          </span>
+        )}
+        <span className="ml-auto">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+        </span>
+        <span className="text-xs text-muted-foreground">Live · refreshes every 30s</span>
+      </div>
+
+      {error && (
+        <div className="text-sm text-destructive bg-destructive/5 border border-destructive/20 rounded-lg px-4 py-3 shrink-0">
+          {error} —{" "}
+          <button onClick={fetchRoutes} className="underline">retry</button>
+        </div>
+      )}
+
+      {/* Route list */}
+      <div className="flex-1 min-h-0 bg-card border border-border rounded-xl shadow-sm flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-border bg-muted/20 shrink-0">
+          <h2 className="font-semibold text-sm flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-primary" />
+            Active Route Stream
+            {loading && (
+              <span className="w-4 h-4 border-2 border-border border-t-indigo-500 rounded-full animate-spin ml-2" />
+            )}
+          </h2>
         </div>
 
-        {/* Live Routes List */}
-        <div className="flex-1 bg-card border border-border rounded-xl shadow-sm flex flex-col min-w-[320px]">
-          <div className="p-4 border-b border-border bg-muted/20">
-            <h2 className="font-semibold text-sm flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-primary" />
-              Active Route Stream
-            </h2>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {loading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="w-6 h-6 border-2 border-border border-t-indigo-500 rounded-full animate-spin" />
-              </div>
-            ) : filteredRoutes.length === 0 ? (
-              <div className="text-center text-muted-foreground text-sm py-12">
-                No active routes match your search.
-              </div>
-            ) : (
-              filteredRoutes.map(route => (
-                <div key={route.shipmentId} className="p-3 border border-border rounded-lg hover:bg-muted/30 transition-colors bg-background">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span className="text-xs font-semibold text-indigo-500 uppercase tracking-wider">{route.tenantName}</span>
-                      <p className="text-sm font-medium">{route.origin?.name} → {route.destination?.name}</p>
-                    </div>
-                    {route.status === "at-risk" ? (
-                      <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
-                    ) : (
-                      <Truck className="w-4 h-4 text-emerald-500 shrink-0" />
-                    )}
-                  </div>
-                  
-                  <div className="flex justify-between items-end mt-3">
-                    <span className="text-[10px] font-mono text-muted-foreground">{route.shipmentId}</span>
-                    <Badge variant="outline" className="text-[10px] py-0 h-5">
-                      {route.telemetry ? `${route.telemetry.speed || 0} mph` : "No Signal"}
-                    </Badge>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+        <div className="flex-1 overflow-y-auto">
+          {!loading && filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-sm gap-2">
+              <Truck className="w-8 h-8 opacity-20" />
+              <span>No active shipments match your search.</span>
+            </div>
+          ) : (
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Tenant</th>
+                  <th className="px-4 py-3 font-semibold">Shipment</th>
+                  <th className="px-4 py-3 font-semibold">Route</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 font-semibold">Risk</th>
+                  <th className="px-4 py-3 font-semibold">Driver / Vehicle</th>
+                  <th className="px-4 py-3 font-semibold">ETA</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((route) => (
+                  <tr
+                    key={route.id}
+                    className="border-b border-border/50 hover:bg-muted/20 transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
+                        {route.tenantName}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-xs">{route.shipmentCode ?? route.id}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">{route.id}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 max-w-[180px]">
+                      <p className="text-xs text-muted-foreground truncate">
+                        {route.originName ?? route.origin ?? "—"}
+                        {" → "}
+                        {route.destinationName ?? route.destination ?? "—"}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge
+                        variant="outline"
+                        className={
+                          route.status === "at-risk"
+                            ? "bg-rose-500/10 text-rose-500 border-rose-500/20 text-[10px]"
+                            : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px]"
+                        }
+                      >
+                        {route.status === "at-risk" ? (
+                          <AlertTriangle className="w-3 h-3 mr-1" />
+                        ) : (
+                          <Truck className="w-3 h-3 mr-1" />
+                        )}
+                        {route.status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      {route.riskLevel ? (
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${RISK_BADGE[route.riskLevel] ?? ""}`}
+                        >
+                          {route.riskScore !== undefined ? `${route.riskScore} ` : ""}
+                          {route.riskLevel}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {route.assignedDriverName ?? "—"}
+                      {route.assignedVehicleNumber && (
+                        <span className="font-mono ml-1">· {route.assignedVehicleNumber}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {route.execution?.currentETA ?? route.eta ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
+
+        {/* Pagination */}
+        {pages > 1 && (
+          <div className="px-4 py-3 border-t border-border flex items-center justify-between bg-muted/10 shrink-0">
+            <span className="text-xs text-muted-foreground">
+              Showing {(page - 1) * 50 + 1}–{Math.min(page * 50, total)} of {total}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                disabled={page === 1 || loading}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-xs px-2">{page} / {pages}</span>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                disabled={page >= pages || loading}
+                onClick={() => setPage((p) => Math.min(pages, p + 1))}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

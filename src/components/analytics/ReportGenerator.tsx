@@ -3,11 +3,102 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, FileText, FileSpreadsheet, FileIcon, Loader2 } from "lucide-react";
 import { exportToCSV, exportToExcel, exportToPDF } from "@/lib/analytics/export-utils";
 import { toast } from "sonner";
 import { useAnalyticsFilters } from "@/hooks/use-analytics-filters";
+import { auth } from "@/lib/firebase";
+
+/** Flatten any value into a string safe for tabular export. */
+function flattenValue(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+
+/**
+ * Convert the raw API response data into a flat array of row objects
+ * suitable for CSV / Excel / PDF export.
+ *
+ * Executive reports → labelled Metric/Value rows.
+ * Shipment list     → strip MongoDB _id, flatten nested objects.
+ * Any other shape   → best-effort flatten.
+ */
+function shapeExportData(type: string, data: unknown): Record<string, unknown>[] {
+  if (!data) return [];
+
+  // Executive KPI report — convert nested object to labelled rows
+  if (type === "executive" && typeof data === "object" && data !== null) {
+    const d = data as Record<string, unknown>;
+    const rows: Record<string, unknown>[] = [];
+
+    const ship = d.shipments as Record<string, unknown> | undefined;
+    if (ship) {
+      rows.push(
+        { Metric: "Total Shipments",        Value: ship.total         ?? 0 },
+        { Metric: "Active Shipments",        Value: ship.active        ?? 0 },
+        { Metric: "Completed Shipments",     Value: ship.completed     ?? 0 },
+        { Metric: "At-Risk Shipments",       Value: ship.atRisk        ?? 0 },
+        { Metric: "Cancelled Shipments",     Value: ship.cancelled     ?? 0 },
+        { Metric: "Shipment Success Rate",   Value: `${ship.successRate ?? 0}%` },
+        { Metric: "Delivery Performance",    Value: `${ship.deliveryPerformance ?? 0}%` },
+      );
+    }
+    const fleet = d.fleet as Record<string, unknown> | undefined;
+    if (fleet) {
+      rows.push(
+        { Metric: "Total Vehicles",          Value: fleet.total         ?? 0 },
+        { Metric: "Available Vehicles",      Value: fleet.available     ?? 0 },
+        { Metric: "Assigned Vehicles",       Value: fleet.assigned      ?? 0 },
+        { Metric: "Fleet Utilization Rate",  Value: `${fleet.utilizationRate ?? 0}%` },
+        { Metric: "Fleet Availability Rate", Value: `${fleet.availabilityRate ?? 0}%` },
+      );
+    }
+    const drivers = d.drivers as Record<string, unknown> | undefined;
+    if (drivers) {
+      rows.push(
+        { Metric: "Total Drivers",           Value: drivers.total          ?? 0 },
+        { Metric: "Active Drivers",          Value: drivers.active         ?? 0 },
+        { Metric: "Driver Utilization Rate", Value: `${drivers.utilizationRate ?? 0}%` },
+      );
+    }
+    const incidents = d.incidents as Record<string, unknown> | undefined;
+    if (incidents) {
+      rows.push(
+        { Metric: "Total Incidents",         Value: incidents.total    ?? 0 },
+        { Metric: "Critical Incidents",      Value: incidents.critical ?? 0 },
+        { Metric: "High Incidents",          Value: incidents.high     ?? 0 },
+      );
+    }
+    if (d.healthScore !== undefined) {
+      rows.push({ Metric: "Operational Health Score", Value: d.healthScore });
+    }
+    return rows;
+  }
+
+  // Array response (e.g. shipment list) — strip _id, flatten nested fields
+  if (Array.isArray(data)) {
+    return data.map((item: unknown) => {
+      if (typeof item !== "object" || item === null) return { Value: flattenValue(item) };
+      const { _id, ...rest } = item as Record<string, unknown>;
+      void _id; // strip MongoDB ObjectId
+      return Object.fromEntries(
+        Object.entries(rest).map(([k, v]) => [k, flattenValue(v)])
+      );
+    });
+  }
+
+  // Fallback: wrap single object as one row
+  if (typeof data === "object" && data !== null) {
+    return [
+      Object.fromEntries(
+        Object.entries(data as Record<string, unknown>).map(([k, v]) => [k, flattenValue(v)])
+      ),
+    ];
+  }
+
+  return [];
+}
 
 export function ReportGenerator({ type = "executive", title = "Executive Report" }: { type?: string, title?: string }) {
   const [format, setFormat] = useState<"csv" | "excel" | "pdf">("pdf");
@@ -18,38 +109,45 @@ export function ReportGenerator({ type = "executive", title = "Executive Report"
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
+      // Always attach the Firebase ID token — requireAnalyticsAccess rejects unauthenticated calls
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
+
       const res = await fetch("/api/analytics/reports", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, filters, format })
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ type, filters, format }),
       });
 
-      if (!res.ok) throw new Error("Failed to generate report");
-
-      const { data } = await res.json();
-      
-      let exportData = data;
-      // Depending on the report type, we might need to flatten or restructure `data` for tabular export
-      if (type === "executive" && data.shipments) {
-        exportData = [
-          { Metric: "Active Shipments", Value: data.shipments.active },
-          { Metric: "Shipment Success Rate", Value: `${data.shipments.successRate}%` },
-          { Metric: "Fleet Utilization", Value: `${data.fleet.utilizationRate}%` },
-          { Metric: "Health Score", Value: data.healthScore }
-        ];
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(errBody.error ?? `Server error ${res.status}`);
       }
 
-      const filename = `SentinelRoute_${title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`;
+      const { data } = await res.json() as { data: unknown };
 
-      if (format === "csv") exportToCSV(exportData, filename);
+      const exportData = shapeExportData(type, data);
+
+      if (exportData.length === 0) {
+        toast.warning("No data to export", { description: "The report returned no records for the selected filters." });
+        return;
+      }
+
+      const filename = `SentinelRoute_${title.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}`;
+
+      if (format === "csv")   exportToCSV(exportData, filename);
       else if (format === "excel") exportToExcel(exportData, filename, title);
-      else if (format === "pdf") exportToPDF(exportData, filename, title);
+      else if (format === "pdf")   exportToPDF(exportData, filename, title);
 
       toast.success("Report generated successfully", { description: "Your download should begin immediately." });
       setOpen(false);
     } catch (error) {
-      console.error(error);
-      toast.error("Generation failed", { description: "An error occurred while generating the report." });
+      console.error("[ReportGenerator]", error);
+      toast.error("Generation failed", {
+        description: error instanceof Error ? error.message : "An error occurred while generating the report.",
+      });
     } finally {
       setIsGenerating(false);
     }

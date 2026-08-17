@@ -31,15 +31,17 @@ export class ReportEngine {
       case "executive":
         reportData = await KPIEngine.getAllKPIs(req.companyId, req.filters.dateRange);
         break;
-      case "shipment":
-        // For standard reports, we fetch the actual list of matching records up to a limit
+      case "shipment": {
+        // For standard reports, fetch the actual list of matching records up to a limit
         const limit = 10000; // Cap to prevent massive memory usage
         reportData = await db.collection("shipments")
           .find({ companyId: req.companyId, ...req.filters.query })
           .sort({ createdAt: -1 })
           .limit(limit)
+          .project({ _id: 0 }) // strip MongoDB _id before returning
           .toArray();
         break;
+      }
       // Other types would follow a similar pattern
       default:
         // Fallback or generic aggregation

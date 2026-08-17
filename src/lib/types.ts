@@ -432,7 +432,9 @@ export type AuditEventType =
   // Module 9 Audit Events
   | "report_generated"
   | "analytics_exported"
-  | "dashboard_accessed";
+  | "dashboard_accessed"
+  // Module 10 — platform lifecycle events
+  | "company_reactivated";
 
 // ─── Module 2 - Workforce Management types ───────────────────────────────────
 
