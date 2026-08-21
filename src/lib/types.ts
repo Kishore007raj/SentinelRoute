@@ -154,6 +154,9 @@ export interface Shipment {
   currentLocation?:       { lat: number; lng: number; updatedAt: string };
   /** Reason for cancellation */
   cancellationReason?:    string;
+  /** Branch hierarchy */
+  branchId?:              string;
+  branchName?:            string;
 }
 
 // ─── Pending shipment (form state before dispatch) ────────────────────────────
@@ -302,6 +305,7 @@ export type UserRole =
   | "company_manager"
   | "operations_manager"
   | "fleet_manager"
+  | "branch_manager"
   | "dispatcher"
   | "driver";
 
@@ -355,7 +359,25 @@ export interface UserRecord {
   active:            boolean;
   /** User's preferred display language. Falls back to company preferredLanguage. */
   preferredLanguage?: string;
+  branchId?:         string;
+  branchName?:       string;
   createdAt:         string;
+}
+
+export interface Branch {
+  branchId:          string;
+  companyId:         string;
+  name:              string;
+  code:              string; // e.g. "BLR-01"
+  address?:          string;
+  city?:             string;
+  state?:            string;
+  managerId?:        string;
+  managerName?:      string;
+  phone?:            string;
+  active:            boolean;
+  createdAt:         string;
+  updatedAt:         string;
 }
 
 export interface CompanyDocument {
@@ -458,7 +480,7 @@ export interface Driver {
 
   // ─── Status ───────────────────────────────────────────────────────────────
   status:                  "active" | "inactive" | "suspended";
-  operationalStatus?:      "Available" | "Assigned" | "Driving" | "Paused" | "Offline" | "Completed";
+  operationalStatus?:      "Available" | "Assigned" | "Driving" | "Paused" | "Offline" | "Completed" | "In Transit" | "Suspended";
   assignedVehicleId:       string | null;
 
   // ─── Module 3/4/5 Future Fields ───────────────────────────────────────────
@@ -467,6 +489,8 @@ export interface Driver {
   /** Driver's primary display/communication language. Default: "en" */
   preferredLanguage:       string;
   /** Additional languages the driver understands. Default: [] */
+  branchId?:               string;
+  branchName?:             string;
   languagePreferences:     string[];
 
   // ─── Timestamps ───────────────────────────────────────────────────────────
@@ -484,6 +508,8 @@ export interface Vehicle {
   vehicleType:             string;      // e.g. "Container Truck"
   capacity:                string;      // e.g. "10 tonnes"
   fuelType:                string;
+  branchId?:               string;
+  branchName?:             string;
 
   // ─── Documents ────────────────────────────────────────────────────────────
   insuranceNumber:         string;
@@ -509,6 +535,7 @@ export interface CompanyUser {
   companyId:   string;
   userId:      string;
   role:        UserRole;
+  branchId?:   string;
   active:      boolean;
   createdAt:   string;
   updatedAt:   string;
@@ -725,7 +752,7 @@ export interface ShipmentChannel {
   updatedAt:   string;
 }
 
-export type MessageType = "text" | "system" | "image" | "pdf";
+export type MessageType = "text" | "system" | "image" | "pdf" | "document";
 export type MessageSenderRole = "Dispatcher" | "Driver" | "Operations Manager" | "System";
 
 export interface ShipmentMessage {
@@ -738,8 +765,10 @@ export interface ShipmentMessage {
   senderName:  string;
   messageType: MessageType;
   message:     string;
-  fileUrl?:    string; // for image/pdf
+  fileUrl?:    string; // for image/pdf/doc
   fileName?:   string; // original filename for attachments
+  fileSize?:   number; // size in bytes
+  fileType?:   string; // MIME type
   timestamp:   string;
   readStatus:  boolean;
   readAt?:     string; // ISO timestamp of when the other party read it
@@ -786,6 +815,16 @@ export type RecommendationType =
 
 export type RecommendationLifecycleStatus = "generated" | "assigned" | "viewed" | "accepted" | "rejected" | "executed" | "completed" | "cancelled" | "expired";
 
+export interface ApprovalStep {
+  stepNumber:    number;
+  role:          UserRole;
+  status:        "pending" | "approved" | "rejected";
+  approverId?:   string;
+  approverName?: string;
+  actedAt?:      string;
+  notes?:        string;
+}
+
 export interface OperationalRecommendation {
   recommendationId:  string;
   shipmentId:        string;
@@ -810,6 +849,8 @@ export interface OperationalRecommendation {
   completedAt?:      string;
   cancelledAt?:      string;
   expiredAt?:        string;
+  approvalChain?:    ApprovalStep[];
+  currentApprovalStep?: number;
 }
 
 export interface OperationalHealthScore {

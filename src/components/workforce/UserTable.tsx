@@ -27,6 +27,7 @@ const ASSIGNABLE_ROLES: UserRole[] = [
   "company_admin",
   "fleet_manager",
   "operations_manager",
+  "branch_manager",
   "dispatcher",
   "driver",
 ];
@@ -37,6 +38,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   company_manager:     "Company Manager",
   operations_manager:  "Operations Manager",
   fleet_manager:       "Fleet Manager",
+  branch_manager:      "Branch Manager",
   dispatcher:          "Dispatcher",
   driver:              "Driver",
 };

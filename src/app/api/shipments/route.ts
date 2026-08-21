@@ -77,7 +77,15 @@ export async function GET(req: NextRequest) {
     }
 
     // Build query: if user has a company, scope by companyId; else fallback to userId
-    const query = queryCompanyId ? { companyId: queryCompanyId } : { userId };
+    const query: Record<string, unknown> = queryCompanyId ? { companyId: queryCompanyId } : { userId };
+
+    // Branch hierarchy scoping
+    const branchFilter = req.nextUrl.searchParams.get("branchId");
+    if (branchFilter) {
+      query.branchId = branchFilter;
+    } else if (userRecord?.role === "branch_manager" && userRecord.branchId) {
+      query.branchId = userRecord.branchId;
+    }
 
     const docs = await db
       .collection("shipments")

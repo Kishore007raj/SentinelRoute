@@ -226,6 +226,27 @@ app.prepare().then(() => {
        }
     });
 
+    // Handle typing indicators
+    socket.on("typing:start", (data: { shipmentId: string; senderName?: string; senderType?: string }) => {
+      if (data?.shipmentId && socket.data.companyId) {
+        socket.to(`company:${socket.data.companyId}`).emit("typing:started", {
+          shipmentId: data.shipmentId,
+          userId: socket.data.uid,
+          senderName: data.senderName || "User",
+          senderType: data.senderType || socket.data.role
+        });
+      }
+    });
+
+    socket.on("typing:stop", (data: { shipmentId: string }) => {
+      if (data?.shipmentId && socket.data.companyId) {
+        socket.to(`company:${socket.data.companyId}`).emit("typing:stopped", {
+          shipmentId: data.shipmentId,
+          userId: socket.data.uid
+        });
+      }
+    });
+
     // Handle ping for connection health tracking
     socket.on("ping:presence", () => {
       const userPresence = presence.get(socket.id);

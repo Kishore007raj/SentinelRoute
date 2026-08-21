@@ -27,25 +27,37 @@ interface DriverTableProps {
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: Driver["status"] }) {
-  if (status === "active") {
+function StatusBadge({ status, operationalStatus }: { status: Driver["status"]; operationalStatus?: Driver["operationalStatus"] }) {
+  const currentStatus = operationalStatus || (status === "active" ? "Available" : status === "suspended" ? "Suspended" : "Offline");
+
+  if (currentStatus === "Available" || status === "active") {
     return (
-      <Badge className="bg-emerald-400/10 text-emerald-600 border-emerald-400/30 dark:text-emerald-400">
-        Active
+      <Badge className="bg-emerald-400/10 text-emerald-600 border-emerald-400/30 dark:text-emerald-400 gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        {operationalStatus || "Available"}
       </Badge>
     );
   }
-  if (status === "suspended") {
+  if (currentStatus === "Driving" || currentStatus === "Assigned" || currentStatus === "In Transit") {
+    return (
+      <Badge className="bg-blue-400/10 text-blue-600 border-blue-400/30 dark:text-blue-400 gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+        {operationalStatus || "On Trip"}
+      </Badge>
+    );
+  }
+  if (status === "suspended" || currentStatus === "Suspended") {
     return (
       <Badge className="bg-amber-400/10 text-amber-500 border-amber-400/30 dark:text-amber-400">
         Suspended
       </Badge>
     );
   }
-  // inactive
+  // offline / unavailable / inactive
   return (
-    <Badge variant="outline" className="text-muted-foreground border-border">
-      Inactive
+    <Badge variant="outline" className="text-muted-foreground border-border gap-1.5">
+      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+      {operationalStatus || "Offline"}
     </Badge>
   );
 }
@@ -181,7 +193,7 @@ export function DriverTable({
 
             {/* Status */}
             <div className="flex items-center">
-              <StatusBadge status={driver.status} />
+              <StatusBadge status={driver.status} operationalStatus={driver.operationalStatus} />
             </div>
 
             {/* Assigned Vehicle */}

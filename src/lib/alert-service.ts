@@ -21,6 +21,21 @@ export async function evaluateAlerts(
   } else if (prediction.weatherConfidence < 40) {
     alertReason = "Adverse Weather Alert";
     recommendedAction = "Check vehicle weather readiness and warn driver.";
+  } else if (shipment.assignedVehicleId) {
+    const db = await getDb();
+    const vehicle = await db.collection("vehicles").findOne({
+      $or: [{ vehicleId: shipment.assignedVehicleId }, { id: shipment.assignedVehicleId }]
+    });
+    if (vehicle) {
+      const now = new Date();
+      if (vehicle.fitnessExpiry && new Date(vehicle.fitnessExpiry) < now) {
+        alertReason = `Vehicle Fitness Expired (${vehicle.vehicleNumber || vehicle.registrationNumber})`;
+        recommendedAction = "Replace vehicle or renew fitness certificate before dispatch.";
+      } else if (vehicle.insuranceExpiry && new Date(vehicle.insuranceExpiry) < now) {
+        alertReason = `Vehicle Insurance Expired (${vehicle.vehicleNumber || vehicle.registrationNumber})`;
+        recommendedAction = "Renew vehicle insurance policy immediately.";
+      }
+    }
   }
 
   if (alertReason) {

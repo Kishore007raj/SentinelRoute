@@ -89,42 +89,128 @@ export default function DriverAppPage() {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Real GPS Streaming with battery-aware throttling & offline queue
+  useEffect(() => {
+    if (!execution || execution.status !== "driving") return;
+    if (typeof window === "undefined" || !("geolocation" in navigator)) return;
+
+    let lastSentTime = 0;
+    const THROTTLE_MS = 10000; // 10 seconds
+
+    const sendLocationUpdate = async (latitude: number, longitude: number, speed: number | null, heading: number | null) => {
+      const payload = {
+        latitude,
+        longitude,
+        speed: speed ?? 0,
+        heading: heading ?? 0,
+        timestamp: new Date().toISOString()
+      };
+      const url = `/api/execution/${execution.shipmentId}/location`;
+
+      if (!navigator.onLine) {
+        const OFFLINE_LOC_KEY = "sentinelroute_offline_locations";
+        const stored = JSON.parse(localStorage.getItem(OFFLINE_LOC_KEY) || "[]");
+        stored.push({ url, payload });
+        // Keep last 50 offline locations
+        localStorage.setItem(OFFLINE_LOC_KEY, JSON.stringify(stored.slice(-50)));
+        return;
+      }
+
+      try {
+        await fetchApi(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } catch (err) {
+        console.error("GPS stream failed", err);
+      }
+    };
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const now = Date.now();
+        if (now - lastSentTime >= THROTTLE_MS) {
+          lastSentTime = now;
+          sendLocationUpdate(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            pos.coords.speed,
+            pos.coords.heading
+          );
+        }
+      },
+      (err) => {
+        console.warn("GPS tracking warning", err.message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 5000
+      }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, [execution?.shipmentId, execution?.status]);
+
   // Offline Sync
   useEffect(() => {
     const OFFLINE_KEY = "sentinelroute_offline_actions";
+    const OFFLINE_LOC_KEY = "sentinelroute_offline_locations";
+
     const syncOffline = async () => {
       if (!navigator.onLine) return;
       
       const stored = localStorage.getItem(OFFLINE_KEY);
-      if (!stored) return;
-      
-      let actions = [];
-      try {
-        actions = JSON.parse(stored);
-      } catch(e) {}
-      
-      if (!Array.isArray(actions) || actions.length === 0) return;
-      
-      toast.info(`Syncing ${actions.length} offline actions...`);
-      const newActions = [];
-      
-      for (const action of actions) {
+      if (stored) {
+        let actions = [];
         try {
-          const res = await fetchApi(action.url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(action.payload)
-          });
-          if (!res.ok) throw new Error("Sync failed");
-        } catch (e) {
-          newActions.push(action);
+          actions = JSON.parse(stored);
+        } catch(e) {}
+        
+        if (Array.isArray(actions) && actions.length > 0) {
+          toast.info(`Syncing ${actions.length} offline actions...`);
+          const newActions = [];
+          
+          for (const action of actions) {
+            try {
+              const res = await fetchApi(action.url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(action.payload)
+              });
+              if (!res.ok) throw new Error("Sync failed");
+            } catch (e) {
+              newActions.push(action);
+            }
+          }
+          
+          localStorage.setItem(OFFLINE_KEY, JSON.stringify(newActions));
+          if (newActions.length === 0) {
+            toast.success("All offline actions synced successfully!");
+            fetchActiveExecution();
+          }
         }
       }
-      
-      localStorage.setItem(OFFLINE_KEY, JSON.stringify(newActions));
-      if (newActions.length === 0) {
-        toast.success("All offline actions synced successfully!");
-        fetchActiveExecution();
+
+      // Flush offline GPS points
+      const storedLocs = localStorage.getItem(OFFLINE_LOC_KEY);
+      if (storedLocs) {
+        try {
+          const locs = JSON.parse(storedLocs);
+          if (Array.isArray(locs) && locs.length > 0) {
+            for (const loc of locs) {
+              await fetchApi(loc.url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(loc.payload)
+              }).catch(() => {});
+            }
+            localStorage.removeItem(OFFLINE_LOC_KEY);
+          }
+        } catch {}
       }
     };
 

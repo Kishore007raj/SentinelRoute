@@ -59,6 +59,30 @@ export async function POST(
       case "approve":
       case "accept":
       case "execute":
+        // ── Multi-Step Approval Chain Logic ─────────────────────────────────
+        if (recommendation.approvalChain && Array.isArray(recommendation.approvalChain) && recommendation.approvalChain.length > 0) {
+          const chain = [...recommendation.approvalChain];
+          const currentStepIdx = (recommendation.currentApprovalStep || 1) - 1;
+          const currentStep = chain[currentStepIdx];
+
+          if (currentStep) {
+            currentStep.status = "approved";
+            currentStep.approverId = auth.userId;
+            currentStep.approverName = userRecord.name || auth.userId;
+            currentStep.actedAt = now;
+            currentStep.notes = reason || "Approved";
+
+            updatePayload.approvalChain = chain;
+
+            // If more steps remain in chain, advance step and don't execute yet
+            if (currentStepIdx + 1 < chain.length) {
+              updatePayload.currentApprovalStep = currentStepIdx + 2;
+              newStatus = "viewed";
+              break;
+            }
+          }
+        }
+
         if (action === "execute") {
           newStatus = "executed";
           updatePayload.executedAt = now;

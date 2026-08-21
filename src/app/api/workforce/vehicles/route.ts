@@ -42,6 +42,12 @@ export async function GET(req: NextRequest) {
     const db = await getDb();
 
     const query: Record<string, unknown> = { companyId };
+    const branchFilter = req.nextUrl.searchParams.get("branchId");
+    if (branchFilter) {
+      query.branchId = branchFilter;
+    } else if (userRecord.role === "branch_manager" && userRecord.branchId) {
+      query.branchId = userRecord.branchId;
+    }
 
     const docs = await db
       .collection("vehicles")

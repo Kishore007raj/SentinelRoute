@@ -119,6 +119,9 @@ export async function POST(
       messageType: body.messageType || "text",
       message: body.message,
       fileUrl: body.fileUrl,
+      fileName: body.fileName,
+      fileSize: body.fileSize,
+      fileType: body.fileType,
       timestamp: new Date().toISOString(),
       readStatus: false
     };

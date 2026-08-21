@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await requireCompany(req);
+    const { userId, company } = await requireCompany(req);
     
     // In this context, the driver themselves is making the request, 
     // so we use the user's uid as the driver userId.
@@ -75,18 +75,32 @@ export async function POST(req: NextRequest) {
     }
 
     const newStatus = isAvailable ? "available" : "unavailable";
+    const operationalStatus = isAvailable ? "Available" : "Offline";
+    const now = new Date().toISOString();
 
     await db.collection("drivers").updateOne(
       { userId: userId },
       { 
         $set: { 
           status: newStatus,
-          updatedAt: new Date().toISOString()
+          operationalStatus,
+          updatedAt: now
         } 
       }
     );
 
-    return NextResponse.json({ success: true, status: newStatus });
+    // Broadcast real-time availability update to dispatchers
+    const { emitToCompany } = await import("@/lib/socket-server");
+    emitToCompany(company.companyId, "driver:availability", {
+      driverId: driverDoc.driverId,
+      userId,
+      name: driverDoc.fullName || driverDoc.name,
+      status: newStatus,
+      operationalStatus,
+      updatedAt: now
+    });
+
+    return NextResponse.json({ success: true, status: newStatus, operationalStatus });
   } catch (error) {
     return handleAuthError(error);
   }

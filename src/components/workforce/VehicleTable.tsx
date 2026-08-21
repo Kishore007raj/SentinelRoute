@@ -99,7 +99,7 @@ export function VehicleTable({
       <div className="overflow-x-auto rounded-2xl border border-border bg-card">
 
         {/* Column headers */}
-        <div className="hidden lg:grid grid-cols-[1.2fr_1fr_0.8fr_1.2fr_1.2fr_1.2fr_0.8fr_auto] gap-4 px-6 py-3 bg-muted/5 border-b border-border/40">
+        <div className="hidden lg:grid grid-cols-[1.1fr_0.9fr_0.8fr_1fr_1.1fr_1.1fr_1.1fr_0.8fr_auto] gap-3 px-6 py-3 bg-muted/5 border-b border-border/40">
           <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">
             Vehicle No.
           </span>
@@ -111,6 +111,9 @@ export function VehicleTable({
           </span>
           <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">
             Current Driver
+          </span>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">
+            Fitness Expiry
           </span>
           <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">
             Insurance Expiry
@@ -180,6 +183,14 @@ export function VehicleTable({
               ) : (
                 <p className="text-sm text-muted-foreground">—</p>
               )}
+            </div>
+
+            {/* Fitness Expiry + ExpiryBadge */}
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground font-mono">
+                {vehicle.fitnessExpiry || "—"}
+              </p>
+              {vehicle.fitnessExpiry && <ExpiryBadge expiry={vehicle.fitnessExpiry} mode="badge" />}
             </div>
 
             {/* Insurance Expiry + ExpiryBadge */}
