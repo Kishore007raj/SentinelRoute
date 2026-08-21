@@ -4,8 +4,11 @@ import { Shipment, OperationalRecommendation, RecommendationType, RoutePredictio
 export class RecommendationEngine {
   
   /**
+   * DETERMINISTIC INTELLIGENCE ENGINE
+   * 
    * Evaluates a shipment and its latest prediction to generate actionable recommendations.
-   * Deterministic generation.
+   * This is a purely deterministic rules engine (e.g. if driver suspended -> Reassign Driver).
+   * It does NOT use LLMs or generative AI.
    */
   static async generateRecommendations(shipment: Shipment, prediction?: RoutePrediction): Promise<OperationalRecommendation[]> {
     const recommendations: OperationalRecommendation[] = [];

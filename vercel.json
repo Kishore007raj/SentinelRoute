@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sla-check",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+}

@@ -26,6 +26,7 @@ import { auth } from "@/lib/firebase";
 import { useUser } from "@/lib/auth-context";
 import { useStore } from "@/lib/store";
 import type { PresenceUser } from "@/lib/store";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 const routeLabels: Record<string, string> = {
   "/dashboard":          "Dashboard",
@@ -154,16 +155,8 @@ export function AppHeader() {
           <span>Shipments</span>
         </Link>
 
-        {/* Notifications - not yet implemented; tooltip explains why */}
-        <Tooltip>
-          <TooltipTrigger
-            aria-label="Notifications"
-            className="relative h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground opacity-40 cursor-not-allowed"
-          >
-            <Bell className="w-4 h-4" />
-          </TooltipTrigger>
-          <TooltipContent>Notifications coming soon</TooltipContent>
-        </Tooltip>
+        {/* Notifications */}
+        <NotificationBell />
 
         {/* User menu */}
         <DropdownMenu>

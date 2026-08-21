@@ -4,7 +4,12 @@ import { OperationalHealthScore, Shipment, RoutePrediction } from "../types";
 export class HealthScore {
 
   /**
+   * DETERMINISTIC INTELLIGENCE ENGINE
+   * 
    * Dynamically computes the Operational Health Score for a company.
+   * This is a purely deterministic rules engine driven by actual database 
+   * state (active shipments, delayed shipments, active drivers, etc.).
+   * It does NOT use LLMs or generative AI.
    */
   static async calculateForCompany(companyId: string): Promise<OperationalHealthScore> {
     const db = await getDb();

@@ -26,6 +26,15 @@ export function CommandActionPanel({ recommendations }: { recommendations: Opera
         const data = await res.json();
         throw new Error(data.error || "Failed to process action");
       }
+      
+      if (action === "accept" && rec.type === "Change Route") {
+        await fetch(`/api/execution/${rec.shipmentId}/reroute`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "AI Recommendation Accepted" })
+        });
+      }
+      
       toast.success(`Action ${action} successful`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : String(err));

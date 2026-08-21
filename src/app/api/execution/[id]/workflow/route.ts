@@ -19,9 +19,9 @@ export async function POST(
     }
     
     const body = await req.json().catch(() => ({}));
-    const { action, notes } = body; // action: start, pause, resume, complete, cancel
+    const { action, notes, podSignatureSvg, podPhotoUrl } = body; // action: accept, decline, start, pause, resume, complete, cancel
     
-    if (!["start", "pause", "resume", "complete", "cancel"].includes(action)) {
+    if (!["accept", "decline", "start", "pause", "resume", "complete", "cancel"].includes(action)) {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
     
@@ -48,7 +48,59 @@ export async function POST(
     
     const now = utcNow();
     
-    if (action === "start") {
+    if (action === "accept") {
+      if (!execution) {
+        // Create pending execution
+        const checkpoints = (shipment.route?.stops as Array<{ address?: string; location?: { lat?: number; lng?: number } }> | undefined)
+          ?.map((stop, index) => ({
+            id:        `chk-${index}`,
+            name:      stop.address ?? `Stop ${index + 1}`,
+            latitude:  stop.location?.lat ?? 0,
+            longitude: stop.location?.lng ?? 0,
+            status:    "pending" as const,
+          })) ?? [];
+        
+        await db.collection("shipment_executions").insertOne({
+          shipmentId,
+          companyId: auth.company.companyId,
+          driverId: shipment.assignedDriverId,
+          vehicleId: shipment.assignedVehicleId,
+          plannedRoute: shipment.route,
+          currentRoute: shipment.route,
+          routeVersion: 1,
+          driverAccepted: true,
+          tripStartTime: null,
+          historicalLocations: [],
+          lastUpdated: now,
+          completedCheckpoints: 0,
+          remainingCheckpoints: checkpoints.length,
+          checkpoints,
+          travelledDistance: 0,
+          averageSpeed: 0,
+          maximumSpeed: 0,
+          idleDuration: 0,
+          drivingDuration: 0,
+          fuelEstimate: 0,
+          status: "pending"
+        });
+      } else {
+        await db.collection("shipment_executions").updateOne(
+          { shipmentId, companyId: auth.company.companyId },
+          { $set: { driverAccepted: true, lastUpdated: now } }
+        );
+      }
+    } else if (action === "decline") {
+      if (execution) {
+        await db.collection("shipment_executions").updateOne(
+          { shipmentId, companyId: auth.company.companyId },
+          { $set: { status: "cancelled", lastUpdated: now } }
+        );
+      }
+      await db.collection("shipments").updateOne(
+        { shipmentId, companyId: auth.company.companyId },
+        { $set: { status: "pending", assignedDriverId: null, assignedVehicleId: null } }
+      );
+    } else if (action === "start") {
       if (execution && execution.status !== "pending") {
         return NextResponse.json({ error: "Execution already started" }, { status: 400 });
       }
@@ -98,8 +150,8 @@ export async function POST(
       
       // Update shipment
       await db.collection("shipments").updateOne(
-        { shipmentId },
-        { $set: { status: "active", updatedAt: now } }
+        { shipmentId, companyId: auth.company.companyId },
+        { $set: { status: "active" } }
       );
       
       // Update Driver and Vehicle status
@@ -192,9 +244,13 @@ export async function POST(
         return NextResponse.json({ error: "Trip is already completed or cancelled" }, { status: 400 });
       }
       
+      if (!podSignatureSvg) {
+        return NextResponse.json({ error: "Proof of Delivery signature is required to complete a shipment" }, { status: 400 });
+      }
+      
       await db.collection("shipment_executions").updateOne(
         { shipmentId, companyId: auth.company.companyId },
-        { $set: { status: "completed", tripEndTime: now, lastUpdated: now } }
+        { $set: { status: "completed", tripEndTime: now, lastUpdated: now, podSignatureSvg, ...(podPhotoUrl ? { podPhotoUrl } : {}) } }
       );
       
       await db.collection("shipments").updateOne(

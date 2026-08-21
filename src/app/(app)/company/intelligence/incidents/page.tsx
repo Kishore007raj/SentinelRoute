@@ -21,6 +21,7 @@ interface Incident {
   confidence:        number;
   source:            string;
   recommendedAction: string;
+  commandStatus?:    "open" | "investigating" | "mitigating" | "resolved";
 }
 
 const SEVERITY_OPTIONS = ["low", "medium", "high", "critical"] as const;
@@ -274,6 +275,25 @@ export default function IncidentsPage() {
     setIncidents((prev) => [incident, ...prev]);
   };
 
+  const handleResolve = async (incidentId: string) => {
+    try {
+      const res = await fetchApi(`/api/incidents/${incidentId}/resolve`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resolution: "Resolved by operator" })
+      });
+      if (res.ok) {
+        setIncidents(prev => prev.map(inc => 
+          inc.incidentId === incidentId 
+            ? { ...inc, commandStatus: "resolved" } 
+            : inc
+        ));
+      }
+    } catch (e) {
+      console.error("Failed to resolve incident", e);
+    }
+  };
+
   const filteredIncidents = incidents.filter((incident) => {
     const matchesSearch =
       incident.title?.toLowerCase().includes(search.toLowerCase()) ||
@@ -399,13 +419,28 @@ export default function IncidentsPage() {
                   )}
                 </div>
 
-                <div className="shrink-0 text-right space-y-1 bg-muted/30 p-3 rounded-lg md:w-44">
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Impact Score</p>
-                  <p className="text-2xl font-bold">{incident.impactScore}<span className="text-sm font-normal text-muted-foreground">/100</span></p>
-                  <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground mt-1">
-                    <Info className="w-3 h-3" />
-                    {incident.confidence}% confidence
+                <div className="shrink-0 text-right space-y-1 bg-muted/30 p-3 rounded-lg md:w-44 flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Impact Score</p>
+                    <p className="text-2xl font-bold">{incident.impactScore}<span className="text-sm font-normal text-muted-foreground">/100</span></p>
+                    <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground mt-1">
+                      <Info className="w-3 h-3" />
+                      {incident.confidence}% confidence
+                    </div>
                   </div>
+                  
+                  {incident.commandStatus !== "resolved" ? (
+                    <button 
+                      onClick={() => handleResolve(incident.incidentId)}
+                      className="mt-3 w-full bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 px-3 py-1.5 rounded text-xs font-semibold transition-colors"
+                    >
+                      Mark Resolved
+                    </button>
+                  ) : (
+                    <div className="mt-3 w-full text-center bg-muted text-muted-foreground px-3 py-1.5 rounded text-xs font-semibold border border-border">
+                      Resolved
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

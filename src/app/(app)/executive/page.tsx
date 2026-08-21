@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, TrendingUp } from "lucide-react";
 
 interface TrendPoint { date: string; value: number }
+interface DailyHistorical { date: string; completedShipments: number; incidents: number; criticalIncidents: number }
+interface ForecastDay { date: string; projectedShipments: number; projectedIncidents: number }
 
 export default function ExecutiveDashboardPage() {
   const { company }  = useCompany();
@@ -26,6 +28,10 @@ export default function ExecutiveDashboardPage() {
   const [trendData, setTrendData]   = useState<TrendPoint[]>([]);
   const [isLoading, setIsLoading]   = useState(true);
   const [trendLoading, setTrendLoading] = useState(true);
+  const [historicalData, setHistoricalData] = useState<DailyHistorical[]>([]);
+  const [historicalLoading, setHistoricalLoading] = useState(true);
+  const [forecastData, setForecastData] = useState<ForecastDay[]>([]);
+  const [forecastLoading, setForecastLoading] = useState(true);
 
   const { filters, apiQueryString } = useAnalyticsFilters();
 
@@ -70,11 +76,39 @@ export default function ExecutiveDashboardPage() {
     }
   }, [company?.companyId, user, authFetch, apiQueryString, filters.preset]);
 
+  const fetchHistorical = useCallback(async () => {
+    if (!company?.companyId || !user) return;
+    setHistoricalLoading(true);
+    try {
+      const data = await authFetch(`/api/analytics/historical?days=30`);
+      if (data?.trends) setHistoricalData(data.trends as DailyHistorical[]);
+    } catch {
+      setHistoricalData([]);
+    } finally {
+      setHistoricalLoading(false);
+    }
+  }, [company?.companyId, user, authFetch]);
+
+  const fetchForecast = useCallback(async () => {
+    if (!company?.companyId || !user) return;
+    setForecastLoading(true);
+    try {
+      const data = await authFetch(`/api/analytics/forecast`);
+      if (data?.forecast) setForecastData(data.forecast as ForecastDay[]);
+    } catch {
+      setForecastData([]);
+    } finally {
+      setForecastLoading(false);
+    }
+  }, [company?.companyId, user, authFetch]);
+
   // Refetch when filters change
   useEffect(() => {
     fetchKPIs();
     fetchTrend();
-  }, [fetchKPIs, fetchTrend]);
+    fetchHistorical();
+    fetchForecast();
+  }, [fetchKPIs, fetchTrend, fetchHistorical, fetchForecast]);
 
   // Sync kpi:updated socket event from StoreProvider into local state
   useEffect(() => {
@@ -214,6 +248,44 @@ export default function ExecutiveDashboardPage() {
             )}
           </CardContent>
         </Card>
+      </motion.div>
+
+      {/* Historical KPI Trends */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.5 }}
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+      >
+        <AnalyticsLineChart
+          title="30-Day Daily Completed Shipments"
+          data={historicalData.map(d => ({ date: d.date, value: d.completedShipments }))}
+          xAxisKey="date"
+          lines={[{ key: "value", name: "Completed", color: "var(--sr-emerald)" }]}
+          isLoading={historicalLoading}
+        />
+        <AnalyticsLineChart
+          title="30-Day Daily Incident Count"
+          data={historicalData.map(d => ({ date: d.date, value: d.incidents }))}
+          xAxisKey="date"
+          lines={[{ key: "value", name: "Incidents", color: "var(--sr-amber)" }]}
+          isLoading={historicalLoading}
+        />
+      </motion.div>
+
+      {/* Forecast */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.6 }}
+      >
+        <AnalyticsLineChart
+          title="30-Day Shipment Forecast (Deterministic Projection)"
+          data={forecastData.map(d => ({ date: d.date, value: d.projectedShipments }))}
+          xAxisKey="date"
+          lines={[{ key: "value", name: "Projected Shipments", color: "var(--primary)" }]}
+          isLoading={forecastLoading}
+        />
       </motion.div>
     </div>
   );

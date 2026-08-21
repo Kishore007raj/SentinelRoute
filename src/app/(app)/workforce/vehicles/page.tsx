@@ -62,6 +62,7 @@ export default function VehicleManagementPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [complianceIssues, setComplianceIssues] = useState<any[]>([]);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [assignModalVehicle, setAssignModalVehicle] = useState<Vehicle | null>(null);
@@ -84,6 +85,14 @@ export default function VehicleManagementPage() {
       }
       const json = await res.json();
       setVehicles(json.vehicles ?? []);
+      
+      const compRes = await fetchApi("/api/workforce/vehicles/compliance", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (compRes.ok) {
+        const compJson = await compRes.json();
+        setComplianceIssues(compJson.complianceIssues ?? []);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("workforce.failedToLoadVehicles"));
     } finally {
@@ -157,6 +166,22 @@ export default function VehicleManagementPage() {
           {t("workforce.vehicles")}
         </h1>
       </div>
+
+      {complianceIssues.length > 0 && (
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-xl flex flex-col gap-2">
+          <div className="flex items-center gap-2 font-bold">
+            <AlertTriangle className="w-5 h-5" />
+            Compliance Alerts ({complianceIssues.length} vehicles)
+          </div>
+          <ul className="list-disc pl-5 text-sm space-y-1">
+            {complianceIssues.map(issue => (
+              <li key={issue.vehicleId}>
+                <span className="font-semibold">{issue.registrationNumber}</span>: {issue.issues.map((i: any) => `${i.type} (${i.status})`).join(", ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">

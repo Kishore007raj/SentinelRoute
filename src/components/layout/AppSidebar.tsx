@@ -90,6 +90,21 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
         <div className="flex-1 overflow-auto px-3 py-4">
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest px-3 mb-3">Navigation</p>
           <div className="space-y-1">
+            {userRecord?.role === "driver" && (
+              <Link href="/driver" onClick={onClose}>
+                <div className={cn(
+                  "relative flex items-center gap-3 px-3 py-3 text-sm font-medium transition-all duration-200 rounded-lg overflow-hidden",
+                  pathname.startsWith("/driver")
+                    ? "bg-emerald-400/10 text-emerald-500 font-semibold ring-1 ring-emerald-400/20 shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+                )}>
+                  {pathname.startsWith("/driver") && <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />}
+                  <Truck className="w-4 h-4 shrink-0" />
+                  Driver App
+                  {pathname.startsWith("/driver") && <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />}
+                </div>
+              </Link>
+            )}
             {navItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href.split("?")[0] + "/");
               return (
@@ -324,6 +339,28 @@ export function AppSidebar() {
           <SidebarGroupLabel className="label-meta px-3 mb-2">Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
+              {userRecord?.role === "driver" && (
+                <SidebarMenuItem key="driver-app">
+                  <SidebarMenuButton
+                    render={<Link href="/driver" />}
+                    isActive={pathname === "/driver" || pathname.startsWith("/driver/")}
+                    tooltip="Driver App"
+                    className={cn(
+                      "relative rounded-lg transition-all duration-200 py-3 overflow-hidden",
+                      pathname.startsWith("/driver")
+                        ? "bg-emerald-400/10 text-emerald-500 font-semibold ring-1 ring-emerald-400/20 shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                    )}
+                  >
+                    {pathname.startsWith("/driver") && <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />}
+                    <Truck className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-medium">Driver App</span>
+                    {pathname.startsWith("/driver") && (
+                      <ChevronRight className="ml-auto w-3.5 h-3.5 opacity-60" />
+                    )}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               {navItems.map((item) => {
                 const isActive = pathname === item.href.split("?")[0] || pathname.startsWith(item.href.split("?")[0] + "/");
                 return (

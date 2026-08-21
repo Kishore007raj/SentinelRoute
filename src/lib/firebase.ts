@@ -11,12 +11,14 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { getMessaging, type Messaging, isSupported } from "firebase/messaging";
 
 const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
 let app: FirebaseApp;
 let auth: Auth;
 let storage: FirebaseStorage;
+let messaging: Messaging | null = null;
 
 if (apiKey) {
   const firebaseConfig = {
@@ -31,6 +33,14 @@ if (apiKey) {
   app     = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
   auth    = getAuth(app);
   storage = getStorage(app);
+  
+  if (typeof window !== "undefined") {
+    isSupported().then((supported) => {
+      if (supported) {
+        messaging = getMessaging(app);
+      }
+    });
+  }
 } else {
   // Stub values during SSR when env vars aren't available
   app     = {} as FirebaseApp;
@@ -45,5 +55,5 @@ if (apiKey) {
   }
 }
 
-export { auth, storage };
+export { auth, storage, messaging };
 export default app;

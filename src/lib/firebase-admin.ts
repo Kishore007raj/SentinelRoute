@@ -14,22 +14,7 @@ import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
 import { FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY } from "./env";
 
-// ─── JWT payload decoder (no Admin SDK - dev fallback) ───────────────────────
-
-function decodeJwtUid(token: string): string | null {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const json    = Buffer.from(payload, "base64").toString("utf8");
-    const parsed  = JSON.parse(json) as Record<string, unknown>;
-    const iss = typeof parsed.iss === "string" ? parsed.iss : "";
-    if (!iss.startsWith("https://securetoken.google.com/")) return null;
-    return typeof parsed.sub === "string" ? parsed.sub : null;
-  } catch {
-    return null;
-  }
-}
+// Removed insecure JWT payload decoder fallback
 
 // ─── Lazy singleton ───────────────────────────────────────────────────────────
 // Never called at module evaluation time - only on the first request.
@@ -120,39 +105,33 @@ export async function verifyFirebaseToken(req: Request): Promise<VerifiedUser> {
 
   const auth = getAdminAuth();
 
-  // ── Mode 1: Admin SDK ─────────────────────────────────────────────────────
-  if (auth) {
-    try {
-      const decoded = await auth.verifyIdToken(token);
-      return { uid: decoded.uid };
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code ?? "";
-      const invalidCodes = [
-        "auth/id-token-expired",
-        "auth/id-token-revoked",
-        "auth/invalid-id-token",
-        "auth/argument-error",
-        "auth/user-disabled",
-      ];
-      if (invalidCodes.some((c) => code.startsWith(c))) {
-        throw new Response(
-          JSON.stringify({ error: `Unauthorized: ${code}` }),
-          { status: 401, headers: { "Content-Type": "application/json" } }
-        );
-      }
-      console.error("[firebase-admin] verifyFirebaseToken unexpected error:", code, err);
-      throw err;
-    }
-  }
-
-  // ── Mode 2: JWT decode fallback ───────────────────────────────────────────
-  const uid = decodeJwtUid(token);
-  if (!uid) {
+  // ── Cryptographic Verification ──────────────────────────────────────────────
+  if (!auth) {
     throw new Response(
-      JSON.stringify({ error: "Unauthorized: invalid or non-Firebase token" }),
+      JSON.stringify({ error: "Unauthorized: Server authentication unavailable" }),
       { status: 401, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  return { uid };
+  try {
+    const decoded = await auth.verifyIdToken(token);
+    return { uid: decoded.uid };
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code ?? "";
+    const invalidCodes = [
+      "auth/id-token-expired",
+      "auth/id-token-revoked",
+      "auth/invalid-id-token",
+      "auth/argument-error",
+      "auth/user-disabled",
+    ];
+    if (invalidCodes.some((c) => code.startsWith(c))) {
+      throw new Response(
+        JSON.stringify({ error: `Unauthorized: ${code}` }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    console.error("[firebase-admin] verifyFirebaseToken unexpected error:", code, err);
+    throw err;
+  }
 }

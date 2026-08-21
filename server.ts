@@ -19,25 +19,45 @@ const port = parseInt(process.env.PORT ?? "3000", 10);
 const app     = next({ dev });
 const handle  = app.getRequestHandler();
 
-// ── JWT payload decoder (fallback when Admin SDK not configured) ──────────────
-function decodeJwtUid(token: string): string | null {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const json    = Buffer.from(payload, "base64").toString("utf8");
-    const parsed  = JSON.parse(json) as Record<string, unknown>;
-    const iss = typeof parsed.iss === "string" ? parsed.iss : "";
-    if (!iss.startsWith("https://securetoken.google.com/")) return null;
-    return typeof parsed.sub === "string" ? parsed.sub : null;
-  } catch {
-    return null;
-  }
-}
-
+// Removed insecure JWT payload decoder fallback
 app.prepare().then(() => {
   const httpServer = createServer((req, res) => {
     const parsedUrl = parse(req.url ?? "/", true);
+    
+    // ── Internal Webhook for Vercel Serverless Functions ──────────────────────
+    if (parsedUrl.pathname === "/api/internal/socket-emit" && req.method === "POST") {
+      let body = "";
+      req.on("data", chunk => { body += chunk; });
+      req.on("end", () => {
+        try {
+          const secret = process.env.INTERNAL_SOCKET_SECRET;
+          const authHeader = req.headers.authorization;
+          if (!secret || authHeader !== `Bearer ${secret}`) {
+            res.statusCode = 401;
+            res.end(JSON.stringify({ error: "Unauthorized webhook access" }));
+            return;
+          }
+          const payload = JSON.parse(body);
+          const ioInstance = (global as any).__socketio as SocketIOServer;
+          if (ioInstance) {
+            if (payload.target === "company" && payload.companyId) {
+              ioInstance.to(`company:${payload.companyId}`).emit(payload.event, payload.data);
+            } else if (payload.target === "user" && payload.userId) {
+              ioInstance.to(`user:${payload.userId}`).emit(payload.event, payload.data);
+            } else if (payload.target === "all") {
+              ioInstance.emit(payload.event, payload.data);
+            }
+          }
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true }));
+        } catch (err) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ error: "Bad request" }));
+        }
+      });
+      return;
+    }
+    
     handle(req, res, parsedUrl);
   });
 
@@ -66,19 +86,13 @@ app.prepare().then(() => {
 
     try {
       const adminAuth = getAdminAuth();
-      if (adminAuth) {
-        // Full cryptographic verification via Firebase Admin SDK
-        await adminAuth.verifyIdToken(token);
-      } else {
-        // Fallback: trust Firebase issuer claim (dev without service account)
-        const uid = decodeJwtUid(token);
-        if (!uid) return next(new Error("Unauthorized: invalid token issuer"));
+      if (!adminAuth) {
+        return next(new Error("Unauthorized: Server authentication unavailable"));
       }
-      // Attach decoded uid to socket data for downstream handlers
-      const adminAuthInst = getAdminAuth();
-      const uid = adminAuthInst
-        ? (await adminAuthInst.verifyIdToken(token)).uid
-        : decodeJwtUid(token)!;
+
+      // Full cryptographic verification via Firebase Admin SDK
+      const decoded = await adminAuth.verifyIdToken(token);
+      const uid = decoded.uid;
       
       const db = await getDb();
       const userRecord = await db.collection("users").findOne({ userId: uid });

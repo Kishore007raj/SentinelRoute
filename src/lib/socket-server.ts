@@ -1,59 +1,45 @@
 /**
  * socket-server.ts - Server-side Socket.io helpers for API routes.
  *
- * API routes import `emitToUser` / `emitToAll` to push real-time
- * events to connected clients without importing the full server.
- *
- * Safe to import in any API route - returns a no-op if Socket.io
- * is not initialised (e.g. during build or in test environments).
+ * Modified to support Vercel serverless deployment. It emits events by sending
+ * an internal REST POST to the separately hosted socket server process.
  */
 
-import type { Server as SocketIOServer } from "socket.io";
-
-function getIO(): SocketIOServer | null {
-  return (global as Record<string, unknown>).__socketio as SocketIOServer ?? null;
+// Fire and forget fetch to the internal socket webhook
+function pushToSocketWebhook(payload: any) {
+  // Try to use a configured external socket URL, fallback to localhost for dev
+  const baseUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
+  const secret = process.env.INTERNAL_SOCKET_SECRET;
+  
+  if (!secret) {
+    console.warn("[socket-server] INTERNAL_SOCKET_SECRET missing. Skipping emission.");
+    return;
+  }
+  
+  fetch(`${baseUrl}/api/internal/socket-emit`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${secret}`
+    },
+    body: JSON.stringify(payload)
+  }).catch(err => {
+    console.error("[socket-server] Failed to push to socket webhook:", err);
+  });
 }
 
-/**
- * Emit an event to all sockets in a user's room.
- * Room name: `user:<userId>`
- */
-export function emitToUser(
-  userId: string,
-  event: string,
-  data: unknown
-): void {
-  const io = getIO();
-  if (!io) return;
-  io.to(`user:${userId}`).emit(event, data);
+export function emitToUser(userId: string, event: string, data: unknown): void {
+  pushToSocketWebhook({ target: "user", userId, event, data });
 }
 
-/**
- * Emit an event to ALL connected clients.
- */
 export function emitToAll(event: string, data: unknown): void {
-  const io = getIO();
-  if (!io) return;
-  io.emit(event, data);
+  pushToSocketWebhook({ target: "all", event, data });
 }
 
-/**
- * Emit an event to all sockets in a company's room.
- * Room name: `company:<companyId>`
- */
-export function emitToCompany(
-  companyId: string,
-  event: string,
-  data: unknown
-): void {
-  const io = getIO();
-  if (!io) return;
-  io.to(`company:${companyId}`).emit(event, data);
+export function emitToCompany(companyId: string, event: string, data: unknown): void {
+  pushToSocketWebhook({ target: "company", companyId, event, data });
 }
 
-/**
- * Emit a presence update for a user in a company's room.
- */
 export function emitPresenceUpdate(
   companyId: string,
   presenceData: { userId: string; status: "online" | "offline"; role?: string }
@@ -61,17 +47,10 @@ export function emitPresenceUpdate(
   emitToCompany(companyId, "presence:updated", presenceData);
 }
 
-/**
- * Notify all analytics listeners in a company room that data has changed
- * and they should re-fetch KPIs / trends.
- *
- * Call this fire-and-forget after any operational mutation that affects
- * analytics data (shipment created/completed/cancelled, driver/vehicle
- * status changes, incidents, recommendations, etc.).
- *
- * Room: company:<companyId>
- * Event: analytics:refresh
- */
 export function emitAnalyticsRefresh(companyId: string): void {
   emitToCompany(companyId, "analytics:refresh", { ts: Date.now() });
+}
+
+export function getSocketIO(): any | null {
+  return null;
 }

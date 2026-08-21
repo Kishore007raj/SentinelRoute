@@ -27,6 +27,8 @@ export const metadata: Metadata = {
   title: "SentinelRoute - Logistics Decision Intelligence",
   description:
     "Compare shipment routes, assess operational risk, and make routing decisions you can defend.",
+  manifest: "/manifest.json",
+  themeColor: "#10b981",
 };
 
 export default function RootLayout({
@@ -55,6 +57,20 @@ export default function RootLayout({
             </I18nProvider>
           </CompanyProvider>
         </UserProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(
+                    function(registration) { },
+                    function(err) { console.log('Service Worker registration failed: ', err); }
+                  );
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

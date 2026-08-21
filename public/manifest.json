@@ -1,0 +1,16 @@
+{
+  "name": "SentinelRoute",
+  "short_name": "SentinelRoute",
+  "description": "Logistics Intelligence Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "192x192",
+      "type": "image/x-icon"
+    }
+  ]
+}

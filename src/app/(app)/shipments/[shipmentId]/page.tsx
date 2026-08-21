@@ -36,6 +36,11 @@ const DecisionWorkspace = dynamic(
   { ssr: false }
 );
 
+const RouteReplayMap = dynamic(
+  () => import("@/components/shipment/RouteReplayMap").then((m) => m.RouteReplayMap),
+  { ssr: false }
+);
+
 import { getRiskColor, cn, formatRelativeTime, getMeaningfulAlert } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import type { ShipmentTimelineEvent } from "@/lib/types";
@@ -634,6 +639,7 @@ export default function ShipmentDetailPage({
         <TabsList className="h-auto min-h-[44px] bg-muted/20 gap-1 p-1 rounded-lg flex-wrap">
           <TabsTrigger value="overview"      className="text-sm h-9 px-4 rounded-md">Overview</TabsTrigger>
           <TabsTrigger value="route"         className="text-sm h-9 px-4 rounded-md">Route</TabsTrigger>
+          <TabsTrigger value="replay"        className="text-sm h-9 px-4 rounded-md">Replay</TabsTrigger>
           <TabsTrigger value="risk"          className="text-sm h-9 px-4 rounded-md">Risk Intelligence</TabsTrigger>
           <TabsTrigger value="timeline"      className="text-sm h-9 px-4 rounded-md">Timeline</TabsTrigger>
           <TabsTrigger value="communication" className="text-sm h-9 px-4 rounded-md">Communication</TabsTrigger>
@@ -723,6 +729,18 @@ export default function ShipmentDetailPage({
               />
             </div>
           </div>
+        </TabsContent>
+
+        {/* Replay */}
+        <TabsContent value="replay" className="mt-8">
+          {execution ? (
+            <RouteReplayMap execution={execution} />
+          ) : (
+            <div className="p-12 text-center border border-border rounded-xl bg-card flex flex-col items-center gap-4">
+              <Navigation className="w-8 h-8 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground">Execution data not available for replay.</p>
+            </div>
+          )}
         </TabsContent>
 
         {/* Risk Intelligence */}

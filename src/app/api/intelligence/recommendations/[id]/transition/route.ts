@@ -58,20 +58,60 @@ export async function POST(
         break;
       case "approve":
       case "accept":
-        newStatus = "accepted";
-        updatePayload.resolvedAt = now;
-        updatePayload.resolvedBy = auth.userId;
-        updatePayload.status = "accepted"; // legacy status
+      case "execute":
+        if (action === "execute") {
+          newStatus = "executed";
+          updatePayload.executedAt = now;
+        } else {
+          newStatus = "accepted";
+          updatePayload.resolvedAt = now;
+          updatePayload.resolvedBy = auth.userId;
+          updatePayload.status = "accepted"; // legacy status
+        }
+        
+        // ── ACTUAL OPERATIONAL EXECUTION ──────────────────────────────────────
+        if (recommendation.shipmentId) {
+          const shipmentUpdate: Record<string, any> = { updatedAt: now };
+          let shouldUpdateShipment = false;
+
+          switch (recommendation.type) {
+            case "Reassign Driver":
+              shipmentUpdate.userId = null; // Unassign current driver
+              shouldUpdateShipment = true;
+              break;
+            case "Change Route":
+              shipmentUpdate.selectedRoute = "Safe Route";
+              shipmentUpdate.riskLevel = "low";
+              shouldUpdateShipment = true;
+              break;
+            case "Pause Shipment":
+            case "Delay Dispatch":
+              shipmentUpdate.status = "draft";
+              shouldUpdateShipment = true;
+              break;
+            case "Replace Vehicle":
+              shipmentUpdate.vehicleId = null;
+              shouldUpdateShipment = true;
+              break;
+          }
+
+          if (shouldUpdateShipment) {
+            await db.collection("shipments").updateOne(
+              { id: recommendation.shipmentId, companyId: auth.companyId },
+              { $set: shipmentUpdate }
+            );
+            emitToCompany(auth.companyId, "shipment:updated", {
+              id: recommendation.shipmentId,
+              ...shipmentUpdate
+            });
+          }
+        }
         break;
       case "reject":
         newStatus = "rejected";
         updatePayload.resolvedAt = now;
         updatePayload.resolvedBy = auth.userId;
         updatePayload.status = "rejected"; // legacy status
-        break;
-      case "execute":
-        newStatus = "executed";
-        updatePayload.executedAt = now;
         break;
       case "complete":
         newStatus = "completed";

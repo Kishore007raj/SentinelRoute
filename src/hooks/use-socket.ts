@@ -54,7 +54,8 @@ async function getSocket(): Promise<any> {
     console.warn("[socket] Could not retrieve Firebase token for handshake");
   }
 
-  _socket = io({
+  const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "";
+  _socket = io(socketUrl, {
     path: "/api/socket",
     transports: ["websocket", "polling"],
     reconnectionAttempts: Infinity,

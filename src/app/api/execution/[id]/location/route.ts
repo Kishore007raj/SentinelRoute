@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as turf from "@turf/turf";
 import { getDb } from "@/lib/mongodb";
 import { requireApprovedCompany, handleAuthError } from "@/lib/auth-helpers";
 import { utcNow } from "@/lib/time";
@@ -66,24 +67,110 @@ export async function POST(
     let newETA = null;
     let deviationDetected = false;
     
+    // ------------------------------------------
+
+    // inside POST function after `let deviationDetected = false;`
+
+    // Geofence Engine: Check for arrival
+    const nextPendingCheckpointIndex = execution.checkpoints.findIndex((cp: ShipmentCheckpoint) => cp.status === "pending");
+    const nextPendingCheckpoint = nextPendingCheckpointIndex !== -1 ? execution.checkpoints[nextPendingCheckpointIndex] : null;
+
+    if (nextPendingCheckpoint && typeof nextPendingCheckpoint.latitude === "number" && typeof nextPendingCheckpoint.longitude === "number") {
+      const currentPoint = turf.point([longitude, latitude]);
+      const targetPoint = turf.point([nextPendingCheckpoint.longitude, nextPendingCheckpoint.latitude]);
+      const distMeters = turf.distance(currentPoint, targetPoint, { units: "meters" });
+      
+      if (distMeters < 500) {
+        // Auto-trigger arrival
+        const updatedCheckpoints = [...execution.checkpoints];
+        updatedCheckpoints[nextPendingCheckpointIndex] = {
+          ...nextPendingCheckpoint,
+          status: "arrived",
+          arrivalTime: now
+        };
+        updatePayload.checkpoints = updatedCheckpoints;
+        updatePayload.currentCheckpoint = nextPendingCheckpoint.id;
+        
+        await addTimelineEvent(
+          shipmentId,
+          auth.company.companyId,
+          "Checkpoint Arrived",
+          `Auto-arrived at checkpoint: ${nextPendingCheckpoint.name} (Distance: ${Math.round(distMeters)}m)`,
+          "system",
+          100
+        );
+      }
+    }
+
+    // Geofence Engine: Departure detection — if driver has 'arrived' and is now >800m away, mark as departed
+    const arrivedCheckpointIndex = execution.checkpoints.findIndex((cp: ShipmentCheckpoint) => cp.status === "arrived");
+    if (arrivedCheckpointIndex !== -1) {
+      const arrivedCheckpoint = execution.checkpoints[arrivedCheckpointIndex];
+      const currentPoint = turf.point([longitude, latitude]);
+      const arrivedPoint = turf.point([arrivedCheckpoint.longitude, arrivedCheckpoint.latitude]);
+      const departureDistMeters = turf.distance(currentPoint, arrivedPoint, { units: "meters" });
+      
+      if (departureDistMeters > 800) {
+        const updatedCheckpoints = updatePayload.checkpoints 
+          ? [...(updatePayload.checkpoints as ShipmentCheckpoint[])]
+          : [...execution.checkpoints];
+        updatedCheckpoints[arrivedCheckpointIndex] = {
+          ...arrivedCheckpoint,
+          status: "departed",
+          departureTime: now,
+        };
+        updatePayload.checkpoints = updatedCheckpoints;
+        updatePayload.completedCheckpoints = (execution.completedCheckpoints || 0) + 1;
+        updatePayload.remainingCheckpoints = Math.max(0, (execution.remainingCheckpoints || 0) - 1);
+        
+        await addTimelineEvent(
+          shipmentId,
+          auth.company.companyId,
+          "Checkpoint Departed",
+          `Auto-departed from checkpoint: ${arrivedCheckpoint.name} (Distance from stop: ${Math.round(departureDistMeters)}m)`,
+          "system",
+          100
+        );
+      }
+    }
+
+    // Route Corridor Breach Detection using Turf.js pointToLineDistance
+    // geometry is stored as [lng, lat] pairs (GeoJSON convention)
+    const routeGeometry = execution.currentRoute?.geometry as Array<[number, number]> | undefined;
+    if (routeGeometry && routeGeometry.length >= 2) {
+      try {
+        const routeLine = turf.lineString(routeGeometry); // geometry is [lng, lat]
+        const driverPoint = turf.point([longitude, latitude]);
+        const distToLine = turf.pointToLineDistance(driverPoint, routeLine, { units: "kilometers" });
+        
+        // 1.5 km corridor tolerance
+        if (distToLine > 1.5) {
+          deviationDetected = true;
+          await addTimelineEvent(
+            shipmentId,
+            auth.company.companyId,
+            "Route Corridor Breach",
+            `Driver is ${(distToLine * 1000).toFixed(0)}m outside the planned route corridor.`,
+            "system",
+            100
+          );
+        }
+      } catch (_) {
+        // silently skip if route data is malformed
+      }
+    }
+
     // Live ETA Calculation
     if (recalculateETA) {
-      // Find the next pending checkpoint
-      const nextCheckpoint = execution.checkpoints.find((cp: ShipmentCheckpoint) => cp.status === "pending");
-      
-      if (nextCheckpoint) {
-        const routes = await geoapifyRoute(longitude, latitude, nextCheckpoint.longitude, nextCheckpoint.latitude);
+      if (nextPendingCheckpoint) {
+        const routes = await geoapifyRoute(longitude, latitude, nextPendingCheckpoint.longitude, nextPendingCheckpoint.latitude);
         if (routes && routes.length > 0) {
           const route = routes[0];
           newETA = route.durationMinutes;
           
-          // Simple deviation detection: if ETA to next checkpoint is drastically longer than expected (e.g. > 120 mins) 
-          // or if they are way off route, we flag it. Here we just set a new currentETA string.
           updatePayload.currentETA = `${Math.ceil(newETA)} mins`;
           updatePayload.remainingDistance = route.distanceKm;
           
-          // Optionally detect deviation if newETA is > 20% of previous ETA, or something similar
-          // This would trigger an event.
           if (execution.currentETA) {
             const oldETAMins = parseInt(execution.currentETA.split(" ")[0]);
             if (!isNaN(oldETAMins) && newETA > oldETAMins * 1.5) { // 50% increase in ETA

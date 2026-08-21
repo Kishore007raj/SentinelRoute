@@ -547,6 +547,14 @@ export interface WorkforceAudit {
 
 export type IncidentCategory = "Weather" | "Traffic" | "Road Closure" | "Accident" | "Construction" | "Political" | "Public Event" | "Natural Disaster" | "Restriction" | "Unknown";
 
+export interface IncidentTimelineEvent {
+  eventType:  "created" | "assigned" | "escalated" | "acknowledged" | "note_added" | "resolved";
+  timestamp:  string;
+  actorId?:   string;
+  actorName?: string;
+  note?:      string;
+}
+
 export interface Incident {
   incidentId:         string;
   companyId?:         string; // Optional, some incidents might be company specific but usually global
@@ -577,6 +585,14 @@ export interface Incident {
   affectedCity?:      string;
   logisticsImpact?:   string;
   estimatedDelayMinutes?: number;
+  // Assignment & escalation
+  assignedToId?:      string; // userId of the assignee
+  assignedToName?:    string;
+  assignedAt?:        string;
+  slaDeadline?:       string; // ISO timestamp – when must be resolved
+  slaBreached?:       boolean;
+  escalationLevel?:   number; // 0 = normal, 1 = escalated, 2 = critical
+  timeline?:          IncidentTimelineEvent[];
 }
 
 export interface RoutePrediction {
@@ -627,6 +643,7 @@ export type TimelineEventType =
   | "Checkpoint Arrived"
   | "Checkpoint Departed"
   | "Route Deviation"
+  | "Route Corridor Breach"
   // Module 6 Operational Intelligence Events
   | "Recommendation Generated"
   | "Recommendation Assigned"
@@ -722,8 +739,10 @@ export interface ShipmentMessage {
   messageType: MessageType;
   message:     string;
   fileUrl?:    string; // for image/pdf
+  fileName?:   string; // original filename for attachments
   timestamp:   string;
   readStatus:  boolean;
+  readAt?:     string; // ISO timestamp of when the other party read it
 }
 
 export type AlertCategory = "Weather" | "Traffic" | "Incident" | "Driver" | "Vehicle" | "Compliance" | "Route" | "Execution" | "Delay" | "Prediction";
@@ -750,6 +769,7 @@ export interface OperationalAlert {
   resolved?:         boolean;
   escalated?:        boolean;
   timestamp:         string;
+  snoozeUntil?:      string; // ISO timestamp – suppress until this time
 }
 
 export type RecommendationType = 
@@ -853,6 +873,7 @@ export interface ShipmentExecution {
   companyId:             string;
   driverId:              string;
   vehicleId:             string;
+  driverAccepted?:       boolean;
   
   plannedRoute:          Route;
   currentRoute:          Route;
@@ -882,4 +903,33 @@ export interface ShipmentExecution {
   
   fuelEstimate:          number;
   status:                ShipmentExecutionStatus;
+  podSignatureSvg?:      string;
+  podPhotoUrl?:          string; // Firebase Storage URL for delivery photo
+}
+
+// ─── Module 7 - Notification Engine (Phase 1) ───────────────────────────────
+
+export type NotificationType = 
+  | "shipment_created"
+  | "shipment_completed"
+  | "route_changed"
+  | "incident_reported"
+  | "recommendation_generated"
+  | "recommendation_accepted"
+  | "critical_weather"
+  | "geofence_alert"
+  | "vehicle_compliance";
+
+export interface AppNotification {
+  id:          string;
+  companyId:   string;
+  userId:      string;
+  type:        NotificationType;
+  severity:    "low" | "medium" | "high" | "critical";
+  title:       string;
+  message:     string;
+  metadata?:   Record<string, unknown>;
+  read:        boolean;
+  createdAt:   string;
+  readAt?:     string;
 }

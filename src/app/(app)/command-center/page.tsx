@@ -242,8 +242,8 @@ export default function CommandCenterPage() {
 
   const { threatFeed, criticalCount, highCount } = useMemo(() => {
     const feed = [
-      ...incidents.map(i => ({ id: i.incidentId, title: i.title, severity: i.severity, time: i.lastUpdated, sub: i.category, action: i.recommendedAction })),
-      ...alerts.map(a => ({ id: a.alertId, title: a.reason, severity: a.severity, time: a.timestamp, sub: `Shipment ${a.shipmentId.slice(-8)}`, action: a.recommendedAction })),
+      ...incidents.filter(i => i.commandStatus !== "resolved").map(i => ({ id: i.incidentId, type: 'incident', title: i.title, severity: i.severity, time: i.lastUpdated, sub: i.category, action: i.recommendedAction })),
+      ...alerts.filter(a => a.status !== "resolved").map(a => ({ id: a.alertId, type: 'alert', title: a.reason, severity: a.severity, time: a.timestamp, sub: `Shipment ${a.shipmentId.slice(-8)}`, action: a.recommendedAction })),
     ].sort((a, b) => {
       const order = { critical: 0, high: 1, medium: 2, low: 3 };
       return (order[a.severity as keyof typeof order] ?? 4) - (order[b.severity as keyof typeof order] ?? 4);
@@ -252,6 +252,27 @@ export default function CommandCenterPage() {
     const high = feed.filter(t => t.severity === "high").length;
     return { threatFeed: feed, criticalCount: crit, highCount: high };
   }, [incidents, alerts]);
+
+  const authFetch = useAuthFetch();
+
+  const handleResolveThreat = async (id: string, type: string) => {
+    try {
+      if (type === 'incident') {
+        await authFetch(`/api/incidents/${id}/resolve`, {
+          method: "PATCH",
+          body: JSON.stringify({ resolution: "Resolved from Command Center" })
+        });
+      } else {
+        await authFetch(`/api/intelligence/alerts/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "resolved" })
+        });
+      }
+      refresh();
+    } catch (e) {
+      console.error("Failed to resolve threat", e);
+    }
+  };
 
   function handleRefresh() { refresh(); }
 
@@ -513,6 +534,14 @@ export default function CommandCenterPage() {
                       <p className="text-[10px] text-muted-foreground shrink-0">{formatRelativeTime(t.time)}</p>
                     </div>
                     {t.action && <p className="text-xs text-muted-foreground pl-5 border-l-2 border-current/20">{t.action}</p>}
+                    <div className="flex justify-end pt-1">
+                      <button 
+                        onClick={() => handleResolveThreat(t.id, t.type)}
+                        className="text-[10px] font-semibold text-muted-foreground hover:text-foreground border border-border rounded px-2 py-1 hover:bg-muted transition-colors"
+                      >
+                        Resolve
+                      </button>
+                    </div>
                   </motion.div>
                 );
               })}

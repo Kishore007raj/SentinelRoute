@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { MessageSquare, Send } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { MessageSquare, Send, Paperclip, Check, CheckCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCompany } from "@/lib/company-context";
 import { useSocket } from "@/hooks/use-socket";
@@ -27,7 +27,15 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
             if (prev.some(existing => existing.messageId === m.messageId)) return prev;
             return [...prev, m];
           });
+          // Auto-mark as read if we received it
+          if (m.senderType !== "Dispatcher" && m.senderType !== "Operations Manager") {
+             // In a real app we'd emit message:read back
+          }
         }
+      },
+      "message:read": (data: unknown) => {
+        const { messageIds } = data as { messageIds: string[] };
+        setMessages(prev => prev.map(m => messageIds.includes(m.messageId) ? { ...m, readStatus: true } : m));
       }
     }
   });
@@ -51,21 +59,27 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
     fetchMessages();
   }, [shipmentId, targetCompanyId]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isCrossCompany || !newMessage.trim()) return;
+  const handleSend = async (e?: React.FormEvent, isAttachment = false) => {
+    if (e) e.preventDefault();
+    if (isCrossCompany || (!newMessage.trim() && !isAttachment)) return;
 
     setSending(true);
     try {
+      const payload = {
+        message: isAttachment ? "Sent an attachment" : newMessage,
+        messageType: isAttachment ? "image" : "text",
+        fileUrl: isAttachment ? "https://images.unsplash.com/photo-1580674285054-bed31e145f59?q=80&w=2070&auto=format&fit=crop" : undefined
+      };
+      
       const res = await fetch(`/api/intelligence/shipments/${shipmentId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: newMessage })
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         const data = await res.json();
         setMessages(prev => [...prev, data.message]);
-        setNewMessage("");
+        if (!isAttachment) setNewMessage("");
       }
     } catch (err) {
       console.error(err);
@@ -101,11 +115,21 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
                   <div className={`px-4 py-2 rounded-2xl max-w-[85%] text-sm ${
                     isMe ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted text-foreground rounded-tl-sm"
                   }`}>
-                    {msg.message}
+                    {msg.messageType === "image" && msg.fileUrl ? (
+                      <div className="flex flex-col gap-2">
+                        <img src={msg.fileUrl} alt="attachment" className="rounded-md max-w-full h-auto max-h-[150px] object-cover" />
+                        <span className="text-xs opacity-90">{msg.message}</span>
+                      </div>
+                    ) : (
+                      msg.message
+                    )}
                   </div>
-                  <span className="text-[10px] text-muted-foreground mt-1 mr-1">
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1 mr-1">
+                    <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    {isMe && (
+                      msg.readStatus ? <CheckCheck className="w-3 h-3 text-blue-500" /> : <Check className="w-3 h-3" />
+                    )}
+                  </div>
                 </motion.div>
               );
             })}
@@ -115,6 +139,15 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
 
       <div className="p-3 border-t border-border bg-muted/10">
         <form onSubmit={handleSend} className="flex items-center gap-2">
+          <button 
+            type="button" 
+            onClick={() => handleSend(undefined, true)}
+            disabled={sending || isCrossCompany}
+            className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors disabled:opacity-50"
+            title="Attach Mock File"
+          >
+            <Paperclip className="w-4 h-4" />
+          </button>
           <input 
             type="text" 
             value={newMessage}

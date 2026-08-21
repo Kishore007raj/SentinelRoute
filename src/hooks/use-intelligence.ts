@@ -39,6 +39,7 @@ export interface LiveIncident {
   source:           string;
   impactScore:      number;
   recommendedAction?: string;
+  commandStatus?:   "open" | "resolved" | "in_progress";
 }
 
 export interface IntelligenceOptions {

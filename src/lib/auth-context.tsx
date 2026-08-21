@@ -23,7 +23,8 @@ import React, {
   useState,
 } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
-import { auth } from "./firebase";
+import { getToken } from "firebase/messaging";
+import { auth, messaging } from "./firebase";
 
 // ─── Cookie helper ────────────────────────────────────────────────────────────
 
@@ -115,6 +116,26 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         try {
           const token = await firebaseUser.getIdToken(true);
           writeSessionCookie(token);
+
+          // Register FCM token for push notifications
+          if (messaging) {
+            try {
+              const fcmToken = await getToken(messaging, {
+                // VAPID key is optional if you have it in firebase config, but often needed for web pushes.
+                // We will just call it. Firebase uses sender ID from config if VAPID is missing.
+              });
+              if (fcmToken) {
+                await fetch("/api/auth/fcm-token", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ fcmToken }),
+                });
+              }
+            } catch (err) {
+              console.warn("[auth] Failed to register FCM token:", err);
+            }
+          }
+
         } catch {
           // Non-fatal - token will be refreshed on next API call
         }

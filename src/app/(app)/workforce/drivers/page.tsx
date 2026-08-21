@@ -63,6 +63,7 @@ export default function DriverManagementPage() {
   const { t } = useI18n();
 
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [availability, setAvailability] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -88,6 +89,14 @@ export default function DriverManagementPage() {
       }
       const json = await res.json();
       setDrivers(json.drivers ?? []);
+
+      const availRes = await fetchApi("/api/workforce/drivers/availability", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (availRes.ok) {
+        const availJson = await availRes.json();
+        setAvailability(availJson.availability ?? []);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("workforce.failedToLoadDrivers"));
     } finally {
@@ -181,6 +190,29 @@ export default function DriverManagementPage() {
           )}
         </div>
       </div>
+
+      {availability.length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          <Card className="bg-card border border-border">
+            <CardContent className="p-4 flex flex-col items-center">
+              <span className="text-2xl font-black text-emerald-500">{availability.filter(a => a.status === 'available').length}</span>
+              <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Available</span>
+            </CardContent>
+          </Card>
+          <Card className="bg-card border border-border">
+            <CardContent className="p-4 flex flex-col items-center">
+              <span className="text-2xl font-black text-blue-500">{availability.filter(a => a.status === 'driving').length}</span>
+              <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Driving</span>
+            </CardContent>
+          </Card>
+          <Card className="bg-card border border-border">
+            <CardContent className="p-4 flex flex-col items-center">
+              <span className="text-2xl font-black text-amber-500">{availability.filter(a => a.status === 'assigned').length}</span>
+              <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Assigned</span>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3">
