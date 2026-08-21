@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Db } from "mongodb";
 import type { Vehicle, Driver } from "@/lib/types";
-import { getDb, getMongoClient } from "@/lib/mongodb";
+import { getDb, withTransaction } from "@/lib/mongodb";
 import {
   requireWorkforceRead,
   requireWorkforceWrite,
@@ -109,7 +109,6 @@ export async function PATCH(
 
   try {
     const db    = await getDb();
-    const client = await getMongoClient();
     const now   = new Date().toISOString();
 
     // ── Fetch the target vehicle ───────────────────────────────────────────
@@ -165,23 +164,18 @@ export async function PATCH(
       }
 
       // MongoDB session - atomic bidirectional assignment
-      const session = client.startSession();
-      try {
-        await session.withTransaction(async () => {
-          await db.collection("vehicles").updateOne(
-            { vehicleId: id, companyId },
-            { $set: { currentDriverId: newDriverId, status: "assigned", updatedAt: now } },
-            { session }
-          );
-          await db.collection("drivers").updateOne(
-            { driverId: newDriverId, companyId },
-            { $set: { assignedVehicleId: id, updatedAt: now } },
-            { session }
-          );
-        });
-      } finally {
-        await session.endSession();
-      }
+      await withTransaction(async (txDb, session) => {
+        await txDb.collection("vehicles").updateOne(
+          { vehicleId: id, companyId },
+          { $set: { currentDriverId: newDriverId, status: "assigned", updatedAt: now } },
+          { session }
+        );
+        await txDb.collection("drivers").updateOne(
+          { driverId: newDriverId, companyId },
+          { $set: { assignedVehicleId: id, updatedAt: now } },
+          { session }
+        );
+      });
 
       // Fire-and-forget audit
       createWorkforceAuditEvent({
@@ -209,14 +203,9 @@ export async function PATCH(
     if ("currentDriverId" in body && body.currentDriverId === null) {
       const currentDriverId = vehicleNow.currentDriverId;
 
-      const session = client.startSession();
-      try {
-        await session.withTransaction(async () => {
-          await unassignDriver(db, id, currentDriverId, companyId, session);
-        });
-      } finally {
-        await session.endSession();
-      }
+      await withTransaction(async (txDb, session) => {
+        await unassignDriver(txDb, id, currentDriverId, companyId, session);
+      });
 
       createWorkforceAuditEvent({
         db, companyId,
@@ -242,14 +231,9 @@ export async function PATCH(
     // ── Case 3: Maintenance ───────────────────────────────────────────────
     if (body.status === "maintenance") {
       if (vehicleNow.currentDriverId) {
-        const session = client.startSession();
-        try {
-          await session.withTransaction(async () => {
-            await unassignDriver(db, id, vehicleNow.currentDriverId, companyId, session);
-          });
-        } finally {
-          await session.endSession();
-        }
+        await withTransaction(async (txDb, session) => {
+          await unassignDriver(txDb, id, vehicleNow.currentDriverId, companyId, session);
+        });
       }
 
       await db.collection("vehicles").updateOne(
@@ -338,7 +322,6 @@ export async function DELETE(
 
   try {
     const db    = await getDb();
-    const client = await getMongoClient();
     const now   = new Date().toISOString();
 
     const vehicleDoc = await db
@@ -351,24 +334,19 @@ export async function DELETE(
 
     const vehicleNow = vehicleDoc as unknown as Vehicle;
 
-    const session = client.startSession();
-    try {
-      await session.withTransaction(async () => {
-        // Unassign driver first if one is currently assigned
-        if (vehicleNow.currentDriverId) {
-          await unassignDriver(db, id, vehicleNow.currentDriverId, companyId, session);
-        }
+    await withTransaction(async (txDb, session) => {
+      // Unassign driver first if one is currently assigned
+      if (vehicleNow.currentDriverId) {
+        await unassignDriver(txDb, id, vehicleNow.currentDriverId, companyId, session);
+      }
 
-        // Soft-delete: mark inactive
-        await db.collection("vehicles").updateOne(
-          { vehicleId: id, companyId },
-          { $set: { status: "inactive", updatedAt: now } },
-          { session }
-        );
-      });
-    } finally {
-      await session.endSession();
-    }
+      // Soft-delete: mark inactive
+      await txDb.collection("vehicles").updateOne(
+        { vehicleId: id, companyId },
+        { $set: { status: "inactive", updatedAt: now } },
+        { session }
+      );
+    });
 
     createWorkforceAuditEvent({
       db, companyId,

@@ -1,7 +1,7 @@
 import { dispatchEvent } from "@/lib/event-dispatcher";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { getDb, getMongoClient } from "@/lib/mongodb";
+import { getDb, withTransaction } from "@/lib/mongodb";
 import {
   requireWorkforceRead,
   requireWorkforceWrite,
@@ -159,29 +159,23 @@ export async function PATCH(
     if (newStatus === "suspended") {
       const currentVehicleId = existing.assignedVehicleId as string | null;
 
-      const mongoClient = await getMongoClient();
-      const session = mongoClient.startSession();
-      try {
-        await session.withTransaction(async () => {
-          // Clear driver assignment + set suspended
-          await db.collection("drivers").updateOne(
-            { driverId: id, companyId },
-            { $set: { assignedVehicleId: null, status: "suspended", updatedAt: now } },
+      await withTransaction(async (txDb, session) => {
+        // Clear driver assignment + set suspended
+        await txDb.collection("drivers").updateOne(
+          { driverId: id, companyId },
+          { $set: { assignedVehicleId: null, status: "suspended", updatedAt: now } },
+          { session }
+        );
+
+        // Clear the vehicle's reference back to this driver
+        if (currentVehicleId) {
+          await txDb.collection("vehicles").updateOne(
+            { vehicleId: currentVehicleId, companyId },
+            { $set: { currentDriverId: null, status: "available", updatedAt: now } },
             { session }
           );
-
-          // Clear the vehicle's reference back to this driver
-          if (currentVehicleId) {
-            await db.collection("vehicles").updateOne(
-              { vehicleId: currentVehicleId, companyId },
-              { $set: { currentDriverId: null, status: "available", updatedAt: now } },
-              { session }
-            );
-          }
-        });
-      } finally {
-        await session.endSession();
-      }
+        }
+      });
 
       // Dispatch event AFTER the transaction commits — placing dispatchEvent inside
       // the transaction callback would cause a side-effectful call to potentially

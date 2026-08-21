@@ -6,7 +6,8 @@ import { addTimelineEvent } from "@/lib/timeline-service";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 import { utcNow } from "@/lib/time";
 import type { Driver, Vehicle } from "@/lib/types";
-import { emitToCompany } from "@/lib/socket-server";
+import { emitToCompany, emitToUser } from "@/lib/socket-server";
+import { agentLog } from "@/lib/debug-agent-log";
 
 /**
  * POST /api/shipments/[id]/assign
@@ -154,6 +155,9 @@ export async function POST(
   try {
     // ── Execute multi-document updates inside a transaction ────────────────────
     const { withTransaction } = await import("@/lib/mongodb");
+    // #region agent log
+    agentLog({ hypothesisId: "D", location: "assign/route.ts:beforeTxn", message: "assign about to withTransaction", data: { shipmentId, companyId, hasDriver: !!driverId, hasVehicle: !!vehicleId } });
+    // #endregion
     await withTransaction(async (transactionDb, session) => {
       const opts = session ? { session } : {};
 
@@ -267,9 +271,10 @@ export async function POST(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { _id, userId: _uid, ...shipment } = updatedDoc;
 
-    // We do NOT manually emit "shipment:assigned" anymore.
-    // The MongoDB change stream automatically detects the update to the "shipments" collection
-    // and emits "shipment:updated" to all subscribed clients with the full document snapshot.
+    // Restore manual emission since Change Streams are disabled on Atlas M0
+    emitToUser(userId, "shipment:updated", { shipment });
+    emitToCompany(companyId, "shipment:updated", { shipment });
+
     // Also update driver availability state for dispatcher views
     if (driverDoc) {
       emitToCompany(companyId, "driver:availability", {
@@ -296,7 +301,11 @@ export async function POST(
         );
       }
     }
+    const detail = err instanceof Error ? err.message : String(err);
     console.error("[POST /api/shipments/[id]/assign] DB error:", err);
+    // #region agent log
+    agentLog({ hypothesisId: "D", location: "assign/route.ts:catch", message: "assign failed", data: { detail: detail.slice(0, 500), shipmentId } });
+    // #endregion
     return NextResponse.json({ error: "Failed to assign resources" }, { status: 500 });
   }
 }

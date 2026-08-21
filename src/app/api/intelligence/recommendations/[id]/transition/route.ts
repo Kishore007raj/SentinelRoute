@@ -124,6 +124,10 @@ export async function POST(
               { id: recommendation.shipmentId, companyId: auth.companyId },
               { $set: shipmentUpdate }
             );
+            emitToCompany(auth.companyId, "shipment:updated", {
+              id: recommendation.shipmentId,
+              ...shipmentUpdate
+            });
           }
         }
         break;

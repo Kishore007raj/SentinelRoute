@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { emitToUser } from "@/lib/socket-server";
 import { utcNow } from "@/lib/time";
 import type { UserRecord } from "@/lib/types";
 import { addTimelineEvent } from "@/lib/timeline-service";
@@ -176,7 +177,15 @@ export async function PATCH(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { _id, userId: _uid, ...shipment } = result;
 
-
+    // Emit real-time status update
+    emitToUser(userId, "shipment:status", {
+      id,
+      status:     newStatus,
+      lastUpdate: now,
+    });
+    
+    // Also emit a general update
+    emitToUser(userId, "shipment:updated", { shipment });
     const shipmentCompanyIdForTimeline = (result.companyId as string) ?? companyId ?? "";
     if (newStatus === "completed") {
       addTimelineEvent(

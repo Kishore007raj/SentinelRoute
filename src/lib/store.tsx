@@ -570,11 +570,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}));
         const message = (errBody as { error?: string }).error ?? `HTTP ${res.status}`;
+        // #region agent log
+        fetch('http://127.0.0.1:7489/ingest/effe3673-5596-4950-a2c3-f992f902843b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e4c26e'},body:JSON.stringify({sessionId:'e4c26e',runId:'pre-fix',hypothesisId:'E',location:'store.tsx:dispatchShipment:notOk',message:'POST /api/shipments failed',data:{status:res.status,error:message},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         throw new Error(`Failed to dispatch shipment: ${message}`);
       }
 
       const data      = await res.json();
       const persisted: Shipment = data.shipment;
+      // #region agent log
+      fetch('http://127.0.0.1:7489/ingest/effe3673-5596-4950-a2c3-f992f902843b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e4c26e'},body:JSON.stringify({sessionId:'e4c26e',runId:'pre-fix',hypothesisId:'C',location:'store.tsx:dispatchShipment:ok',message:'POST /api/shipments succeeded',data:{status:res.status,shipmentId:persisted?.id??null,companyIdOnResponse:(persisted as {companyId?:string})?.companyId??null,shipmentStatus:persisted?.status??null},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       dispatch({ type: "ADD_SHIPMENT",  payload: persisted });
       dispatch({ type: "CLEAR_PENDING" });
       return persisted;

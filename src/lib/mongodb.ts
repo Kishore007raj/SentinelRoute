@@ -13,6 +13,7 @@ import { MongoClient, type Db } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb-indexes";
 import { ensureWorkforceIndexes } from "@/lib/workforce-indexes";
 import { MONGODB_URI } from "@/lib/env";
+import { agentLog } from "@/lib/debug-agent-log";
 
 
 const dbName = "sentinelroute";
@@ -107,12 +108,19 @@ export async function withTransaction<T>(
   const db = client.db(dbName);
   const session = client.startSession();
 
+  // #region agent log
+  agentLog({ hypothesisId: "D", location: "mongodb.ts:withTransaction:entry", message: "withTransaction entered", data: { nodeEnv: process.env.NODE_ENV ?? null } });
+  // #endregion
+
   try {
     let result: T | undefined;
     try {
       await session.withTransaction(async () => {
         result = await fn(db, session);
       });
+      // #region agent log
+      agentLog({ hypothesisId: "D", location: "mongodb.ts:withTransaction:success", message: "transaction committed" });
+      // #endregion
       return result as T;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -120,7 +128,13 @@ export async function withTransaction<T>(
       // (Atlas M0/M2 shared tier, standalone MongoDB instances).
       const isStandaloneError =
         msg.includes("Transaction numbers are only allowed") ||
-        (err as { code?: number })?.code === 20;
+        msg.includes("Transactions are not supported") ||
+        (err as { code?: number })?.code === 20 ||
+        (err as { code?: number })?.code === 8000;
+
+      // #region agent log
+      agentLog({ hypothesisId: "D", location: "mongodb.ts:withTransaction:catch", message: "transaction error", data: { msg: msg.slice(0, 500), code: (err as { code?: number })?.code ?? null, isStandaloneError, willFallback: isStandaloneError } });
+      // #endregion
 
       if (isStandaloneError) {
         console.warn(

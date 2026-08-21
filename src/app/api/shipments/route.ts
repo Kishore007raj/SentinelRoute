@@ -4,6 +4,7 @@ import { generateShipmentCode, getRiskLabel } from "@/lib/utils";
 import { getDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { encryptObjectFields, decryptObjectFields } from "@/lib/encryption";
+import { emitToUser } from "@/lib/socket-server";
 import { utcNow } from "@/lib/time";
 import type { UserRecord } from "@/lib/types";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
@@ -11,6 +12,7 @@ import { addTimelineEvent } from "@/lib/timeline-service";
 import { apiLimiter, getClientIp } from "@/lib/rate-limit";
 import { ApiErrors } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";
+import { agentLog } from "@/lib/debug-agent-log";
 
 /**
  * GET /api/shipments
@@ -92,6 +94,10 @@ export async function GET(req: NextRequest) {
       .sort({ createdAt: -1 })
       .toArray();
 
+    // #region agent log
+    agentLog({ hypothesisId: "C", location: "shipments/route.ts:GET:result", message: "GET shipments query result", data: { queryCompanyId: queryCompanyId ?? null, isSuperAdmin, docCount: docs.length, sampleIds: docs.slice(0, 5).map((d) => d.id), sampleCompanyIds: docs.slice(0, 5).map((d) => d.companyId) } });
+    // #endregion
+
     const shipments: Shipment[] = docs.map((doc) => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { _id, userId: _uid, ...rest } = doc;
@@ -113,6 +119,9 @@ export async function GET(req: NextRequest) {
 // ─── POST /api/shipments ──────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  // #region agent log
+  agentLog({ hypothesisId: "E", location: "shipments/route.ts:POST:entry", message: "POST /api/shipments hit" });
+  // #endregion
   // Rate limit
   const ip = getClientIp(req);
   const rl = apiLimiter.check(ip);
@@ -288,11 +297,18 @@ export async function POST(req: NextRequest) {
     const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
     companyId = userRecord?.companyId;
 
+    // #region agent log
+    agentLog({ hypothesisId: "A", location: "shipments/route.ts:POST:companyResolve", message: "resolved user/company for create", data: { hasUserRecord: !!userRecord, hasCompanyId: !!companyId, role: userRecord?.role ?? null, shipmentId: shipment.id } });
+    // #endregion
+
     // Task 5: enforce ownership fields - both required on every new shipment
     // companyId comes from the authenticated user's company, never from request body
     // createdByUserId is the authenticated user's uid
     if (!companyId) {
       console.warn("[POST /api/shipments] No companyId on userRecord - shipment blocked");
+      // #region agent log
+      agentLog({ hypothesisId: "A", location: "shipments/route.ts:POST:noCompanyId", message: "blocked create: missing companyId", data: { shipmentId: shipment.id } });
+      // #endregion
       return NextResponse.json(
         { error: "No company associated with this account. Complete company registration first." },
         { status: 403 }
@@ -330,21 +346,32 @@ export async function POST(req: NextRequest) {
 
     // Always scope to authenticated userId + companyId - never trust from request body
     // Task 5: createdByUserId and companyId are mandatory on every shipment record
-    await db.collection("shipments").insertOne({
+    // #region agent log
+    agentLog({ hypothesisId: "B", location: "shipments/route.ts:POST:beforeInsert", message: "about to insertOne shipment", data: { shipmentId: shipment.id, companyId, hasCompanyIdOnShipmentObject: !!shipment.companyId } });
+    // #endregion
+    const insertResult = await db.collection("shipments").insertOne({
       ...encryptedDocument,
       userId,
       companyId,          // always set - enforced above
       createdByUserId: userId, // ownership field
     });
+    // #region agent log
+    agentLog({ hypothesisId: "B", location: "shipments/route.ts:POST:afterInsert", message: "insertOne completed", data: { shipmentId: shipment.id, insertedId: String(insertResult.insertedId), acknowledged: insertResult.acknowledged } });
+    // #endregion
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("[POST /api/shipments] DB insert error:", detail);
+    // #region agent log
+    agentLog({ hypothesisId: "B", location: "shipments/route.ts:POST:insertCatch", message: "insert failed", data: { detail: detail.slice(0, 500), shipmentId: shipment.id } });
+    // #endregion
     return NextResponse.json({ error: `Failed to save shipment: ${detail}` }, { status: 500 });
   }
 
+  // Emit real-time event to the user's connected clients
+  emitToUser(userId, "shipment:created", { shipment });
   // Trigger Analytics Refresh
   import("@/lib/socket-server").then(({ emitAnalyticsRefresh }) => {
-    emitAnalyticsRefresh(companyId);
+    if (companyId) emitAnalyticsRefresh(companyId);
   }).catch(() => {});
 
   // Write "Shipment Created" timeline event so the timeline is never empty
