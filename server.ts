@@ -74,14 +74,46 @@ app.prepare().then(() => {
     transports: ["websocket", "polling"],
   });
 
-  // P1-006 Fix: Redis Socket.io Adapter for horizontal scaling
+  // Redis Socket.io adapter for horizontal scaling.
+  // Redis is OPTIONAL — a single-node deployment works correctly without it.
+  // When REDIS_URI is set, all Socket.io events are propagated across every
+  // node in the cluster. When it is absent, the in-memory adapter is used and
+  // the server runs correctly as a single instance.
   if (process.env.REDIS_URI) {
-    const pubClient = new Redis(process.env.REDIS_URI);
-    const subClient = pubClient.duplicate();
-    io.adapter(createAdapter(pubClient, subClient));
-    logger.info("server.redis_adapter", { message: "Redis adapter attached to Socket.io" });
+    try {
+      const pubClient = new Redis(process.env.REDIS_URI);
+      const subClient = pubClient.duplicate();
+
+      // Attach error handlers BEFORE using the clients. Without these, a Redis
+      // outage after startup emits an unhandled "error" event which Node.js
+      // converts into an uncaught exception, crashing the process.
+      pubClient.on("error", (err: Error) => {
+        logger.error("server.redis_pub_error", {
+          message: "Redis pub client error — Socket.io cross-node propagation may be degraded",
+          error: err.message,
+        });
+      });
+      subClient.on("error", (err: Error) => {
+        logger.error("server.redis_sub_error", {
+          message: "Redis sub client error — Socket.io cross-node propagation may be degraded",
+          error: err.message,
+        });
+      });
+
+      io.adapter(createAdapter(pubClient, subClient));
+      logger.info("server.redis_adapter", { message: "Redis adapter attached to Socket.io" });
+    } catch (err) {
+      // Redis adapter setup failure must not crash the server. Log and continue
+      // with the in-memory adapter so the application stays available.
+      logger.error("server.redis_adapter_setup_error", {
+        message: "Failed to set up Redis adapter — falling back to in-memory adapter",
+        error: (err as Error).message,
+      });
+    }
   } else {
-    logger.warn("server.redis_adapter_missing", { message: "REDIS_URI missing. Using in-memory adapter (No horizontal scaling support)" });
+    logger.warn("server.redis_adapter_missing", {
+      message: "REDIS_URI is not set. Using in-memory Socket.io adapter. This is correct for single-node deployments. Set REDIS_URI for multi-node horizontal scaling.",
+    });
   }
 
   // Attach io to global so API routes can emit events

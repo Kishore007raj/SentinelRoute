@@ -32,10 +32,11 @@ export async function POST(req: NextRequest) {
     let relatedDriverId = null;
     let relatedVehicleId = null;
     
-    // If relatedShipmentId is provided, get driver and vehicle
+    // If relatedShipmentId is provided, get driver and vehicle.
+    // NOTE: the shipments collection uses field "id" as its primary key, not "shipmentId".
     if (relatedShipmentId) {
       const shipment = await db.collection("shipments").findOne({
-        shipmentId: relatedShipmentId,
+        id: relatedShipmentId,
         companyId: auth.company.companyId
       });
       if (shipment) {

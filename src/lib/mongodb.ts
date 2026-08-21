@@ -90,7 +90,16 @@ export function getMongoClient(): Promise<MongoClient> {
 
 /**
  * Helper to run multi-document operations inside a MongoDB transaction when supported by the cluster.
- * Gracefully falls back to running the callback with db if standalone MongoDB instance is used.
+ *
+ * Production behaviour (NODE_ENV === "production"):
+ *   - Transactions are required. If the cluster does not support them (code 20 /
+ *     standalone MongoDB), the function throws immediately rather than silently
+ *     losing atomicity. This prevents split-state corruption in production.
+ *
+ * Development behaviour (all other NODE_ENV values):
+ *   - Falls back to a non-transactional execution with a loud console warning when
+ *     running against a standalone MongoDB instance that does not support
+ *     transactions. This allows local development without a replica-set.
  */
 export async function withTransaction<T>(
   fn: (db: Db, session?: import("mongodb").ClientSession) => Promise<T>
@@ -100,17 +109,36 @@ export async function withTransaction<T>(
   const session = client.startSession();
 
   try {
-    let result: T;
+    let result: T | undefined;
     try {
       await session.withTransaction(async () => {
         result = await fn(db, session);
       });
-      return result!;
+      return result as T;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      // Fallback for standalone dev instances that don't support replica set transactions
-      if (msg.includes("Transaction numbers are only allowed") || (err as { code?: number })?.code === 20) {
-        return await fn(db);
+      const isStandaloneError =
+        msg.includes("Transaction numbers are only allowed") ||
+        (err as { code?: number })?.code === 20;
+
+      if (isStandaloneError) {
+        if (process.env.NODE_ENV === "production") {
+          // Never silently lose atomicity in production.
+          // A standalone MongoDB instance is not supported in production deployments.
+          throw new Error(
+            "[mongodb] withTransaction: transactions are unavailable on this cluster (MongoDB error code 20). " +
+              "SentinelRoute requires a MongoDB replica set or Atlas cluster in production. " +
+              `Original error: ${msg}`
+          );
+        }
+
+        // Development-only fallback: warn loudly, then run without a session.
+        console.warn(
+          "[mongodb] withTransaction: WARNING — falling back to non-atomic execution. " +
+            "This is only acceptable during local development against a standalone MongoDB instance. " +
+            "Ensure your production deployment uses a replica set or MongoDB Atlas."
+        );
+        return await fn(db, undefined);
       }
       throw err;
     }

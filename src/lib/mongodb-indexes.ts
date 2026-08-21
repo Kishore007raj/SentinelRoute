@@ -397,6 +397,48 @@ async function ensureShipmentsIndexes(db: Db): Promise<void> {
       { id: 1, userId: 1 },
       { name: "shipments_id_userId", background: true }
     ),
+
+    // ── Storage-layer enforcement for double-assignment prevention ────────────
+    //
+    // These unique partial indexes are the last line of defence against the
+    // snapshot-isolation race condition: two concurrent transactions can both
+    // read "no conflict" before either commits, then both commit successfully.
+    // A unique index at the storage layer makes the second writer fail with a
+    // duplicate-key error (E11000) regardless of transaction isolation level.
+    //
+    // Partial filter: only documents where the field is a non-null string AND
+    // the shipment is in an in-flight status are covered. Completed/cancelled
+    // shipments are excluded so their historical assignment data is preserved.
+    //
+    // MIGRATION REQUIREMENT — before deploying this code to a populated
+    // collection, run the duplicate-detection script in
+    // scripts/check-assignment-duplicates.ts to confirm no violations exist.
+    // If violations are found, resolve them manually before deploying.
+    col.createIndex(
+      { companyId: 1, assignedDriverId: 1 },
+      {
+        unique: true,
+        partialFilterExpression: {
+          assignedDriverId: { $type: "string" },
+          status: { $in: ["draft", "pending", "assigned", "active", "at-risk"] },
+        },
+        name: "shipments_driver_active_unique",
+        background: true,
+      }
+    ),
+
+    col.createIndex(
+      { companyId: 1, assignedVehicleId: 1 },
+      {
+        unique: true,
+        partialFilterExpression: {
+          assignedVehicleId: { $type: "string" },
+          status: { $in: ["draft", "pending", "assigned", "active", "at-risk"] },
+        },
+        name: "shipments_vehicle_active_unique",
+        background: true,
+      }
+    ),
   ]);
 }
 

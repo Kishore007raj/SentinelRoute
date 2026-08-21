@@ -169,7 +169,6 @@ export async function PATCH(
             { $set: { assignedVehicleId: null, status: "suspended", updatedAt: now } },
             { session }
           );
-    if (body.status) dispatchEvent({ type: "DRIVER_UPDATED", companyId, payload: { driverId: id, status: body.status } });
 
           // Clear the vehicle's reference back to this driver
           if (currentVehicleId) {
@@ -183,6 +182,11 @@ export async function PATCH(
       } finally {
         await session.endSession();
       }
+
+      // Dispatch event AFTER the transaction commits — placing dispatchEvent inside
+      // the transaction callback would cause a side-effectful call to potentially
+      // abort the transaction on failure, leaving driver/vehicle in an inconsistent state.
+      dispatchEvent({ type: "DRIVER_UPDATED", companyId, payload: { driverId: id, status: "suspended" } });
 
       // Fetch updated record
       const updated = await db
@@ -252,9 +256,8 @@ export async function PATCH(
 
     return NextResponse.json({ driver: updatedDoc as Driver });
   } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    console.error(`[PATCH /api/workforce/drivers/${id}] DB error:`, detail);
-    return NextResponse.json({ error: `Failed to update driver: ${detail}` }, { status: 500 });
+    console.error(`[PATCH /api/workforce/drivers/${id}] DB error:`, err);
+    return NextResponse.json({ error: "Failed to update driver" }, { status: 500 });
   }
 }
 
@@ -324,8 +327,7 @@ export async function DELETE(
 
     return NextResponse.json({ driver: updatedDoc as Driver });
   } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    console.error(`[DELETE /api/workforce/drivers/${id}] DB error:`, detail);
-    return NextResponse.json({ error: `Failed to delete driver: ${detail}` }, { status: 500 });
+    console.error(`[DELETE /api/workforce/drivers/${id}] DB error:`, err);
+    return NextResponse.json({ error: "Failed to delete driver" }, { status: 500 });
   }
 }

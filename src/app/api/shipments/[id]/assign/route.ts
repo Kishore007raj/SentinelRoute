@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { getDb } from "@/lib/mongodb";
 import { requireApprovedCompany, handleAuthError } from "@/lib/auth-helpers";
 import { addTimelineEvent } from "@/lib/timeline-service";
@@ -156,12 +157,16 @@ export async function POST(
     await withTransaction(async (transactionDb, session) => {
       const opts = session ? { session } : {};
 
-      // P1-003 Fix: Perform conflict checks INSIDE the transaction
+      // Conflict checks execute INSIDE the transaction so concurrent requests
+      // cannot both pass the check and then both commit.
+      // The status filter covers every "in-flight" status so that a driver or
+      // vehicle already bound to a draft/pending/assigned shipment is blocked,
+      // not just those on actively-running trips.
       if (driverId) {
         const driverConflict = await transactionDb.collection("shipments").findOne({
           companyId,
           assignedDriverId: driverId,
-          status: { $in: ["active", "at-risk", "draft"] },
+          status: { $in: ["draft", "pending", "assigned", "active", "at-risk"] },
           id: { $ne: shipmentId },
         }, opts);
         if (driverConflict) {
@@ -173,7 +178,7 @@ export async function POST(
         const vehicleConflict = await transactionDb.collection("shipments").findOne({
           companyId,
           assignedVehicleId: vehicleId,
-          status: { $in: ["active", "at-risk", "draft"] },
+          status: { $in: ["draft", "pending", "assigned", "active", "at-risk"] },
           id: { $ne: shipmentId },
         }, opts);
         if (vehicleConflict) {
@@ -216,7 +221,7 @@ export async function POST(
       // Store assignment record
       if (driverDoc || vehicleDoc) {
         const assignment = {
-          assignmentId:  `asgn-${shipmentId}-${Date.now()}`,
+          assignmentId:  `asgn-${randomUUID()}`,
           shipmentId,
           companyId,
           driverId:      driverDoc?.driverId ?? null,
