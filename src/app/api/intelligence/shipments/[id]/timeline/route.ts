@@ -45,7 +45,7 @@ export async function GET(
       }).catch(() => {});
     }
 
-    const timeline = await getShipmentTimeline(id);
+    const timeline = await getShipmentTimeline(id, companyId);
 
     return NextResponse.json({ timeline });
   } catch (err: unknown) {

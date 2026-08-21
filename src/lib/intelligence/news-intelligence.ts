@@ -15,6 +15,7 @@
 
 import { getDb } from "../mongodb";
 import { createIntelligenceAudit } from "../intelligence-audit";
+import { getCurrentDate } from "../time";
 import type { Incident, IncidentCategory } from "../types";
 import { NEWS_API_KEY } from "../env";
 
@@ -150,7 +151,7 @@ function normalizeArticle(article: NewsAPIArticle): Incident | null {
 
   const classification = classifyArticle(combined);
   const incidentId     = articleToIncidentId(article.url);
-  const now            = new Date().toISOString();
+  const now            = getCurrentDate().toISOString();
   const location       = extractCoords(combined);
 
   return {
@@ -216,29 +217,34 @@ export interface NewsRiskContribution {
   normalizedIncidents: Incident[];
 }
 
-const MOCK_NEWS_ARTICLES: NewsAPIArticle[] = [
-  {
-    title:       "Truck strike blockades Chennai-Bengaluru highway NH-48, severe cargo delay expected",
-    description: "All India Motor Transport Congress calls strike. Hundreds of trucks blocked on highway NH-48 near Chennai. Traffic disruption is critical.",
-    url:         "https://timesofindia.indiatimes.com/india/truck-strike-nh48-chennai",
-    publishedAt: new Date().toISOString(),
-    source:      { name: "Times of India" },
-  },
-  {
-    title:       "Landslide on Mumbai-Pune Expressway near Lonavala halts logistics flow",
-    description: "Heavy rainfall triggers landslide near Lonavala on the Mumbai-Pune Expressway. Authorities close two lanes near Pune.",
-    url:         "https://indianexpress.com/article/cities/mumbai/landslide-expressway-lonavala",
-    publishedAt: new Date().toISOString(),
-    source:      { name: "Indian Express" },
-  },
-  {
-    title:       "Protest near Delhi-NCR Gurgaon causes major transport disruption",
-    description: "Political rally blockades regional highways near Delhi NCR. Traffic police issues warnings for heavy container vehicles on NH-48.",
-    url:         "https://www.thehindu.com/news/national/protest-delhi-ncr-transport",
-    publishedAt: new Date().toISOString(),
-    source:      { name: "The Hindu" },
-  },
-];
+// Helper: Generate mock news articles with CURRENT timestamp
+// Must be called at runtime, not at module level, to ensure timestamps stay fresh
+function getMockNewsArticles(): NewsAPIArticle[] {
+  const now = getCurrentDate().toISOString();
+  return [
+    {
+      title:       "Truck strike blockades Chennai-Bengaluru highway NH-48, severe cargo delay expected",
+      description: "All India Motor Transport Congress calls strike. Hundreds of trucks blocked on highway NH-48 near Chennai. Traffic disruption is critical.",
+      url:         "https://timesofindia.indiatimes.com/india/truck-strike-nh48-chennai",
+      publishedAt: now,
+      source:      { name: "Times of India" },
+    },
+    {
+      title:       "Landslide on Mumbai-Pune Expressway near Lonavala halts logistics flow",
+      description: "Heavy rainfall triggers landslide near Lonavala on the Mumbai-Pune Expressway. Authorities close two lanes near Pune.",
+      url:         "https://indianexpress.com/article/cities/mumbai/landslide-expressway-lonavala",
+      publishedAt: now,
+      source:      { name: "Indian Express" },
+    },
+    {
+      title:       "Protest near Delhi-NCR Gurgaon causes major transport disruption",
+      description: "Political rally blockades regional highways near Delhi NCR. Traffic police issues warnings for heavy container vehicles on NH-48.",
+      url:         "https://www.thehindu.com/news/national/protest-delhi-ncr-transport",
+      publishedAt: now,
+      source:      { name: "The Hindu" },
+    },
+  ];
+}
 
 export async function getNewsRiskContribution(
   companyId:   string,
@@ -257,7 +263,7 @@ export async function getNewsRiskContribution(
 
   if (!apiKey) {
     console.warn("[news-intelligence] NEWS_API_KEY not set - using deterministic mock news");
-    articles = MOCK_NEWS_ARTICLES;
+    articles = getMockNewsArticles();
   } else {
     try {
       const url =
@@ -289,7 +295,7 @@ export async function getNewsRiskContribution(
 
     if (articles.length === 0) {
       console.warn("[news-intelligence] No articles returned - using mock news");
-      articles = MOCK_NEWS_ARTICLES;
+      articles = getMockNewsArticles();
     }
   }
 

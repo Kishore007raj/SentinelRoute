@@ -5,13 +5,13 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft, MapPin, Clock, Truck, Package, CheckCircle, XCircle,
   User, FileText, AlertTriangle, RefreshCw, ShieldCheck, Activity,
-  Navigation, CloudRain, MessageSquare,
+  Navigation, CloudRain, MessageSquare, Shield, Radio, ChevronRight,
+  Layers, TrendingDown, Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { DashboardCard } from "@/components/ui/dashboard-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 import { useCompany } from "@/lib/company-context";
 import { useUser } from "@/lib/auth-context";
@@ -50,11 +51,7 @@ import { ShipmentTimeline } from "@/components/shipment/ShipmentTimeline";
 import { ShipmentCommunication } from "@/components/shipment/ShipmentCommunication";
 import { ShipmentAssignment } from "@/components/shipment/ShipmentAssignment";
 
-// ─── Status configuration ─────────────────────────────────────────────────────
-
 // ─── Audit tab ────────────────────────────────────────────────────────────────
-// Renders intelligence_audits for this shipment from the existing timeline API
-// (same data, different presentation - shows action/source/timestamp detail)
 
 function ShipmentAuditTab({ shipmentId, companyId }: { shipmentId: string; companyId?: string }) {
   const { user } = useUser();
@@ -98,10 +95,13 @@ function ShipmentAuditTab({ shipmentId, companyId }: { shipmentId: string; compa
   };
 
   if (loading) return (
-    <div className="panel p-6 text-sm text-muted-foreground animate-pulse">Loading audit trail…</div>
+    <div className="panel p-8 text-sm text-muted-foreground flex items-center gap-3">
+      <div className="w-4 h-4 border-2 border-border border-t-primary rounded-full animate-spin shrink-0" />
+      Loading audit trail…
+    </div>
   );
   if (events.length === 0) return (
-    <div className="panel p-6 text-sm text-muted-foreground">No audit events recorded yet.</div>
+    <div className="panel p-8 text-sm text-muted-foreground text-center">No audit events recorded yet.</div>
   );
 
   return (
@@ -164,7 +164,6 @@ function CancelDialog({
 }) {
   const [reason, setReason] = useState("");
 
-  // Reset on open
   useEffect(() => {
     if (open) setReason("");
   }, [open]);
@@ -215,6 +214,37 @@ function CancelDialog({
   );
 }
 
+// ─── Risk bar row ─────────────────────────────────────────────────────────────
+
+function RiskBar({ label, value }: { label: string; value: number }) {
+  const color = value > 60 ? "bg-red-400" : value > 35 ? "bg-amber-400" : "bg-emerald-400";
+  return (
+    <div className="flex items-center gap-4">
+      <span className="text-xs text-muted-foreground w-36 shrink-0 capitalize">
+        {label === "cargoSensitivity" ? "Cargo Sensitivity" : label}
+      </span>
+      <div className="flex-1 h-1.5 bg-muted overflow-hidden rounded-full">
+        <div
+          className={cn("h-full rounded-full transition-all duration-700", color)}
+          style={{ width: `${value}%` }}
+        />
+      </div>
+      <span className="text-xs font-mono text-muted-foreground w-6 text-right tabular-nums">{value}</span>
+    </div>
+  );
+}
+
+// ─── Stat cell ────────────────────────────────────────────────────────────────
+
+function StatCell({ label, value, mono }: { label: string; value: string | number; mono?: boolean }) {
+  return (
+    <div className="space-y-1.5">
+      <p className="label-meta">{label}</p>
+      <p className={cn("text-sm font-semibold text-foreground", mono && "font-mono")}>{value}</p>
+    </div>
+  );
+}
+
 // ─── Overview tab ─────────────────────────────────────────────────────────────
 
 function OverviewTab({
@@ -255,38 +285,38 @@ function OverviewTab({
   };
 
   return (
-    <div className="grid gap-8 xl:grid-cols-[1.5fr_1fr] min-w-0">
-      {/* Left column */}
-      <div className="space-y-6 min-w-0">
+    <div className="grid gap-6 md:grid-cols-[1fr_minmax(320px,_400px)] min-w-0">
+      {/* ── LEFT COLUMN (65-70%) ────────────────────────────────────────── */}
+      <div className="space-y-5 min-w-0">
 
-        {/* Core info */}
-        <div className="panel p-7">
-          <div className="flex flex-wrap items-center gap-3 mb-6">
-            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 px-3 py-1 text-xs font-semibold">
-              {shipment.routeName}
-            </Badge>
-          </div>
+        {/* OPERATIONAL SNAPSHOT — PRIMARY CONTENT */}
+        <div className="panel p-6">
+          <p className="label-meta mb-5 flex items-center gap-2">
+            <Zap className="w-3.5 h-3.5 text-primary" /> Operational Snapshot
+          </p>
 
-          <div className="grid grid-cols-2 gap-6 mb-6">
+          {/* Primary KPIs */}
+          <div className="grid grid-cols-2 gap-5 mb-6">
             <div className="space-y-1.5">
               <p className="label-meta">{t("logistics.eta")}</p>
-              <p className="text-2xl font-bold text-foreground">{shipment.eta}</p>
+              <p className="text-2xl font-bold text-foreground tracking-tight">{shipment.eta}</p>
             </div>
             <div className="space-y-1.5">
               <p className="label-meta">{t("logistics.riskScore")}</p>
-              <p className={cn("text-2xl font-bold", riskColor)}>
+              <p className={cn("text-2xl font-bold tracking-tight", riskColor)}>
                 {shipment.riskScore}
                 <span className="text-sm font-normal text-muted-foreground ml-1.5 capitalize">/ {shipment.riskLevel}</span>
               </p>
             </div>
           </div>
 
-          <Separator className="my-5 opacity-30" />
+          <Separator className="mb-5 opacity-30" />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-muted-foreground">
+          {/* Origin → Destination */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-sm text-muted-foreground mb-5">
             <div className="flex items-center gap-2.5">
-              <MapPin className="w-4 h-4 shrink-0" />
-              <span className="truncate">{shipment.origin} → {shipment.destination}</span>
+              <MapPin className="w-4 h-4 shrink-0 text-primary/70" />
+              <span className="truncate font-medium text-foreground/80">{shipment.origin} → {shipment.destination}</span>
             </div>
             <div className="flex items-center gap-2.5">
               <Clock className="w-4 h-4 shrink-0" />
@@ -302,58 +332,46 @@ function OverviewTab({
             </div>
           </div>
 
-          <Separator className="my-5 opacity-30" />
+          <Separator className="mb-5 opacity-30" />
 
+          {/* Secondary metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <p className="label-meta">{t("logistics.distance")}</p>
-              <p className="text-sm font-semibold text-foreground">{shipment.distance}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="label-meta">{t("logistics.confidence")}</p>
-              <p className="text-sm font-semibold text-foreground">{shipment.confidencePercent}%</p>
-            </div>
-            <div className="space-y-1">
-              <p className="label-meta">{t("logistics.departure")}</p>
-              <p className="text-sm font-semibold text-foreground">{shipment.departureTime}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="label-meta">{t("logistics.shipmentCode")}</p>
-              <p className="text-sm font-mono font-semibold text-foreground">{shipment.shipmentCode}</p>
-            </div>
-            {shipment.priority && (
-              <div className="space-y-1">
-                <p className="label-meta">Priority</p>
-                <p className="text-sm font-semibold text-foreground">{shipment.priority}</p>
-              </div>
-            )}
+            <StatCell label={t("logistics.distance")} value={shipment.distance} />
+            <StatCell label={t("logistics.confidence")} value={`${shipment.confidencePercent}%`} />
+            <StatCell label={t("logistics.departure")} value={shipment.departureTime} />
+            <StatCell label={t("logistics.shipmentCode")} value={shipment.shipmentCode} mono />
+            {shipment.priority && <StatCell label="Priority" value={shipment.priority} />}
             {shipment.deadline && (
-              <div className="space-y-1">
-                <p className="label-meta">Deadline</p>
-                <p className="text-sm font-semibold text-foreground">
-                  {new Date(shipment.deadline).toLocaleDateString()}
-                </p>
-              </div>
+              <StatCell label="Deadline" value={new Date(shipment.deadline).toLocaleDateString()} />
             )}
           </div>
 
+          {/* Alert banner */}
           {getMeaningfulAlert(shipment.predictiveAlert) && (
             <>
               <Separator className="my-5 opacity-30" />
-              <div className="flex items-start gap-3 bg-amber-400/5 border border-amber-400/20 rounded-lg px-4 py-3">
-                <span className="text-amber-400 mt-0.5">⚠</span>
+              <div className="flex items-start gap-3 bg-amber-400/5 border border-amber-400/25 rounded-lg px-4 py-3">
+                <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
                 <p className="text-sm text-amber-400/90 leading-relaxed">{getMeaningfulAlert(shipment.predictiveAlert)}</p>
               </div>
             </>
           )}
         </div>
 
-        {/* Driver & Vehicle assignment */}
+        {/* NEWS/ALERT BANNER — if present */}
+        {getMeaningfulAlert(shipment.predictiveAlert) && !shipment.riskBreakdown && (
+          <div className="flex items-start gap-3 bg-amber-400/5 border border-amber-400/25 rounded-lg px-4 py-3">
+            <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+            <p className="text-sm text-amber-400/90 leading-relaxed">{getMeaningfulAlert(shipment.predictiveAlert)}</p>
+          </div>
+        )}
+
+        {/* CREW & VEHICLE ASSIGNMENT */}
         {!isCrossCompany && (
           <ShipmentAssignment shipment={shipment} onAssigned={onAssigned} />
         )}
         {isCrossCompany && (shipment.assignedDriverName || shipment.assignedVehicleNumber) && (
-          <div className="panel p-7">
+          <div className="panel p-6">
             <p className="label-meta mb-4">Assignment (read-only)</p>
             <div className="grid grid-cols-2 gap-4">
               {shipment.assignedDriverName && (
@@ -378,61 +396,33 @@ function OverviewTab({
           </div>
         )}
 
-        {/* Cargo manifest */}
+        {/* CARGO MANIFEST */}
         {(shipment.cargoWeightKg || shipment.cargoVolumeM3 || shipment.insuranceType || shipment.temperatureRequirement) && (
-          <div className="panel p-7">
-            <p className="label-meta mb-4 flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> Cargo Manifest</p>
+          <div className="panel p-6">
+            <p className="label-meta mb-4 flex items-center gap-2">
+              <FileText className="w-3.5 h-3.5" /> Cargo Manifest
+            </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {shipment.cargoWeightKg && (
-                <div className="space-y-1">
-                  <p className="label-meta">Weight</p>
-                  <p className="text-sm font-semibold text-foreground">{shipment.cargoWeightKg} kg</p>
-                </div>
-              )}
-              {shipment.cargoVolumeM3 && (
-                <div className="space-y-1">
-                  <p className="label-meta">Volume</p>
-                  <p className="text-sm font-semibold text-foreground">{shipment.cargoVolumeM3} m³</p>
-                </div>
-              )}
-              {shipment.insuranceType && (
-                <div className="space-y-1">
-                  <p className="label-meta">Insurance</p>
-                  <p className="text-sm font-semibold text-foreground">{shipment.insuranceType}</p>
-                </div>
-              )}
-              {shipment.temperatureRequirement && (
-                <div className="space-y-1">
-                  <p className="label-meta">Temp. Req.</p>
-                  <p className="text-sm font-semibold text-foreground">{shipment.temperatureRequirement}</p>
-                </div>
-              )}
+              {shipment.cargoWeightKg && <StatCell label="Weight" value={`${shipment.cargoWeightKg} kg`} />}
+              {shipment.cargoVolumeM3 && <StatCell label="Volume" value={`${shipment.cargoVolumeM3} m³`} />}
+              {shipment.insuranceType && <StatCell label="Insurance" value={shipment.insuranceType} />}
+              {shipment.temperatureRequirement && <StatCell label="Temp. Req." value={shipment.temperatureRequirement} />}
               {shipment.plannedDeparture && (
-                <div className="space-y-1">
-                  <p className="label-meta">Planned Departure</p>
-                  <p className="text-sm font-semibold text-foreground">
-                    {new Date(shipment.plannedDeparture).toLocaleString()}
-                  </p>
-                </div>
+                <StatCell label="Planned Departure" value={new Date(shipment.plannedDeparture).toLocaleString()} />
               )}
               {shipment.plannedArrival && (
-                <div className="space-y-1">
-                  <p className="label-meta">Planned Arrival</p>
-                  <p className="text-sm font-semibold text-foreground">
-                    {new Date(shipment.plannedArrival).toLocaleString()}
-                  </p>
-                </div>
+                <StatCell label="Planned Arrival" value={new Date(shipment.plannedArrival).toLocaleString()} />
               )}
             </div>
           </div>
         )}
 
-        {/* Actions */}
+        {/* ACTION BUTTONS */}
         {!isCrossCompany && (shipment.status === "active" || shipment.status === "at-risk") && (
           <div className="flex flex-wrap gap-3">
             <button
               onClick={onComplete}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-all"
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm"
             >
               <CheckCircle className="w-4 h-4" /> Mark as Completed
             </button>
@@ -456,18 +446,61 @@ function OverviewTab({
         )}
       </div>
 
-      {/* Right column - map */}
-      <div className="min-w-0 overflow-hidden">
+      {/* ── RIGHT COLUMN (30-35%): MAP & ROUTE METRICS ──────────────────── */}
+      <div className="flex flex-col gap-3 min-w-0">
+        
+        {/* ROUTE MAP */}
+        <div className="w-full h-[360px] rounded-xl overflow-hidden shadow-sm bg-card border border-border relative">
+          <RouteMapView
+            route={routeForMap}
+            routes={routeForMap ? [routeForMap] : []}
+            status={shipment.status === "completed" ? "completed" : "active"}
+            origin={shipment.origin}
+            destination={shipment.destination}
+            execution={execution}
+          />
+        </div>
+
+        {/* Route Info card */}
+        <div className="panel p-5 space-y-4">
+          <p className="label-meta flex items-center gap-2">
+            <Navigation className="w-3.5 h-3.5" /> Route Info
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5 min-w-0">
+              <p className="label-meta text-[11px]">ETA</p>
+              <p className="text-sm font-bold text-foreground truncate">{shipment.eta}</p>
+            </div>
+            <div className="space-y-1.5 min-w-0">
+              <p className="label-meta text-[11px]">WEATHER</p>
+              <p className="text-sm font-bold text-emerald-400">Clear</p>
+            </div>
+            <div className="space-y-1.5 min-w-0">
+              <p className="label-meta text-[11px]">DISTANCE</p>
+              <p className="text-sm font-bold text-foreground truncate">{shipment.distance}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* RISK FACTORS */}
+        {hasBreakdown && (
+          <div className="panel p-5">
+            <p className="label-meta mb-4 flex items-center gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-400" /> Risk Factors
+            </p>
+            <div className="space-y-3">
+              {Object.entries(breakdown).map(([key, val]) => (
+                <RiskBar key={key} label={key} value={val as number} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {!hasBreakdown && (
-          <p className="text-xs text-muted-foreground/50 mb-3 px-1">
+          <p className="text-xs text-muted-foreground/50">
             {t("shipmentDetail.riskBreakdownUnavailable")}
           </p>
         )}
-        <DecisionWorkspace
-          shipment={shipment}
-          routeForMap={routeForMap}
-          execution={execution}
-        />
       </div>
     </div>
   );
@@ -495,13 +528,14 @@ export default function ShipmentDetailPage({
   const [cancelling, setCancelling] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
 
-  // Fetch shipment - first try store, then API
+  // Fetch shipment — first try store for fast render, then fetch full detail with geometry
   const loadShipment = useCallback(async () => {
     const found = (state.shipments ?? []).find((item) => item.id === shipmentId);
     if (found && !isCrossCompany) {
-      setShipment(found);
+      setShipment((prev) => (prev?.geometry ? { ...found, geometry: prev.geometry } : found));
       setLoading(false);
-      return;
+      // If store shipment already has geometry (e.g. newly created), no need to re-fetch
+      if (found.geometry && found.geometry.length > 0) return;
     }
 
     if (!user) { setLoading(false); return; }
@@ -515,11 +549,16 @@ export default function ShipmentDetailPage({
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) { setShipment(null); setLoading(false); return; }
+      if (!res.ok) {
+        if (!found) setShipment(null);
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
-      setShipment(data.shipment ?? null);
+      if (data.shipment) {
+        setShipment(data.shipment);
+      }
 
-      // Also try to load execution data
       if (data.shipment && (data.shipment.status === "in_transit" || data.shipment.status === "paused" || data.shipment.status === "active")) {
         const execRes = await fetch(`/api/execution/${shipmentId}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -530,7 +569,7 @@ export default function ShipmentDetailPage({
         }
       }
     } catch {
-      setShipment(null);
+      if (!found) setShipment(null);
     } finally {
       setLoading(false);
     }
@@ -540,11 +579,13 @@ export default function ShipmentDetailPage({
     if (!state.loading) loadShipment();
   }, [state.loading, loadShipment]);
 
-  // Keep shipment in sync with store updates
+  // Keep shipment in sync with store updates without losing geometry
   useEffect(() => {
     if (!isCrossCompany) {
       const found = (state.shipments ?? []).find((item) => item.id === shipmentId);
-      if (found) setShipment(found);
+      if (found) {
+        setShipment((prev) => (prev?.geometry ? { ...found, geometry: prev.geometry } : found));
+      }
     }
   }, [state.shipments, shipmentId, isCrossCompany]);
 
@@ -587,21 +628,50 @@ export default function ShipmentDetailPage({
     refreshShipments().catch(() => {});
   }, [refreshShipments]);
 
+  // ─── Loading state ─────────────────────────────────────────────────────────
   if (loading || state.loading) {
     return (
-      <div className="p-32 text-center flex flex-col items-center gap-4">
-        <div className="w-8 h-8 border-2 border-border border-t-primary rounded-full animate-spin" />
-        <p className="text-sm text-muted-foreground uppercase tracking-widest">
-          {t("shipmentDetail.loadingShipment")}
-        </p>
+      <div className="p-32 text-center flex flex-col items-center gap-5">
+        <div className="relative">
+          <div className="w-10 h-10 border-2 border-border rounded-full" />
+          <div className="w-10 h-10 border-2 border-t-primary border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin absolute inset-0" />
+        </div>
+        <div className="space-y-1.5">
+          <p className="text-sm font-semibold text-foreground uppercase tracking-widest">
+            {t("shipmentDetail.loadingShipment")}
+          </p>
+          <p className="text-xs text-muted-foreground">Authenticating access to corridor data…</p>
+        </div>
       </div>
     );
   }
 
   if (!shipment) notFound();
 
+  const riskColor = getRiskColor(shipment.riskLevel);
+  const isAtRisk  = shipment.status === "at-risk";
+  const isActive  = shipment.status === "active";
+
+  // ─── Route for map (used in route tab) ────────────────────────────────────
+  const routeForMap = {
+    id:            shipment.id,
+    label:         shipment.selectedRoute,
+    name:          shipment.routeName,
+    eta:           shipment.eta,
+    etaMinutes:    0,
+    distance:      shipment.distance,
+    distanceKm:    parseFloat(shipment.distance) || 0,
+    riskScore:     shipment.riskScore,
+    riskLevel:     shipment.riskLevel,
+    recommended:   false,
+    summary:       "",
+    alerts:        shipment.predictiveAlert ? [shipment.predictiveAlert] : [],
+    riskBreakdown: shipment.riskBreakdown ?? { traffic: 0, weather: 0, disruption: 0, cargoSensitivity: 0 },
+    geometry:      shipment.geometry ?? undefined,
+  };
+
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-8">
+    <div className="w-full max-w-7xl mx-auto space-y-0">
       <CancelDialog
         open={cancelOpen}
         onOpenChange={setCancelOpen}
@@ -609,45 +679,129 @@ export default function ShipmentDetailPage({
         submitting={cancelling}
       />
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-8 border-b border-border">
-        <div className="space-y-2 min-w-0">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">
-            {t("shipmentDetail.shipmentDetail")}
-          </p>
-          <h1 className="text-3xl font-bold text-foreground truncate">{shipment.shipmentCode}</h1>
-          <p className="text-sm text-muted-foreground">{shipment.origin} → {shipment.destination}</p>
+      {/* ── Command Header ─────────────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="mb-8"
+      >
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-5">
+          <Link href="/shipments" className="hover:text-foreground transition-colors">Shipments</Link>
+          <ChevronRight className="w-3 h-3" />
+          <span className="text-foreground/70 font-mono">{shipment.shipmentCode}</span>
         </div>
-        <div className="flex items-center gap-3 shrink-0 flex-wrap">
-          <StatusBadge status={shipment.status} />
-          {cancelling && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Cancelling…
+
+        {/* Header row */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-5">
+          {/* Title block */}
+          <div className="space-y-3 min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <p className="label-meta flex items-center gap-1.5">
+                <Shield className="w-3 h-3" /> {t("shipmentDetail.shipmentDetail")}
+              </p>
+              <StatusBadge status={shipment.status} />
+              {cancelling && (
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <RefreshCw className="w-3 h-3 animate-spin" /> Cancelling…
+                </span>
+              )}
             </div>
-          )}
-          <Link
-            href="/shipments"
-            className="flex items-center gap-2 border border-border hover:border-border/80 px-4 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-all"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> {t("shipmentDetail.backToShipments")}
-          </Link>
+
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">
+              {shipment.shipmentCode}
+            </h1>
+
+            {/* Route strip */}
+            <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5 shrink-0">
+                <MapPin className="w-3.5 h-3.5 shrink-0 text-primary/70" />
+                <span className="font-medium text-foreground/80">{shipment.origin}</span>
+                <span className="text-muted-foreground/50 mx-0.5">→</span>
+                <span className="font-medium text-foreground/80">{shipment.destination}</span>
+              </span>
+              <span className="hidden sm:block w-px h-4 bg-border" />
+              <span className="flex items-center gap-1.5 shrink-0">
+                <Navigation className="w-3.5 h-3.5 shrink-0" />
+                <span className="capitalize">{shipment.routeName}</span>
+              </span>
+              <span className="hidden sm:block w-px h-4 bg-border" />
+              <span className={cn("flex items-center gap-1.5 font-semibold tabular-nums", riskColor)}>
+                <Layers className="w-3.5 h-3.5 shrink-0" />
+                Risk {shipment.riskScore}
+                <span className="text-xs font-normal text-muted-foreground capitalize ml-0.5">({shipment.riskLevel})</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+            {/* Live indicator for active/at-risk */}
+            {(isActive || isAtRisk) && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-400/8 border border-emerald-400/20 text-xs font-semibold text-emerald-400">
+                <Radio className="w-3 h-3" />
+                <span>LIVE</span>
+              </div>
+            )}
+            <Link
+              href="/shipments"
+              className="flex items-center gap-2 border border-border hover:border-border/60 hover:bg-muted/20 px-4 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-all"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> {t("shipmentDetail.backToShipments")}
+            </Link>
+          </div>
         </div>
-      </div>
 
-      {/* Tabs */}
+        {/* Status ribbon for at-risk */}
+        {isAtRisk && getMeaningfulAlert(shipment.predictiveAlert) && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+            className="mt-5 flex items-center gap-3 bg-amber-400/5 border border-amber-400/20 rounded-lg px-4 py-2.5"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <p className="text-xs text-amber-400/90 leading-relaxed">{getMeaningfulAlert(shipment.predictiveAlert)}</p>
+          </motion.div>
+        )}
+
+        <Separator className="mt-7 opacity-20" />
+      </motion.div>
+
+      {/* ── Command Navigation Tabs ────────────────────────────────────────── */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="h-auto min-h-[44px] bg-muted/20 gap-1 p-1 rounded-lg flex-wrap">
-          <TabsTrigger value="overview"      className="text-sm h-9 px-4 rounded-md">Overview</TabsTrigger>
-          <TabsTrigger value="route"         className="text-sm h-9 px-4 rounded-md">Route</TabsTrigger>
-          <TabsTrigger value="replay"        className="text-sm h-9 px-4 rounded-md">Replay</TabsTrigger>
-          <TabsTrigger value="risk"          className="text-sm h-9 px-4 rounded-md">Risk Intelligence</TabsTrigger>
-          <TabsTrigger value="timeline"      className="text-sm h-9 px-4 rounded-md">Timeline</TabsTrigger>
-          <TabsTrigger value="communication" className="text-sm h-9 px-4 rounded-md">Communication</TabsTrigger>
-          <TabsTrigger value="audit"         className="text-sm h-9 px-4 rounded-md">Audit</TabsTrigger>
-        </TabsList>
+        {/* Tab nav */}
+        <div className="w-full overflow-x-auto overflow-y-hidden scrollbar-hidden mb-8">
+          <TabsList className="h-auto bg-transparent gap-0 p-0 rounded-none border-b border-border w-max min-w-full">
+          {[
+            { value: "overview",      label: "Overview",          icon: Zap },
+            { value: "route",         label: "Route Intelligence", icon: Navigation },
+            { value: "risk",          label: "Risk Analysis",     icon: TrendingDown },
+            { value: "timeline",      label: "Timeline",          icon: Clock },
+            { value: "communication", label: "Communication",     icon: MessageSquare },
+            { value: "audit",         label: "Audit",             icon: ShieldCheck },
+          ].map(({ value, label, icon: Icon }) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className={cn(
+                "relative h-10 px-4 text-sm font-medium text-muted-foreground rounded-none border-b-2 border-transparent",
+                "data-[state=active]:text-foreground data-[state=active]:border-primary",
+                "hover:text-foreground/80 transition-colors bg-transparent",
+                "flex items-center gap-1.5 shrink-0"
+              )}
+            >
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              {label}
+            </TabsTrigger>
+          ))}
+          </TabsList>
+        </div>
 
-        {/* Overview */}
-        <TabsContent value="overview" className="mt-8">
+        {/* ── Overview ─────────────────────────────────────────────────────── */}
+        <TabsContent value="overview" className="mt-0">
           <OverviewTab
             shipment={shipment}
             onComplete={handleComplete}
@@ -658,109 +812,114 @@ export default function ShipmentDetailPage({
           />
         </TabsContent>
 
-        {/* Route */}
-        <TabsContent value="route" className="mt-8">
-          <div className="space-y-6">
-            <DashboardCard icon={Navigation} title="Route Details" noPadding className="p-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-                <div className="space-y-1">
-                  <p className="label-meta">Route</p>
-                  <p className="text-sm font-semibold text-foreground capitalize">{shipment.selectedRoute}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="label-meta">Distance</p>
-                  <p className="text-sm font-semibold text-foreground">{shipment.distance}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="label-meta">ETA</p>
-                  <p className="text-sm font-semibold text-foreground">{shipment.eta}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="label-meta">Confidence</p>
-                  <p className="text-sm font-semibold text-foreground">{shipment.confidencePercent}%</p>
+        {/* ── Route Intelligence ────────────────────────────────────────────── */}
+        <TabsContent value="route" className="mt-0">
+          <div className="space-y-5">
+
+            {/* Route metric strip */}
+            <div className="panel p-5">
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <p className="label-meta flex items-center gap-1.5">
+                  <Navigation className="w-3.5 h-3.5" /> Route Parameters
+                </p>
+                <Badge variant="outline" className="bg-primary/8 text-primary border-primary/20 text-[10px] px-2 py-0.5 font-semibold capitalize">
+                  {shipment.selectedRoute}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
+                <StatCell label="Route" value={shipment.selectedRoute} />
+                <StatCell label="Distance" value={shipment.distance} />
+                <StatCell label="ETA" value={shipment.eta} />
+                <StatCell label="Confidence" value={`${shipment.confidencePercent}%`} />
+              </div>
+            </div>
+
+            {/* RISK FACTORS */}
+            {shipment.riskBreakdown && (
+              <div className="panel p-5">
+                <p className="label-meta mb-4 flex items-center gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400" /> Risk Factors
+                </p>
+                <div className="space-y-3">
+                  {Object.entries(shipment.riskBreakdown).map(([key, val]) => {
+                    const factorVal = val as number | undefined;
+                    if (factorVal === undefined || factorVal === null) return null;
+                    return (
+                      <div key={key} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground capitalize">
+                            {key === "cargoSensitivity" ? "Cargo Sensitivity" : key}
+                          </span>
+                          <span className={cn("font-bold tabular-nums", factorVal > 60 ? "text-red-400" : factorVal > 35 ? "text-amber-400" : "text-emerald-400")}>
+                            {factorVal}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-muted overflow-hidden rounded-full">
+                          <div
+                            className={cn("h-full rounded-full transition-all duration-500", factorVal > 60 ? "bg-red-400" : factorVal > 35 ? "bg-amber-400" : "bg-emerald-400")}
+                            style={{ width: `${factorVal}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            </DashboardCard>
-            {/* Risk breakdown */}
-            {shipment.riskBreakdown && (
-              <DashboardCard icon={AlertTriangle} title="Risk Factors on Route" noPadding className="p-6">
-                <div className="space-y-4">
-                  {Object.entries(shipment.riskBreakdown).map(([key, val]) => (
-                    <div key={key} className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground w-36 shrink-0 capitalize">
-                        {key === "cargoSensitivity" ? "Cargo Sensitivity" : key}
-                      </span>
-                      <div className="flex-1 h-2 bg-muted overflow-hidden rounded-full">
-                        <div
-                          className={cn("h-full rounded-full", val > 60 ? "bg-red-400" : val > 35 ? "bg-amber-400" : "bg-emerald-400")}
-                          style={{ width: `${val}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-mono text-muted-foreground w-8 text-right">{val}</span>
-                    </div>
-                  ))}
-                </div>
-              </DashboardCard>
             )}
-            {/* Map */}
-            <div className="rounded-xl overflow-hidden border border-border" style={{ height: "500px" }}>
-              <RouteMapView
-                route={{
-                  id:            shipment.id,
-                  label:         shipment.selectedRoute,
-                  name:          shipment.routeName,
-                  eta:           shipment.eta,
-                  etaMinutes:    0,
-                  distance:      shipment.distance,
-                  distanceKm:    parseFloat(shipment.distance) || 0,
-                  riskScore:     shipment.riskScore,
-                  riskLevel:     shipment.riskLevel,
-                  recommended:   false,
-                  summary:       "",
-                  alerts:        shipment.predictiveAlert ? [shipment.predictiveAlert] : [],
-                  riskBreakdown: shipment.riskBreakdown ?? { traffic: 0, weather: 0, disruption: 0, cargoSensitivity: 0 },
-                  geometry:      shipment.geometry ?? undefined,
-                }}
-                routes={[]}
-                status={shipment.status === "completed" ? "completed" : "active"}
-                origin={shipment.origin}
-                destination={shipment.destination}
-                execution={execution}
-              />
+
+            {/* Map card with footer */}
+            <div className="rounded-xl overflow-hidden shadow-sm bg-card border border-border flex flex-col">
+              <div className="h-[400px] w-full">
+                <RouteMapView
+                  route={routeForMap}
+                  routes={[]}
+                  status={shipment.status === "completed" ? "completed" : "active"}
+                  origin={shipment.origin}
+                  destination={shipment.destination}
+                  execution={execution}
+                />
+              </div>
+
+              {/* Footer with ETA/Weather/Distance */}
+              <div className="grid grid-cols-3 gap-4 p-4 border-t border-border bg-muted/20">
+                <div className="text-center space-y-1.5">
+                  <p className="label-meta text-[10px]">ETA</p>
+                  <p className="text-sm font-bold text-foreground">{shipment.eta}</p>
+                </div>
+                <div className="text-center space-y-1.5">
+                  <p className="label-meta text-[10px]">WEATHER</p>
+                  <p className="text-sm font-bold text-emerald-400">Clear</p>
+                </div>
+                <div className="text-center space-y-1.5">
+                  <p className="label-meta text-[10px]">DISTANCE</p>
+                  <p className="text-sm font-bold text-foreground">{shipment.distance}</p>
+                </div>
+              </div>
             </div>
           </div>
         </TabsContent>
 
-        {/* Replay */}
-        <TabsContent value="replay" className="mt-8">
-          {execution ? (
-            <RouteReplayMap execution={execution} />
-          ) : (
-            <div className="p-12 text-center border border-border rounded-xl bg-card flex flex-col items-center gap-4">
-              <Navigation className="w-8 h-8 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">Execution data not available for replay.</p>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Risk Intelligence */}
-        <TabsContent value="risk" className="mt-8">
+        {/* ── Risk Analysis ─────────────────────────────────────────────────── */}
+        <TabsContent value="risk" className="mt-0">
           <ShipmentRiskPanel shipmentId={shipment.id} />
         </TabsContent>
 
-        {/* Timeline */}
-        <TabsContent value="timeline" className="mt-8">
+        {/* ── Timeline ──────────────────────────────────────────────────────── */}
+        <TabsContent value="timeline" className="mt-0">
           <ShipmentTimeline shipmentId={shipment.id} />
         </TabsContent>
 
-        {/* Communication */}
-        <TabsContent value="communication" className="mt-8">
-          <ShipmentCommunication shipmentId={shipment.id} />
+        {/* ── Communication ─────────────────────────────────────────────────── */}
+        <TabsContent value="communication" className="mt-0">
+          <ShipmentCommunication shipmentId={shipment.id} status={shipment.status} />
         </TabsContent>
 
-        {/* Audit */}
-        <TabsContent value="audit" className="mt-8">
-          <ShipmentAuditTab shipmentId={shipment.id} companyId={isCrossCompany ? (targetCompanyId || undefined) : undefined} />
+        {/* ── Audit ─────────────────────────────────────────────────────────── */}
+        <TabsContent value="audit" className="mt-0">
+          <ShipmentAuditTab
+            shipmentId={shipment.id}
+            companyId={isCrossCompany ? (targetCompanyId || undefined) : undefined}
+          />
         </TabsContent>
       </Tabs>
     </div>

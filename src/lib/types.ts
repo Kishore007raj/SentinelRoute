@@ -186,6 +186,8 @@ export interface PendingShipment {
   cargoVolumeM3?:      number;
   plannedDeparture?:   string;
   plannedArrival?:     string;
+  // Deduplication timestamp - ensures new shipment creation triggers fresh analysis
+  createdAt?:          number;
 }
 
 // ─── API shapes ───────────────────────────────────────────────────────────────

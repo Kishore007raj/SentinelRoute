@@ -1,23 +1,7 @@
 "use client";
 
-/**
- * Support & Developer Tools
- *
- * Provides read-only inspection utilities for L3 support.
- * No fake "biometric" or "CLI" UI — only real capabilities.
- *
- * Available tools:
- *   1. Audit log search (links to /admin/audit with pre-filled query)
- *   2. Company quick-look (search + link to /admin/companies/[id])
- *   3. Platform health link (links to /admin/health)
- *   4. Super-admin seed utility (for bootstrapping the platform)
- *
- * No mutations are performed from this page.
- */
-
 import { useState, useCallback } from "react";
-import { Wrench, Search, Shield, ActivitySquare, Building2, ExternalLink, ChevronRight } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Wrench, Search, Shield, ActivitySquare, Building2, ExternalLink, ChevronRight, CheckCircle2, Clock, Ban, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -31,13 +15,6 @@ interface CompanyPreview {
   status:      string;
   createdAt:   string;
 }
-
-const STATUS_CLASS: Record<string, string> = {
-  approved:  "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-  pending:   "bg-amber-500/10 text-amber-500 border-amber-500/20",
-  suspended: "bg-rose-500/10 text-rose-500 border-rose-500/20",
-  rejected:  "bg-muted text-muted-foreground border-border",
-};
 
 export default function SupportToolsCenter() {
   // Company quick-search
@@ -69,142 +46,154 @@ export default function SupportToolsCenter() {
     }
   }, [companySearch]);
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "approved":
+        return <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]"><CheckCircle2 className="w-3 h-3 mr-1" /> Active</Badge>;
+      case "pending":
+        return <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px]"><Clock className="w-3 h-3 mr-1" /> Pending</Badge>;
+      case "suspended":
+        return <Badge variant="secondary" className="bg-rose-500/10 text-rose-400 border-rose-500/20 text-[10px]"><Ban className="w-3 h-3 mr-1" /> Suspended</Badge>;
+      case "rejected":
+        return <Badge variant="secondary" className="bg-muted text-muted-foreground border-border text-[10px]"><ShieldAlert className="w-3 h-3 mr-1" /> Rejected</Badge>;
+      default:
+        return <Badge variant="outline" className="text-[10px]">{status}</Badge>;
+    }
+  };
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Wrench className="w-6 h-6 text-stone-400" />
-          Support Tools
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Read-only inspection utilities for L3 platform support.
+    <div className="space-y-6 animate-in fade-in duration-300 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="border-b border-border pb-5">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <Wrench className="w-5 h-5 text-amber-500" />
+            Platform Support Tools
+          </h1>
+          <span className="label-meta bg-muted/40 px-2 py-0.5 rounded border border-border">
+            Tier-3 Diagnostic Access
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Read-only inspection and investigation utilities for platform support engineering.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Company quick-look */}
+        <div className="panel p-6 md:col-span-2 space-y-4">
+          <div>
+            <span className="label-meta flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-amber-500" />
+              Tenant Organization Quick-Look
+            </span>
+            <p className="text-xs text-muted-foreground mt-1">
+              Search by tenant name or organization ID to jump directly into the full inspection workspace.
+            </p>
+          </div>
 
-        {/* ── Company quick-look ─────────────────────────────────────────── */}
-        <Card className="border-border/50 shadow-sm md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Building2 className="w-4 h-4 text-blue-500" />
-              Company Quick-Look
-            </CardTitle>
-            <CardDescription>
-              Search for a tenant by name or ID to jump directly to their inspection page.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Company name or ID…"
-                  value={companySearch}
-                  onChange={(e) => setCompanySearch(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCompanySearch()}
-                  className="pl-9 h-9"
-                />
-              </div>
-              <Button
-                size="sm"
-                onClick={handleCompanySearch}
-                disabled={searching || !companySearch.trim()}
-                className="h-9"
-              >
-                {searching ? "Searching…" : "Search"}
-              </Button>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Enter company name or tenant ID…"
+                value={companySearch}
+                onChange={(e) => setCompanySearch(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCompanySearch()}
+                className="pl-9 h-9 text-xs bg-background border-border"
+              />
             </div>
+            <Button
+              size="sm"
+              onClick={handleCompanySearch}
+              disabled={searching || !companySearch.trim()}
+              className="h-9 text-xs px-4"
+            >
+              {searching ? "Searching…" : "Search"}
+            </Button>
+          </div>
 
-            {searched && searchResults.length === 0 && (
-              <p className="text-sm text-muted-foreground">No tenants found matching that query.</p>
-            )}
+          {searched && searchResults.length === 0 && (
+            <p className="text-xs text-muted-foreground italic">No tenant organizations found matching query.</p>
+          )}
 
-            {searchResults.length > 0 && (
-              <div className="border border-border rounded-lg overflow-hidden">
-                {searchResults.map((co, i) => (
-                  <Link
-                    key={co.companyId}
-                    href={`/admin/companies/${co.companyId}`}
-                    className={`flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors ${
-                      i > 0 ? "border-t border-border/50" : ""
-                    }`}
-                  >
-                    <div>
-                      <p className="text-sm font-medium">{co.companyName}</p>
-                      <p className="text-xs text-muted-foreground font-mono">{co.companyId}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] ${STATUS_CLASS[co.status] ?? ""}`}
-                      >
-                        {co.status}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {co.createdAt ? format(new Date(co.createdAt), "MMM d, yyyy") : "—"}
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          {searchResults.length > 0 && (
+            <div className="border border-border rounded-lg overflow-hidden divide-y divide-border/50">
+              {searchResults.map((co) => (
+                <Link
+                  key={co.companyId}
+                  href={`/admin/companies/${co.companyId}`}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors"
+                >
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">{co.companyName}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono">{co.companyId}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {getStatusBadge(co.status)}
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      {co.createdAt ? format(new Date(co.createdAt), "MMM d, yyyy") : "—"}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
 
-        {/* ── Audit log quick-access ─────────────────────────────────────── */}
-        <Card className="border-border/50 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
+        {/* Audit log access */}
+        <div className="panel p-6 flex flex-col justify-between">
+          <div>
+            <span className="label-meta flex items-center gap-2 mb-2">
               <Shield className="w-4 h-4 text-amber-500" />
-              Audit Log Access
-            </CardTitle>
-            <CardDescription>
-              View the immutable platform-wide audit trail.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+              Platform Audit Trail
+            </span>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Inspect immutable cross-tenant security logs, lifecycle transitions, and API operator records.
+            </p>
+          </div>
+          <div className="mt-5">
             <Link href="/admin/audit">
-              <Button variant="outline" className="w-full gap-2">
-                <ExternalLink className="w-4 h-4" />
-                Open Audit Center
+              <Button variant="outline" className="w-full gap-2 text-xs h-9 border-border">
+                <ExternalLink className="w-3.5 h-3.5" />
+                Open Global Audit Center
               </Button>
             </Link>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* ── Platform health quick-access ───────────────────────────────── */}
-        <Card className="border-border/50 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ActivitySquare className="w-4 h-4 text-emerald-500" />
-              Platform Health
-            </CardTitle>
-            <CardDescription>
-              Inspect live infrastructure telemetry and database status.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        {/* Platform health access */}
+        <div className="panel p-6 flex flex-col justify-between">
+          <div>
+            <span className="label-meta flex items-center gap-2 mb-2">
+              <ActivitySquare className="w-4 h-4 text-emerald-400" />
+              Infrastructure Telemetry
+            </span>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Inspect live database cluster latency, connection pool capacity, and Node.js process heap memory.
+            </p>
+          </div>
+          <div className="mt-5">
             <Link href="/admin/health">
-              <Button variant="outline" className="w-full gap-2">
-                <ExternalLink className="w-4 h-4" />
+              <Button variant="outline" className="w-full gap-2 text-xs h-9 border-border">
+                <ExternalLink className="w-3.5 h-3.5" />
                 Open Health Center
               </Button>
             </Link>
-          </CardContent>
-        </Card>
-
+          </div>
+        </div>
       </div>
 
-      {/* Notice */}
-      <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-500/90">
-        <strong>Read-only mode.</strong> Support tools provide inspection access only.
-        All administrative mutations (approve, suspend, reject) are performed from the{" "}
-        <Link href="/admin/companies" className="underline hover:no-underline">
-          Tenant Management
-        </Link>{" "}
-        page and are audited.
+      {/* Read-Only Notice */}
+      <div className="panel p-4 bg-muted/10 flex items-start gap-3 text-xs text-muted-foreground border-border/80">
+        <Shield className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+        <div>
+          <span className="font-semibold text-foreground">Read-Only Diagnostic Context:</span> Support tools provide non-mutating inspection utilities. All tenant approvals, suspensions, and lifecycle modifications are audited under{" "}
+          <Link href="/admin/companies" className="text-amber-500 underline hover:no-underline font-medium">
+            Tenant Management
+          </Link>.
+        </div>
       </div>
     </div>
   );

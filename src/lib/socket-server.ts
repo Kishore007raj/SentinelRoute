@@ -12,7 +12,7 @@ function pushToSocketWebhook(payload: any) {
   const secret = process.env.INTERNAL_SOCKET_SECRET;
   
   if (!secret) {
-    console.warn("[socket-server] INTERNAL_SOCKET_SECRET missing. Skipping emission.");
+    // Optional in local dev / serverless environment - skip emission quietly
     return;
   }
   

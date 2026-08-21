@@ -25,13 +25,6 @@ export function HealthGauge({
     return "var(--sr-danger)";
   }, [normalizedScore]);
 
-  // Glow color (matching globals.css tokens)
-  const glow = useMemo(() => {
-    if (normalizedScore >= 90) return "0 0 20px oklch(0.75 0.18 160 / 0.28)"; // emerald
-    if (normalizedScore >= 70) return "0 0 20px oklch(0.80 0.20 70 / 0.28)";  // amber
-    return "0 0 20px oklch(0.70 0.22 25 / 0.28)";                            // danger
-  }, [normalizedScore]);
-
   const sizeMap = {
     sm: { radius: 24, stroke: 4, font: "text-sm", labelFont: "text-[10px]" },
     md: { radius: 40, stroke: 6, font: "text-2xl", labelFont: "text-xs" },
@@ -75,7 +68,6 @@ export function HealthGauge({
             animate={{ strokeDashoffset }}
             transition={{ duration: 1.5, ease: "easeOut" }}
             strokeLinecap="round"
-            style={{ filter: `drop-shadow(${glow})` }}
           />
         </svg>
 

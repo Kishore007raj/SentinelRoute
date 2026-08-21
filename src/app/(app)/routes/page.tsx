@@ -1,8 +1,9 @@
 "use client";
+
 import { fetchApi } from "@/lib/api-client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, LayoutGroup } from "framer-motion";
-import { ArrowRight, ChevronLeft, CheckCircle, AlertTriangle } from "lucide-react";
+import { ArrowRight, ChevronLeft, AlertTriangle, Navigation, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShipmentPass } from "@/components/shipment/ShipmentPass";
 import dynamic from "next/dynamic";
@@ -10,22 +11,19 @@ const RouteMapView = dynamic(() => import("@/components/shipment/RouteMapView").
 import { DispatchedStub } from "@/components/shipment/ShipmentPass";
 import { generateShipmentCode, cn, getRiskColor } from "@/lib/utils";
 import { useStore } from "@/lib/store";
-import { useUser } from "@/lib/auth-context";
-import type { Route } from "@/lib/types";
-import {
-  recommendationBadge,
-  decisionContextText,
-  deriveConfidence,
-} from "@/lib/route-utils";
+import type { Route, PendingShipment } from "@/lib/types";
+import { recommendationBadge, deriveConfidence } from "@/lib/route-utils";
 import Link from "next/link";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
-// ─── Human-readable breakdown labels ─────────────────────────────────────────
+// ─── Breakdown label helpers ──────────────────────────────────────────────────
 
 function breakdownLabel(key: string, score: number): string {
-  if (key === "traffic")          return score > 65 ? "Heavy"            : score > 35 ? "Moderate"  : "Light";
-  if (key === "weather")          return score > 65 ? "Severe"           : score > 35 ? "Rain risk" : "Clear";
-  if (key === "disruption")       return score > 65 ? "High"             : score > 35 ? "Moderate"  : "Low";
-  if (key === "cargoSensitivity") return score > 65 ? "High sensitivity" : score > 35 ? "Moderate"  : "Low";
+  if (key === "traffic")          return score > 65 ? "Heavy"            : score > 35 ? "Moderate"    : "Light";
+  if (key === "weather")          return score > 65 ? "Severe"           : score > 35 ? "Rain risk"   : "Clear";
+  if (key === "disruption")       return score > 65 ? "High"             : score > 35 ? "Moderate"    : "Low";
+  if (key === "cargoSensitivity") return score > 65 ? "High sensitivity" : score > 35 ? "Moderate"    : "Low";
   return score > 50 ? "Elevated" : "Normal";
 }
 
@@ -35,9 +33,11 @@ function breakdownLabelColor(score: number): string {
   return "text-emerald-400";
 }
 
-// ─── Dominant route ───────────────────────────────────────────────────────────
+// ─── Route card ───────────────────────────────────────────────────────────────
 
-function DominantRoute({ route, onSelect, selected, cargoType, urgency, allRoutes }: {
+function DominantRoute({
+  route, onSelect, selected, cargoType, urgency, allRoutes,
+}: {
   route: Route; onSelect: (id: string) => void; selected: boolean;
   cargoType?: string; urgency?: string; allRoutes?: Route[];
 }) {
@@ -53,608 +53,528 @@ function DominantRoute({ route, onSelect, selected, cargoType, urgency, allRoute
       onClick={() => onSelect(route.id)}
       transition={{ layout: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}
       className={cn(
-        "border cursor-pointer transition-colors duration-150 overflow-hidden rounded-xl",
-        selected ? "border-primary bg-card" : "border-border bg-card hover:border-border/80",
+        "panel p-5 bg-card cursor-pointer transition-all duration-150 relative overflow-hidden",
+        selected ? "border-primary bg-muted/10 shadow-sm" : "hover:border-border/80"
       )}
     >
-      <div className={cn("h-1.5 w-full",
-        route.riskLevel === "high" || route.riskLevel === "critical" ? "bg-red-400" :
-        route.riskLevel === "medium" ? "bg-amber-400" : "bg-emerald-400"
-      )} />
-      <div className="p-8 lg:p-10">
-        <div className="flex items-start justify-between mb-10">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className={cn(
-                "text-xs font-semibold uppercase tracking-widest px-3 py-1.5 border rounded-md",
-                route.label === "fastest" ? "text-amber-400 border-amber-400/30 bg-amber-400/5" :
-                route.label === "balanced" ? "text-primary border-primary/30 bg-primary/5" :
-                "text-emerald-400 border-emerald-400/30 bg-emerald-400/5"
-              )}>{route.label}</span>
-              {route.recommended && (
-                <span className="text-xs text-primary border border-primary/30 bg-primary/5 px-3 py-1.5 uppercase tracking-widest rounded-md">
-                  {recBadge ?? "Recommended"}
-                </span>
-              )}
-            </div>
-            <h2 className="text-2xl font-bold text-foreground">{route.name}</h2>
-          </div>
-          <div className="text-right shrink-0 ml-8">
-            <p className={cn("text-7xl font-bold tabular-nums leading-none", riskColor)}>{route.riskScore}</p>
-            <p className={cn("text-xs uppercase tracking-widest mt-2", riskColor)}>{route.riskLevel} risk</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-12 mb-10 pb-10 border-b border-border/40">
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest">ETA</p>
-            <p className="text-4xl font-bold text-foreground">{route.eta}</p>
-          </div>
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest">Distance</p>
-            <p className="text-4xl font-bold text-foreground">{route.distance}</p>
-          </div>
-        </div>
-
-        <div className="space-y-4 mb-10">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">Risk breakdown</p>
-          {Object.entries(route.riskBreakdown).map(([key, val]) => (
-            <div key={key} className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground w-28 shrink-0 capitalize">
-                {key === "cargoSensitivity" ? "Cargo" : key}
+      <div className={cn("h-1 w-full absolute top-0 left-0", selected ? "bg-primary" : "bg-transparent")} />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-foreground capitalize">{route.name}</h3>
+            {recBadge && (
+              <span className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded border bg-primary/10 text-primary border-primary/20">
+                {recBadge}
               </span>
-              <div className="flex-1 h-2 bg-muted overflow-hidden rounded-full">
-                <motion.div
-                  className={cn("h-full rounded-full", val > 60 ? "bg-red-400" : val > 35 ? "bg-amber-400" : "bg-emerald-400")}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${val}%` }}
-                  transition={{ duration: 0.4 }}
-                />
-              </div>
-              <span className={cn("text-sm font-medium w-28 text-right shrink-0", breakdownLabelColor(val))}>
-                {breakdownLabel(key, val)}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {route.alerts.length > 0 && (
-          <div className="space-y-3 mb-10">
-            {route.alerts.map((alert, i) => (
-              <div key={i} className="flex items-start gap-3 text-sm text-amber-400/90 bg-amber-400/5 border border-amber-400/15 rounded-lg px-4 py-3">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{alert}</span>
-              </div>
-            ))}
+            )}
           </div>
-        )}
-
-        <p className="text-sm text-muted-foreground leading-relaxed mb-10">{route.summary}</p>
-
-        <Button
-          className={cn(
-            "w-full h-12 text-sm font-semibold rounded-lg",
-            selected ? "bg-primary text-primary-foreground" : "bg-muted/30 text-foreground hover:bg-muted/50 border border-border",
-          )}
-          variant="ghost"
-        >
-          {selected ? "Selected - Confirm Dispatch" : "Select This Route"}
-        </Button>
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── Alternative row ──────────────────────────────────────────────────────────
-
-function AlternativeRow({ route, onSelect, selected, referenceRoute }: {
-  route: Route; onSelect: (id: string) => void; selected: boolean;
-  referenceRoute?: Route;
-}) {
-  const riskColor = getRiskColor(route.riskLevel);
-
-  let riskDelta: number | null = null;
-  let etaDelta: number | null = null;
-  if (referenceRoute) {
-    const rd = route.riskScore - referenceRoute.riskScore;
-    const ed = route.etaMinutes - referenceRoute.etaMinutes;
-    if (Number.isFinite(rd)) riskDelta = rd;
-    if (Number.isFinite(ed)) etaDelta  = ed;
-  }
-
-  return (
-    <motion.div
-      layoutId={`route-card-${route.id}`}
-      layout
-      onClick={() => onSelect(route.id)}
-      transition={{ layout: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}
-      className={cn(
-        "border cursor-pointer transition-colors duration-150 overflow-hidden rounded-xl",
-        selected ? "border-primary bg-card" : "border-border/60 bg-card/50 hover:border-border hover:bg-card",
-      )}
-    >
-      <div className={cn("h-1 w-full",
-        route.riskLevel === "high" ? "bg-red-400/60" :
-        route.riskLevel === "medium" ? "bg-amber-400/60" : "bg-emerald-400/60"
-      )} />
-      <div className="px-6 py-6 flex items-center gap-6">
-        <div className="flex-1 min-w-0 space-y-2">
-          <span className={cn("text-xs uppercase tracking-widest font-semibold",
-            route.label === "fastest" ? "text-amber-400" :
-            route.label === "balanced" ? "text-primary" : "text-emerald-400"
-          )}>{route.label}</span>
-          <p className="text-sm font-semibold text-foreground">{route.eta} · {route.distance}</p>
-          {(riskDelta !== null || etaDelta !== null) && (
-            <div className="flex items-center gap-2 flex-wrap">
-              {etaDelta !== null && etaDelta !== 0 && (
-                <span className={cn(
-                  "text-[10px] font-semibold px-1.5 py-0.5 rounded",
-                  etaDelta > 0 ? "text-amber-400/80 bg-amber-400/10" : "text-emerald-400/80 bg-emerald-400/10"
-                )}>
-                  {etaDelta > 0 ? `+${etaDelta}` : etaDelta} min
-                </span>
-              )}
-              {riskDelta !== null && riskDelta !== 0 && (
-                <span className={cn(
-                  "text-[10px] font-semibold px-1.5 py-0.5 rounded",
-                  riskDelta > 0 ? "text-red-400/80 bg-red-400/10" : "text-emerald-400/80 bg-emerald-400/10"
-                )}>
-                  {riskDelta > 0 ? `+${riskDelta}` : riskDelta} risk
-                </span>
-              )}
-            </div>
-          )}
+          <p className="text-xs text-muted-foreground mt-0.5 uppercase tracking-wider font-mono">{route.label}</p>
         </div>
         <div className="text-right shrink-0">
-          <p className={cn("text-3xl font-bold tabular-nums", riskColor)}>{route.riskScore}</p>
-          <p className={cn("text-xs uppercase tracking-widest mt-1", riskColor)}>{route.riskLevel}</p>
+          <p className={cn("text-2xl font-bold tabular-nums leading-none", riskColor)}>{route.riskScore}</p>
+          <p className="label-meta mt-1">Risk Score</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-3 pt-4 mt-4 border-t border-border/40 text-xs">
+        <div><p className="label-meta mb-0.5">ETA</p><p className="font-bold text-foreground tabular-nums">{route.eta}</p></div>
+        <div><p className="label-meta mb-0.5">Distance</p><p className="font-semibold text-foreground tabular-nums">{route.distance}</p></div>
+        <div>
+          <p className="label-meta mb-0.5">Disruption</p>
+          <p className={cn("font-bold capitalize", breakdownLabelColor(route.riskBreakdown.disruption))}>
+            {breakdownLabel("disruption", route.riskBreakdown.disruption)}
+          </p>
         </div>
       </div>
     </motion.div>
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Success state ────────────────────────────────────────────────────────────
+
+function DispatchedSuccessState({ shipmentCode, origin, destination }: {
+  shipmentCode: string; origin: string; destination: string;
+}) {
+  const router = useRouter();
+  return (
+    <div className="max-w-7xl mx-auto w-full pb-12">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, ease: [0.23, 1, 0.320, 1] }}
+        className="flex flex-col items-center justify-center py-24 gap-8 bg-card border border-border rounded-xl"
+      >
+        <motion.div
+          initial={{ scale: 0 }} animate={{ scale: 1 }}
+          transition={{ delay: 0.1, duration: 0.3, type: "spring", stiffness: 100 }}
+          className="w-20 h-20 rounded-full bg-emerald-400/10 border border-emerald-400/30 flex items-center justify-center"
+        >
+          <CheckCircle className="w-10 h-10 text-emerald-400" />
+        </motion.div>
+        <div className="text-center max-w-md space-y-3">
+          <h2 className="text-2xl font-bold text-foreground">Shipment Dispatched</h2>
+          <p className="text-sm text-muted-foreground">Route locked · Decision recorded · Audit trail created.</p>
+          <p className="text-xs font-mono text-muted-foreground mt-2">{shipmentCode}</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Button variant="outline" className="h-11 px-8 font-semibold rounded-lg"
+            onClick={() => { window.location.href = "/create-shipment"; }}>
+            New Shipment
+          </Button>
+          <Button className="h-11 px-8 font-semibold rounded-lg gap-2"
+            onClick={() => router.push("/shipments")}>
+            View Shipments <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ─── Page header ──────────────────────────────────────────────────────────────
+
+function PageHeader({ subtitle, showReconfigure }: { subtitle: string; showReconfigure?: boolean }) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
+      <div>
+        <p className="label-meta flex items-center gap-2 mb-2">
+          <Navigation className="w-3.5 h-3.5 text-primary" />
+          Route Corridor Analysis & Selection
+        </p>
+        <h1 className="text-3xl font-bold text-foreground tracking-tight">Route Selection</h1>
+        <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
+      </div>
+      {showReconfigure && (
+        <Link href="/create-shipment">
+          <Button variant="outline" size="sm" className="h-9 px-3.5 text-xs font-bold uppercase tracking-wider gap-2">
+            <ChevronLeft className="w-3.5 h-3.5" /> Reconfigure Corridor
+          </Button>
+        </Link>
+      )}
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function RoutesPage() {
-  const { state, dispatchShipment, completeShipment } = useStore();
-  const { user } = useUser();
+  const { state, dispatchShipment, pendingShipmentHydrated } = useStore();
 
-  // Capture pending shipment at mount time.
-  // After dispatch, store clears pendingShipment - if we read it reactively,
-  // the map phase falls back to null and shows wrong data.
-  // Capturing once at mount guarantees origin/destination stay correct
-  // through the entire cards → pass → map flow.
-  const [shipmentData] = useState(() => state.pendingShipment ?? null);
+  // pendingRef: always holds the latest pending shipment for use inside async
+  // dispatch callback — avoids stale-closure issues after state changes.
+  const pendingRef = useRef<PendingShipment | null>(state.pendingShipment);
+  useEffect(() => {
+    pendingRef.current = state.pendingShipment;
+  }, [state.pendingShipment]);
 
-  const [shipmentCode] = useState(() => generateShipmentCode());
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [dispatchedId, setDispatchedId] = useState<string | null>(null);
-  const [completed, setCompleted] = useState(false);
-  const [phase, setPhase] = useState<"cards" | "pass" | "map">("cards");
+  // ── Route fetch state ─────────────────────────────────────────────────────
+  const [routes, setRoutes]         = useState<Route[]>([]);
+  const [selectedId, setSelectedId] = useState<string>("");
+  const [analyzedAt, setAnalyzedAt] = useState<string>("");
+  // fetching starts false — will be set to true when pendingShipment becomes valid
+  const [fetching, setFetching]     = useState<boolean>(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const fetchAttemptRef             = useRef<number>(0);
 
-  const [routes, setRoutes] = useState<Route[]>([]);
-  const [loadingRoutes, setLoadingRoutes] = useState(!!shipmentData);
-  const [routeError, setRouteError] = useState<string | null>(null);
-  const [weatherScore, setWeatherScore] = useState(20);
-  const [dataSource, setDataSource] = useState<string | undefined>(undefined);
-  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  // Cache AI explanations per route ID - avoids re-calling Gemini when switching back
-  const aiCacheRef = useRef<Record<string, string | null>>({});
+  // ── Dispatch state ────────────────────────────────────────────────────────
+  const [dispatching, setDispatching]             = useState<boolean>(false);
+  const [dispatched, setDispatched]               = useState<boolean>(false);
+  const dispatchedRef                             = useRef(false);
+  const [dispatchedShipment, setDispatchedShipment] = useState<{
+    shipmentCode: string; origin: string; destination: string;
+  } | null>(null);
+  const [dispatchPassData, setDispatchPassData] = useState<{
+    route: Route;
+    shipment: { origin: string; destination: string; cargoType: string; vehicleType: string; shipmentCode: string; confidencePercent?: number };
+  } | null>(null);
+  const [lastDispatchedStub, setLastDispatchedStub] = useState<typeof dispatchPassData>(null);
+
+  // ── Route fetch effect ────────────────────────────────────────────────────
+  // Fires ONLY when the actual corridor parameters change OR when pendingShipmentHydrated
+  // transitions from false → true (localStorage restore complete).
+  //
+  // Key insight: We use a stable corridorKey string to deduplicate requests for the
+  // same origin/destination/cargo/vehicle/urgency/deadline combination, ignoring
+  // object-identity changes from state updates or user token refreshes.
+  //
+  // The effect waits for pendingShipmentHydrated === true before attempting the first
+  // request, preventing a race where we try to fetch routes before the store has
+  // finished restoring the pending shipment from localStorage.
+  
+  // Memoize the corridor key so the effect only fires when actual corridor changes
+  const corridorKey = useMemo(() => {
+    const p = state.pendingShipment;
+    if (!p) return null;
+    return [
+      p.origin?.trim() || "",
+      p.destination?.trim() || "",
+      p.cargoType?.trim() || "",
+      p.vehicleType?.trim() || "",
+      p.urgency?.trim() || "",
+      p.deadline || "",
+      p.createdAt || "", // Timestamp ensures new shipment → fresh request
+    ].join("|");
+  }, [state.pendingShipment]);
+
+  const lastPendingKeyRef = useRef<string | null>("");
 
   useEffect(() => {
-    if (!shipmentData) return;
+    // Don't re-run after dispatch
+    if (dispatchedRef.current) return;
 
-    const fetchRoutes = async () => {
-      setLoadingRoutes(true);
-      setRouteError(null);
+    // Wait for localStorage hydration to complete before trying to fetch.
+    // This prevents showing "No Shipment Configured" while the store is still
+    // restoring the pending shipment from localStorage.
+    if (!pendingShipmentHydrated) return;
+
+    const p = state.pendingShipment;
+
+    // Validate: require the fields the API needs
+    const isValid = (
+      p !== null &&
+      typeof p.origin      === "string" && p.origin.trim()      !== "" &&
+      typeof p.destination === "string" && p.destination.trim() !== "" &&
+      typeof p.cargoType   === "string" && p.cargoType.trim()   !== "" &&
+      typeof p.vehicleType === "string" && p.vehicleType.trim() !== "" &&
+      typeof p.urgency     === "string" && p.urgency.trim()     !== ""
+    );
+
+    if (!isValid) {
+      // No valid pending shipment — stop spinner and show empty state
+      lastPendingKeyRef.current = "";
+      setFetching(false);
+      setRoutes([]);
+      setSelectedId("");
+      setAnalyzedAt("");
+      setFetchError(null);
+      return;
+    }
+
+    // Build a stable key from the corridor parameters.
+    // If this key matches the last request, the shipment has not actually changed
+    // and we skip the API call to avoid duplicates.
+    // NOTE: This check MUST happen BEFORE incrementing attemptId, otherwise
+    // React StrictMode effect reruns will create new attemptIds that invalidate
+    // the original running request.
+    const pendingKey = corridorKey;
+    const isDuplicate = pendingKey === lastPendingKeyRef.current;
+
+    if (isDuplicate) {
+      // Same corridor, same parameters — do not fire another API request.
+      // This guards against:
+      //  - state.pendingShipment object identity changes without data changes
+      //  - React StrictMode double-invocation in development
+      //  - parent component re-renders propagating down
+      return;
+    }
+
+    // NEW: Only increment attemptId after confirming this is NOT a duplicate.
+    // This prevents duplicate effect reruns from creating new attemptIds that
+    // would invalidate an already-running request.
+    const attemptId = ++fetchAttemptRef.current;
+    lastPendingKeyRef.current = pendingKey;
+
+    // Valid pending shipment with new parameters — call the API
+    async function loadRoutes() {
+      setFetching(true);
+      setFetchError(null);
+
+      // Client-side timeout safety net (30s) - ensures UI never hangs forever
+      // even if server response is delayed or hangs
+      const timeoutId = setTimeout(() => {
+        if (attemptId === fetchAttemptRef.current) {
+          setFetchError("Route analysis timed out. Please try again.");
+          setFetching(false);
+        }
+      }, 30_000);
+
       try {
-        console.log("ROUTE INPUT:", shipmentData.origin, "→", shipmentData.destination);
-        const token = user ? await user.getIdToken() : null;
         const res = await fetchApi("/api/analyze-routes", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({
-            origin:         shipmentData.origin,
-            destination:    shipmentData.destination,
-            cargoType:      shipmentData.cargoType,
-            vehicleType:    shipmentData.vehicleType,
-            urgency:        shipmentData.urgency ?? "Standard",
-            // Pass through Mappls coordinates when available
-            originLat:      shipmentData.originLat,
-            originLng:      shipmentData.originLng,
-            destinationLat: shipmentData.destinationLat,
-            destinationLng: shipmentData.destinationLng,
+            origin:         p!.origin,
+            destination:    p!.destination,
+            cargoType:      p!.cargoType,
+            vehicleType:    p!.vehicleType,
+            urgency:        p!.urgency,
+            originLat:      p!.originLat,
+            originLng:      p!.originLng,
+            destinationLat: p!.destinationLat,
+            destinationLng: p!.destinationLng,
+            priority:       p!.urgency,
+            deadline:       p!.deadline,
           }),
         });
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
+
+        clearTimeout(timeoutId);
+
+        // Reject stale responses: only the latest request should update state.
+        // Remove unmounted check to allow valid requests from completing during
+        // React StrictMode effect cleanup/rerun sequences.
+        if (attemptId !== fetchAttemptRef.current) return;
+
+        if (!res.ok) throw new Error(`Failed to load routes (${res.status})`);
+
         const data = await res.json();
-        setRoutes(data.routes ?? []);
-        setWeatherScore(data.weatherScore ?? 20);
-        setDataSource(data.source);
+        const apiRoutes: Route[] = data.routes ?? [];
+        if (apiRoutes.length === 0) throw new Error("No routes returned for this corridor.");
+
+        setRoutes(apiRoutes);
+        setAnalyzedAt(data.analyzedAt ?? new Date().toISOString());
+        const recommended = apiRoutes.find((r) => r.recommended) ?? apiRoutes[0];
+        setSelectedId(recommended.id);
       } catch (err) {
-        setRouteError(err instanceof Error ? err.message : "Failed to load routes");
+        clearTimeout(timeoutId);
+        if (attemptId !== fetchAttemptRef.current) return;
+        setFetchError((err as Error).message ?? "Unable to analyze routes.");
       } finally {
-        setLoadingRoutes(false);
+        if (attemptId === fetchAttemptRef.current) {
+          setFetching(false);
+        }
       }
-    };
-
-    fetchRoutes();
-  // shipmentData is captured once at mount - stable reference, no re-runs needed
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const selectedRoute = routes.find((r) => r.id === selectedId) ?? null;
-  const confidence = selectedRoute ? deriveConfidence(selectedRoute, routes, dataSource) : 75;
-  const recommended = routes.find((r) => r.recommended) ?? routes[1] ?? routes[0];
-  const alternatives = routes.filter((r) => r.id !== recommended?.id);
-  const urgency = shipmentData?.urgency ?? "Standard";
-
-  const handleSelect = (id: string) => {
-    setSelectedId(id);
-    setPhase("pass");
-
-    const selected = routes.find((r) => r.id === id);
-    if (!selected || !shipmentData) return;
-
-    // Return cached result immediately - no Gemini call needed
-    if (id in aiCacheRef.current) {
-      setAiExplanation(aiCacheRef.current[id]);
-      setAiLoading(false);
-      return;
     }
 
-    setAiExplanation(null);
-    setAiLoading(true);
+    loadRoutes();
+    // Re-runs when:
+    //  1. corridorKey changes (different origin/destination/cargoType/vehicleType/urgency/deadline)
+    //  2. pendingShipmentHydrated changes from false → true (localStorage restore complete)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [corridorKey, pendingShipmentHydrated]);
 
-    // Hard 10s client-side timeout for AI insight - never leave loading state open
-    const aiTimeout = setTimeout(() => {
-      setAiLoading(false);
-      // explanation stays null → AiInsightBox renders deterministic fallback
-    }, 10_000);
+  const selectedRoute = routes.find((r) => r.id === selectedId) ?? routes[0];
 
-    user?.getIdToken().then((token) => {
-      fetchApi("/api/ai-insight", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          origin:        shipmentData.origin,
-          destination:   shipmentData.destination,
-          cargoType:     shipmentData.cargoType,
-          vehicleType:   shipmentData.vehicleType,
-          urgency,
-          selectedRoute: selected,
-          allRoutes:     routes,
-          weatherScore,
-        }),
-      })
-        .then((r) => r.json())
-        .then((data) => {
-          const explanation = data.explanation ?? null;
-          aiCacheRef.current[id] = explanation; // cache for this session
-          setAiExplanation(explanation);
-        })
-        .catch(() => {
-          aiCacheRef.current[id] = null;
-          setAiExplanation(null);
-        })
-        .finally(() => {
-          clearTimeout(aiTimeout);
-          setAiLoading(false);
-        });
-    }).catch(() => {
-      clearTimeout(aiTimeout);
-      setAiLoading(false);
-    });
-  };
+  // ── Dispatch ──────────────────────────────────────────────────────────────
+  const handleConfirmDispatch = async () => {
+    if (!selectedRoute || dispatching || dispatched) return;
 
-  const handleConfirm = async () => {
-    if (!selectedRoute) { setPhase("map"); return; }
-    // Use the original pending from the store (still valid at confirm time)
-    const pending = state.pendingShipment ?? shipmentData;
-    if (pending) {
-      const newShipment = await dispatchShipment({
-        pending, route: selectedRoute, confidencePercent: confidence,
+    // Read from ref — always current even after async gaps
+    const p = pendingRef.current;
+    if (!p) return;
+
+    setDispatching(true);
+    const code       = generateShipmentCode();
+    const confidence = deriveConfidence(selectedRoute, routes);
+
+    const currentPending: PendingShipment = {
+      origin:             p.origin,
+      destination:        p.destination,
+      vehicleType:        p.vehicleType,
+      cargoType:          p.cargoType,
+      urgency:            p.urgency,
+      deadline:           p.deadline,
+      insurance:          p.insurance,
+      tempSensitive:      p.tempSensitive,
+      originName:         p.originName,
+      originAddress:      p.originAddress,
+      originLat:          p.originLat,
+      originLng:          p.originLng,
+      originPlaceId:      p.originPlaceId,
+      destinationName:    p.destinationName,
+      destinationAddress: p.destinationAddress,
+      destinationLat:     p.destinationLat,
+      destinationLng:     p.destinationLng,
+      destinationPlaceId: p.destinationPlaceId,
+      cargoWeightKg:      p.cargoWeightKg,
+      cargoVolumeM3:      p.cargoVolumeM3,
+      plannedDeparture:   p.plannedDeparture,
+      plannedArrival:     p.plannedArrival,
+    };
+
+    try {
+      const persisted = await dispatchShipment({
+        pending: currentPending,
+        route: selectedRoute,
+        confidencePercent: confidence,
       });
-      setDispatchedId(newShipment.id);
-    }
-    setPhase("map");
-  };
 
-  const handleComplete = () => {
-    if (dispatchedId) completeShipment(dispatchedId);
-    setCompleted(true);
-  };
-
-  // ── Guard: no shipment data ───────────────────────────────────────────────
-  if (!shipmentData) {
-    return (
-      <div className="max-w-7xl mx-auto w-full">
-        <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
-          <AlertTriangle className="w-8 h-8 text-amber-400" />
-          <p className="text-base font-semibold text-foreground">No shipment configured</p>
-          <p className="text-sm text-muted-foreground">Start by creating a shipment first.</p>
-          <Link href="/create-shipment">
-            <Button className="mt-4 h-10 px-6 rounded-lg">Create Shipment</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Loading ───────────────────────────────────────────────────────────────
-  if (loadingRoutes) {
-    return (
-      <div className="max-w-7xl mx-auto w-full">
-        <div className="flex flex-col items-center justify-center py-32 gap-4">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
-            className="w-8 h-8 border-2 border-border border-t-primary rounded-full"
-          />
-          <p className="text-sm text-muted-foreground">Analyzing routes...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Error ─────────────────────────────────────────────────────────────────
-  if (routeError || routes.length === 0) {
-    const handleRetry = async () => {
-      setRouteError(null);
-      setRoutes([]);
-      setLoadingRoutes(true);
-
-      const token = user ? await user.getIdToken() : null;
-      fetchApi("/api/analyze-routes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      const finalCode = persisted.shipmentCode || code;
+      dispatchedRef.current = true;
+      // Clear the request key so a future new shipment with the same corridor
+      // parameters will correctly trigger a fresh analysis.
+      lastPendingKeyRef.current = "";
+      setDispatched(true);
+      toast.success("Shipment dispatched", {
+        description: `${p.origin} → ${p.destination} · ${finalCode}`,
+      });
+      setDispatchedShipment({ shipmentCode: finalCode, origin: p.origin, destination: p.destination });
+    } catch {
+      setDispatchPassData({
+        route: selectedRoute,
+        shipment: {
+          origin: p.origin, destination: p.destination,
+          cargoType: p.cargoType, vehicleType: p.vehicleType,
+          shipmentCode: code, confidencePercent: confidence,
         },
-        body: JSON.stringify({
-          origin:         shipmentData.origin,
-          destination:    shipmentData.destination,
-          cargoType:      shipmentData.cargoType,
-          vehicleType:    shipmentData.vehicleType,
-          urgency:        shipmentData.urgency ?? "Standard",
-          originLat:      shipmentData.originLat,
-          originLng:      shipmentData.originLng,
-          destinationLat: shipmentData.destinationLat,
-          destinationLng: shipmentData.destinationLng,
-        }),
-      })
-        .then((r) => {
-          if (!r.ok) throw new Error(`API error: ${r.status}`);
-          return r.json();
-        })
-        .then((data) => {
-          setRoutes(data.routes ?? []);
-          setWeatherScore(data.weatherScore ?? 20);
-          setDataSource(data.source);
-        })
-        .catch((err) => {
-          setRouteError(err instanceof Error ? err.message : "Failed to load routes");
-        })
-        .finally(() => setLoadingRoutes(false));
-    };
+      });
+      setLastDispatchedStub({
+        route: selectedRoute,
+        shipment: {
+          origin: p.origin, destination: p.destination,
+          cargoType: p.cargoType, vehicleType: p.vehicleType,
+          shipmentCode: code, confidencePercent: confidence,
+        },
+      });
+      toast.error("Dispatch failed", { description: "Unable to create shipment. Please try again." });
+    } finally {
+      setDispatching(false);
+    }
+  };
 
+  // ── Render: post-dispatch success ─────────────────────────────────────────
+  if (dispatchedShipment) {
     return (
-      <div className="max-w-7xl mx-auto w-full">
-        <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
-          <AlertTriangle className="w-8 h-8 text-amber-400" />
-          <p className="text-base font-semibold text-foreground">Could not load routes</p>
-          <p className="text-sm text-muted-foreground">{routeError ?? "No routes returned"}</p>
-          <Button className="mt-4 h-10 px-6 rounded-lg" onClick={handleRetry}>
-            Retry
-          </Button>
-        </div>
-      </div>
+      <DispatchedSuccessState
+        shipmentCode={dispatchedShipment.shipmentCode}
+        origin={dispatchedShipment.origin}
+        destination={dispatchedShipment.destination}
+      />
     );
   }
 
-  // ── Completed ─────────────────────────────────────────────────────────────
-  if (completed && selectedRoute) {
+  // ── Render: no valid pending shipment ─────────────────────────────────────
+  // Show "No Shipment Configured" if:
+  //   - Hydration is complete (pendingShipmentHydrated === true)
+  //   - AND there's no pending shipment in state
+  //   - AND we're not currently fetching
+  // 
+  // This ensures we don't flash the empty state during the brief moment between
+  // page load and localStorage restore completion.
+  if (pendingShipmentHydrated && !state.pendingShipment && !fetching) {
     return (
-      <div className="max-w-lg mx-auto py-24 text-center px-4">
-        <div className="inline-flex items-center gap-5 border border-emerald-400/20 bg-emerald-400/5 px-10 py-8 rounded-xl">
-          <CheckCircle className="w-7 h-7 text-emerald-400 shrink-0" />
-          <div className="text-left space-y-1">
-            <p className="text-base font-semibold text-foreground">Shipment completed</p>
-            <p className="text-sm text-muted-foreground">
-              {selectedRoute.name} · {shipmentData.origin} → {shipmentData.destination}
-            </p>
-          </div>
-        </div>
-        <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href="/dashboard">
-            <Button className="h-11 px-8 w-full sm:w-auto rounded-lg">Go to Dashboard</Button>
-          </Link>
-          <Link href="/create-shipment">
-            <Button variant="outline" className="h-11 px-8 w-full sm:w-auto rounded-lg">New Shipment</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Main render ───────────────────────────────────────────────────────────
-  return (
-    <LayoutGroup>
-      <div className="max-w-7xl mx-auto w-full space-y-8">
-
-        {/* Page header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-8 border-b border-border">
-          <div className="flex flex-wrap items-center gap-5">
-            <Link href="/create-shipment">
-              <button className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors">
-                <ChevronLeft className="w-4 h-4" /> Back
-              </button>
-            </Link>
-            <div className="flex items-center gap-2.5 text-lg font-semibold text-foreground">
-              <span>{shipmentData.origin}</span>
-              <ArrowRight className="w-4 h-4 text-muted-foreground/50" />
-              <span>{shipmentData.destination}</span>
-            </div>
-            <span className="text-xs text-muted-foreground border border-border px-3 py-1.5 uppercase tracking-widest rounded-md hidden sm:inline">
-              {shipmentData.cargoType}
-            </span>
-          </div>
-          <p className="text-sm text-muted-foreground">3 routes analyzed</p>
-        </div>
-
-        {/* ── Map phase ── */}
-        {phase === "map" && selectedRoute ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
-            className="flex flex-col lg:flex-row gap-8"
+      <div className="max-w-7xl mx-auto w-full space-y-7 pb-12">
+        <PageHeader subtitle="No shipment configured. Create a shipment first to analyze its route." />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: [0.23, 1, 0.320, 1] }}
+          className="flex flex-col items-center justify-center py-24 gap-8 bg-card border border-border/60 rounded-xl"
+        >
+          <motion.div
+            initial={{ scale: 0 }} animate={{ scale: 1 }}
+            transition={{ delay: 0.1, duration: 0.3, type: "spring", stiffness: 100 }}
+            className="w-16 h-16 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center"
           >
-            <div className="flex-1 min-w-0">
-              <RouteMapView
-                route={selectedRoute} routes={routes} status="dispatched"
-                origin={shipmentData.origin} destination={shipmentData.destination}
-                aiExplanation={aiExplanation} aiLoading={aiLoading}
-                cargoType={shipmentData.cargoType}
-                urgency={urgency}
-                dataSource={dataSource}
-              />
+            <Navigation className="w-8 h-8 text-primary" />
+          </motion.div>
+          <div className="text-center max-w-md space-y-3">
+            <h2 className="text-2xl font-bold text-foreground">No Shipment Configured</h2>
+            <p className="text-sm text-muted-foreground">Create a shipment first to analyze available routes.</p>
+          </div>
+          <Link href="/create-shipment">
+            <Button className="h-11 px-8 font-semibold rounded-lg gap-2">
+              Create Shipment <ArrowRight className="w-4 h-4" />
+            </Button>
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // ── Render: route selection (pending shipment exists) ─────────────────────
+  const p           = state.pendingShipment;
+  const origin      = p?.origin      ?? "";
+  const destination = p?.destination ?? "";
+
+  return (
+    <div className="max-w-7xl mx-auto w-full space-y-7 pb-12">
+      <PageHeader
+        subtitle={
+          origin && destination
+            ? `Comparing analyzed corridors for ${origin} → ${destination}`
+            : "Analyzing corridor…"
+        }
+        showReconfigure={!!p}
+      />
+
+      {fetching ? (
+        <div className="panel p-12 text-center space-y-3">
+          <span className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto block" />
+          <p className="text-xs font-semibold text-foreground">Analyzing corridor risk factors…</p>
+        </div>
+      ) : fetchError ? (
+        <div className="panel p-12 text-center space-y-4 border border-dashed border-red-400/40">
+          <AlertTriangle className="w-8 h-8 text-red-400 mx-auto" />
+          <p className="text-sm font-bold text-foreground">{fetchError}</p>
+          <p className="text-xs text-muted-foreground">Check your network connection or reconfigure the corridor.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Routes list */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="label-meta">{routes.length} Available Corridors</span>
+              {analyzedAt && !isNaN(new Date(analyzedAt).getTime()) && (
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  Analyzed at {new Date(analyzedAt).toLocaleTimeString()}
+                </span>
+              )}
             </div>
-            <div className="lg:w-80 shrink-0 space-y-5">
-              <DispatchedStub
-                shipment={{
-                  origin: shipmentData.origin, destination: shipmentData.destination,
-                  cargoType: shipmentData.cargoType, vehicleType: shipmentData.vehicleType,
-                  shipmentCode, confidencePercent: confidence,
-                }}
-                route={selectedRoute}
-              />
-              <div className="border border-border rounded-xl p-6 space-y-5">
-                <p className="text-xs text-muted-foreground uppercase tracking-widest">Active risk</p>
-                <div className="space-y-4">
-                  {Object.entries(selectedRoute.riskBreakdown).map(([key, val]) => (
-                    <div key={key} className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground w-24 shrink-0 capitalize">
-                        {key === "cargoSensitivity" ? "Cargo" : key}
-                      </span>
-                      <div className="flex-1 h-2 bg-muted overflow-hidden rounded-full">
-                        <div className={cn("h-full rounded-full", val > 60 ? "bg-red-400" : val > 35 ? "bg-amber-400" : "bg-emerald-400")}
-                          style={{ width: `${val}%` }} />
-                      </div>
-                      <span className="text-sm font-mono text-muted-foreground w-6 text-right">{val}</span>
+
+            <LayoutGroup>
+              <div className="space-y-3">
+                {routes.map((r) => (
+                  <DominantRoute
+                    key={r.id} route={r} onSelect={setSelectedId}
+                    selected={r.id === selectedId}
+                    cargoType={p?.cargoType} urgency={p?.urgency} allRoutes={routes}
+                  />
+                ))}
+              </div>
+            </LayoutGroup>
+
+            {selectedRoute && (
+              <Button
+                onClick={handleConfirmDispatch}
+                disabled={dispatching || dispatched}
+                className="w-full h-11 text-xs font-bold uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground gap-2 mt-4 disabled:opacity-60"
+              >
+                {dispatching ? "Confirming Dispatch…" : dispatched ? "Dispatched ✓" : "Confirm Route & Dispatch"}
+                {!dispatching && !dispatched && <ArrowRight className="w-4 h-4" />}
+              </Button>
+            )}
+
+            {lastDispatchedStub && (
+              <div className="pt-2">
+                <DispatchedStub route={lastDispatchedStub.route} shipment={lastDispatchedStub.shipment} />
+              </div>
+            )}
+          </div>
+
+          {/* Map view */}
+          <div className="lg:col-span-7 space-y-4">
+            <div className="panel p-0 overflow-hidden bg-card border border-border h-125">
+              {selectedRoute && (
+                <RouteMapView
+                  route={selectedRoute} routes={routes} status="active"
+                  origin={origin} destination={destination}
+                />
+              )}
+            </div>
+
+            {selectedRoute && (
+              <div className="panel p-5 bg-card space-y-3">
+                <p className="label-meta">Risk Factor Breakdown — {selectedRoute.name}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  {Object.entries(selectedRoute.riskBreakdown).map(([k, v]) => (
+                    <div key={k} className="p-3 bg-muted/10 border border-border/40 rounded-lg">
+                      <p className="label-meta capitalize mb-1">{k}</p>
+                      <p className={cn("font-bold text-sm", breakdownLabelColor(v))}>{v}/100</p>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="border border-border rounded-xl p-6 space-y-3">
-                <Button className="w-full h-11 text-sm font-semibold rounded-lg" onClick={handleComplete}>
-                  Mark as Completed
-                </Button>
-                <Link href="/dashboard" className="block">
-                  <Button variant="outline" className="w-full h-11 text-sm rounded-lg">Go to Dashboard</Button>
-                </Link>
-              </div>
-            </div>
-          </motion.div>
-
-        ) : phase === "pass" && selectedRoute ? (
-          /* ── Pass phase ── */
-          <motion.div
-            key="pass-view"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: [0.2, 0, 0.2, 1] }}
-            className="flex justify-center py-8"
-          >
-            <div className="w-full max-w-lg">
-              <ShipmentPass
-                route={selectedRoute}
-                shipment={{
-                  origin: shipmentData.origin, destination: shipmentData.destination,
-                  cargoType: shipmentData.cargoType, vehicleType: shipmentData.vehicleType,
-                  shipmentCode, confidencePercent: confidence,
-                }}
-                onConfirm={handleConfirm}
-                morphLayoutId={`route-card-${selectedRoute.id}`}
-                urgency={urgency}
-                allRoutes={routes}
-                dataSource={dataSource}
-              />
-            </div>
-          </motion.div>
-
-        ) : (
-          /* ── Cards phase ── */
-          <div className="flex flex-col lg:flex-row gap-8">
-            <div className="flex-1 min-w-0">
-              {dataSource && (
-                <div className={cn(
-                  "flex items-start gap-2 text-xs font-medium px-4 py-3 rounded-lg border mb-5",
-                  dataSource === "mappls+openweather"
-                    ? "bg-emerald-400/5 border-emerald-400/20 text-emerald-400"
-                    : "bg-amber-400/5 border-amber-400/20 text-amber-400"
-                )}>
-                  {dataSource === "mappls+openweather" ? (
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 mt-0.5" />
-                      <span>Live data - Mappls routing + OpenWeather active</span>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-0.5" />
-                        <span>Estimated routes - live data unavailable</span>
-                      </div>
-                      <p className="text-[10px] text-amber-400/70 pl-3.5 leading-relaxed">
-                        Traffic data not available - verify ETAs before dispatch. Weather scoring is approximate. Use safest route for time-sensitive cargo.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-              {recommended && (
-                <DominantRoute
-                  route={recommended}
-                  onSelect={handleSelect}
-                  selected={selectedId === recommended.id}
-                  cargoType={shipmentData.cargoType}
-                  urgency={urgency}
-                  allRoutes={routes}
-                />
-              )}
-            </div>
-            <div className="lg:w-80 xl:w-88 shrink-0 space-y-5">
-              <p className="text-xs text-muted-foreground uppercase tracking-widest">Alternatives</p>
-              {alternatives.map((route) => (
-                <AlternativeRow
-                  key={route.id}
-                  route={route}
-                  onSelect={handleSelect}
-                  selected={selectedId === route.id}
-                  referenceRoute={recommended}
-                />
-              ))}
-              {/* Simulation disclosure - shown when any alternative is a synthesized estimate */}
-              {alternatives.some((r) => r.isSimulated) && (
-                <p className="text-[10px] text-muted-foreground/50 leading-relaxed px-1">
-                  Alternative routes are simulated estimates based on the primary corridor.
-                </p>
-              )}
-              <div className="border border-border/50 rounded-xl p-6 space-y-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-widest">Decision context</p>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {decisionContextText(routes)}
-                </p>
-              </div>
-            </div>
+            )}
           </div>
-        )}
-      </div>
-    </LayoutGroup>
+        </div>
+      )}
+
+      {dispatchPassData && (
+        <ShipmentPass
+          route={dispatchPassData.route}
+          shipment={dispatchPassData.shipment}
+          onConfirm={() => setDispatchPassData(null)}
+        />
+      )}
+    </div>
   );
 }

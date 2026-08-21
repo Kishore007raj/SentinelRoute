@@ -5,7 +5,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { UserCog, AlertTriangle, RefreshCw, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/lib/auth-context";
@@ -15,37 +14,21 @@ import { UserTable } from "@/components/workforce/UserTable";
 import { UserForm } from "@/components/workforce/UserForm";
 import type { CompanyUser, UserRole } from "@/lib/types";
 
-// ─── Loading skeleton ─────────────────────────────────────────────────────────
-
 function UsersSkeleton() {
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-8">
+    <div className="max-w-7xl mx-auto w-full space-y-7">
       <div className="pb-6 border-b border-border space-y-2">
         <Skeleton className="h-3 w-32" />
         <Skeleton className="h-8 w-48" />
       </div>
-      <Card className="bg-card border border-border">
-        <CardHeader><Skeleton className="h-5 w-32" /></CardHeader>
-        <CardContent className="space-y-3 p-0">
-          <div className="grid grid-cols-5 gap-4 px-6 py-3 bg-muted/40 border-b border-border">
-            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-3 w-20" />)}
-          </div>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="grid grid-cols-5 gap-4 px-6 py-4 border-b border-border/30 last:border-0">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-4 w-36" />
-              <Skeleton className="h-8 w-44" />
-              <Skeleton className="h-6 w-16" />
-              <Skeleton className="h-7 w-20" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <div className="panel p-5 bg-card space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
     </div>
   );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function UserManagementPage() {
   const router = useRouter();
@@ -53,12 +36,11 @@ export default function UserManagementPage() {
   const { userRecord, status } = useCompany();
   const { t } = useI18n();
 
-  const [users, setUsers]           = useState<CompanyUser[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
+  const [users, setUsers] = useState<CompanyUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
 
-  // ── Access guard ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (status === "loading") return;
     const role = userRecord?.role;
@@ -68,7 +50,6 @@ export default function UserManagementPage() {
     }
   }, [userRecord, status, router, t]);
 
-  // ── Fetch users ───────────────────────────────────────────────────────────
   const fetchUsers = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -98,56 +79,79 @@ export default function UserManagementPage() {
     fetchUsers();
   }, [user, status, userRecord, fetchUsers]);
 
-  // ── Mutation helpers ──────────────────────────────────────────────────────
-  const patchUser = useCallback(
-    async (userId: string, body: { role?: UserRole; active?: boolean }) => {
-      if (!user) return;
-      try {
-        const token = await user.getIdToken();
-        const res = await fetchApi(`/api/workforce/users/${userId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          toast.error(data.error ?? "Failed to update user.");
-          return;
-        }
-        await fetchUsers();
-      } catch {
-        toast.error("Network error. Please try again.");
+  const handleChangeRole = async (targetUser: CompanyUser, newRole: UserRole) => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetchApi(`/api/workforce/users/${targetUser.userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ role: newRole }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Role update failed with status ${res.status}`);
       }
-    },
-    [user, fetchUsers]
-  );
+      toast.success(t("workforce.roleUpdated"));
+      fetchUsers();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("workforce.roleUpdateFailed"));
+    }
+  };
 
-  const handleChangeRole = useCallback(
-    (targetUser: CompanyUser, newRole: UserRole) => { patchUser(targetUser.userId, { role: newRole }); },
-    [patchUser]
-  );
-  const handleDisable = useCallback(
-    (targetUser: CompanyUser) => { patchUser(targetUser.userId, { active: false }); },
-    [patchUser]
-  );
-  const handleActivate = useCallback(
-    (targetUser: CompanyUser) => { patchUser(targetUser.userId, { active: true }); },
-    [patchUser]
-  );
+  const handleDisable = async (targetUser: CompanyUser) => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetchApi(`/api/workforce/users/${targetUser.userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ active: false }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Status update failed with status ${res.status}`);
+      }
+      toast.success(t("workforce.statusUpdated"));
+      fetchUsers();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("workforce.statusUpdateFailed"));
+    }
+  };
+
+  const handleActivate = async (targetUser: CompanyUser) => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetchApi(`/api/workforce/users/${targetUser.userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ active: true }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Status update failed with status ${res.status}`);
+      }
+      toast.success(t("workforce.statusUpdated"));
+      fetchUsers();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("workforce.statusUpdateFailed"));
+    }
+  };
 
   if (loading) return <UsersSkeleton />;
 
   if (error) {
     return (
       <div className="max-w-7xl mx-auto w-full">
-        <div className="flex flex-col items-center justify-center py-24 gap-5 text-center bg-card border border-border rounded-2xl">
-          <AlertTriangle className="w-8 h-8 text-amber-400" />
+        <div className="panel p-12 text-center space-y-4 border border-dashed border-border/70">
+          <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
           <div className="space-y-1">
-            <p className="text-base font-semibold text-foreground">{t("workforce.failedToLoadUsers")}</p>
-            <p className="text-sm text-muted-foreground max-w-sm">{error}</p>
+            <p className="text-sm font-bold text-foreground">{t("workforce.failedToLoadUsers")}</p>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error}</p>
           </div>
-          <Button variant="outline" className="gap-2 h-10 px-5 text-sm" onClick={fetchUsers}>
-            <RefreshCw className="w-4 h-4" />
+          <Button variant="outline" className="gap-2 h-9 px-4 text-xs font-bold uppercase tracking-wider" onClick={fetchUsers}>
+            <RefreshCw className="w-3.5 h-3.5" />
             {t("workforce.retry")}
           </Button>
         </div>
@@ -156,52 +160,36 @@ export default function UserManagementPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-10">
-
+    <div className="max-w-7xl mx-auto w-full space-y-7 pb-12">
       {/* Header */}
-      <div className="pb-6 border-b border-border flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2 font-bold">
+          <p className="label-meta flex items-center gap-2 mb-2">
+            <UserCog className="w-3.5 h-3.5 text-primary" />
             {t("workforce.workforce")}
           </p>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
-            <UserCog className="w-7 h-7 text-muted-foreground" />
-            {t("workforce.users")}
-          </h1>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">{t("workforce.teamMembers")}</h1>
         </div>
-        <Button className="gap-2 h-10 px-5 text-sm shrink-0 mt-1" onClick={() => setInviteOpen(true)}>
-          <UserPlus className="w-4 h-4" />
-          {t("workforce.inviteUser")}
+
+        <Button onClick={() => setInviteOpen(true)} className="h-10 px-4 text-xs font-bold uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
+          <UserPlus className="w-3.5 h-3.5" />
+          {t("workforce.addUser")}
         </Button>
       </div>
 
-      {/* User table */}
-      <Card className="bg-card border border-border rounded-2xl shadow-sm">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg font-bold text-foreground">
-            {t("workforce.companyUsers")}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {users.length} {users.length === 1 ? t("workforce.driver") : t("workforce.users").toLowerCase()} in your company
-          </p>
-        </CardHeader>
-        <CardContent className="p-0 pb-1">
-          <UserTable
-            users={users}
-            currentUserId={user?.uid ?? ""}
-            onChangeRole={handleChangeRole}
-            onDisable={handleDisable}
-            onActivate={handleActivate}
-          />
-        </CardContent>
-      </Card>
+      {/* User Table Container */}
+      <div className="panel p-0 overflow-hidden bg-card">
+        <UserTable
+          users={users}
+          currentUserId={userRecord?.userId ?? ""}
+          onChangeRole={handleChangeRole}
+          onDisable={handleDisable}
+          onActivate={handleActivate}
+        />
+      </div>
 
-      {/* Invite User dialog */}
-      <UserForm
-        open={inviteOpen}
-        onOpenChange={setInviteOpen}
-        onSuccess={() => { setInviteOpen(false); fetchUsers(); }}
-      />
+      {/* Add User Modal */}
+      <UserForm open={inviteOpen} onOpenChange={setInviteOpen} onSuccess={fetchUsers} />
     </div>
   );
 }

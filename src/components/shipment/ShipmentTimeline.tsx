@@ -6,16 +6,22 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { useSocket } from "@/hooks/use-socket";
+import { useUser } from "@/lib/auth-context";
 import type { ShipmentTimelineEvent } from "@/lib/types";
 
 export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
   const { t } = useI18n();
+  const { user } = useUser();
   const [events, setEvents] = useState<ShipmentTimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchTimeline = useCallback(async () => {
+    if (!user) return;
     try {
-      const res = await fetch(`/api/intelligence/shipments/${shipmentId}/timeline`);
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/intelligence/shipments/${shipmentId}/timeline`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.ok) {
         const data = await res.json();
         setEvents(data.timeline || []);
@@ -25,7 +31,7 @@ export function ShipmentTimeline({ shipmentId }: { shipmentId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [shipmentId]);
+  }, [shipmentId, user]);
 
   useSocket({
     on: {

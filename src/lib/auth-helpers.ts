@@ -63,8 +63,13 @@ function notFound(message: string): Response {
  * Throws a Response on failure - call with try/catch and return the thrown value.
  */
 export async function requireAuth(req: NextRequest): Promise<AuthResult> {
-  const verified = await verifyFirebaseToken(req);
-  return { userId: verified.uid };
+  try {
+    const verified = await verifyFirebaseToken(req);
+    return { userId: verified.uid };
+  } catch (err) {
+    if (err instanceof Response) throw err;
+    throw unauthorized("Authentication service unavailable");
+  }
 }
 
 // ─── requireCompany ──────────────────────────────────────────────────────────
@@ -76,28 +81,46 @@ export async function requireAuth(req: NextRequest): Promise<AuthResult> {
  * Throws 403 if the company is suspended.
  */
 export async function requireCompany(req: NextRequest): Promise<CompanyAuthResult> {
+  const authStart = Date.now();
   let userId: string;
   try {
+    const tokenStart = Date.now();
     const verified = await verifyFirebaseToken(req);
+    const tokenTime = Date.now() - tokenStart;
+    console.log(`[auth-helpers] verifyFirebaseToken took ${tokenTime}ms`);
     userId = verified.uid;
   } catch (err) {
     if (err instanceof Response) throw err;
     throw unauthorized("Authentication service unavailable");
   }
 
+  const dbStart = Date.now();
   const db = await getDb();
+  const dbTime = Date.now() - dbStart;
+  console.log(`[auth-helpers] getDb() took ${dbTime}ms`);
 
+  const userStart = Date.now();
   const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
+  const userTime = Date.now() - userStart;
+  console.log(`[auth-helpers] users.findOne({userId}) took ${userTime}ms`);
+  
   if (!userRecord) throw notFound("User record not found. Please complete company registration.");
   if (!userRecord.companyId) throw notFound("No company associated with this account.");
 
+  const compStart = Date.now();
   const company = await db.collection<Company>("companies").findOne({ companyId: userRecord.companyId });
+  const compTime = Date.now() - compStart;
+  console.log(`[auth-helpers] companies.findOne({companyId}) took ${compTime}ms`);
+  
   if (!company) throw notFound("Company record not found.");
 
   // Task 6: suspended companies are fully blocked at the API layer
   if (company.status === "suspended") {
     throw forbidden("Company account is suspended. Contact support.");
   }
+
+  const totalAuthTime = Date.now() - authStart;
+  console.log(`[auth-helpers] requireCompany total time: ${totalAuthTime}ms`);
 
   return { userId, userRecord, company };
 }

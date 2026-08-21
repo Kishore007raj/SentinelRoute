@@ -1,12 +1,10 @@
 "use client";
+
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Building, Bell, Shield, Truck, Lock, Save, Building2 } from "lucide-react";
+import { Bell, Shield, Truck, Lock, Save, Building2, Sliders } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,22 +16,20 @@ import type { UserSettings } from "@/lib/types";
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
-const sections = [
-  { id: "company",       label: "Company Profile",  icon: Building2 },
-  { id: "notifications", label: "Notifications",    icon: Bell   },
-  { id: "thresholds",    label: "Risk Thresholds",  icon: Shield },
-  { id: "dispatch",      label: "Dispatch Defaults", icon: Truck  },
-  { id: "security",      label: "Account Security", icon: Lock   },
-];
-
-function SettingRow({ label, description, children }: {
-  label: string; description?: string; children: React.ReactNode;
+function SettingRow({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-4">
+    <div className="flex items-start justify-between gap-4 py-3.5 border-b border-border/40 last:border-0">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground">{label}</p>
-        {description && <p className="text-xs text-muted-foreground mt-0.5 max-w-sm">{description}</p>}
+        <p className="text-xs font-bold text-foreground">{label}</p>
+        {description && <p className="text-[11px] text-muted-foreground mt-0.5 max-w-md">{description}</p>}
       </div>
       <div className="shrink-0">{children}</div>
     </div>
@@ -41,14 +37,11 @@ function SettingRow({ label, description, children }: {
 }
 
 export default function SettingsPage() {
-  const { settings, loading, save } = useSettings();
+  const { settings, save } = useSettings();
   const { company } = useCompany();
   const [saving, setSaving] = useState(false);
-
-  // Local draft - mirrors settings, allows editing before save
   const [draft, setDraft] = useState<Partial<UserSettings>>({});
 
-  // Sync draft when settings load
   useEffect(() => {
     if (settings) setDraft(settings);
   }, [settings]);
@@ -69,7 +62,6 @@ export default function SettingsPage() {
     }
   };
 
-  // Password change state
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [pwLoading, setPwLoading] = useState(false);
 
@@ -83,7 +75,10 @@ export default function SettingsPage() {
       return;
     }
     const user = auth.currentUser;
-    if (!user || !user.email) { toast.error("Not authenticated"); return; }
+    if (!user || !user.email) {
+      toast.error("Not authenticated");
+      return;
+    }
 
     setPwLoading(true);
     try {
@@ -104,249 +99,295 @@ export default function SettingsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="max-w-4xl mx-auto w-full py-32 flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
-          className="w-8 h-8 border-2 border-border border-t-primary rounded-full"
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-4xl mx-auto w-full space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+    <div className="max-w-5xl mx-auto space-y-7 pb-12">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">Workspace</p>
-          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage your workspace and operational preferences</p>
+          <p className="label-meta flex items-center gap-2 mb-2">
+            <Sliders className="w-3.5 h-3.5 text-primary" />
+            Configuration & User Preferences
+          </p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Settings</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage company profile, notification routing, risk thresholds, and dispatch defaults.
+          </p>
         </div>
-        <Button className="gap-2 px-5 h-10 shrink-0" onClick={handleSave} disabled={saving}>
-          <Save className="w-4 h-4" />
-          {saving ? "Saving..." : "Save Changes"}
+
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="h-10 px-5 font-bold text-xs uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+        >
+          {saving ? (
+            <>
+              <span className="w-3.5 h-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+              Saving…
+            </>
+          ) : (
+            <>
+              <Save className="w-3.5 h-3.5" /> Save Changes
+            </>
+          )}
         </Button>
       </div>
 
-      <Tabs defaultValue="company">
-        <TabsList className="h-auto min-h-[44px] bg-muted/20 gap-1 p-1 flex-wrap rounded-lg">
-          {sections.map((s) => {
-            const Icon = s.icon;
-            return (
-              <TabsTrigger key={s.id} value={s.id} className="text-sm h-9 px-3 sm:px-4 gap-1.5 rounded-md">
-                <Icon className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline">{s.label}</span>
-                <span className="sm:hidden">{s.label.split(" ")[0]}</span>
-              </TabsTrigger>
-            );
-          })}
+      {/* Tabs Layout */}
+      <Tabs defaultValue="company" className="w-full">
+        <TabsList className="h-auto bg-transparent gap-0 p-0 rounded-none border-b border-border w-full flex-wrap justify-start mb-6">
+          {[
+            { id: "company", label: "Company Profile", icon: Building2 },
+            { id: "notifications", label: "Notifications", icon: Bell },
+            { id: "thresholds", label: "Risk Thresholds", icon: Shield },
+            { id: "dispatch", label: "Dispatch Defaults", icon: Truck },
+            { id: "security", label: "Account Security", icon: Lock },
+          ].map(({ id, label, icon: Icon }) => (
+            <TabsTrigger
+              key={id}
+              value={id}
+              className={cn(
+                "relative h-10 px-4 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent",
+                "data-[state=active]:text-foreground data-[state=active]:border-primary",
+                "hover:text-foreground/80 transition-colors bg-transparent",
+                "flex items-center gap-2 uppercase tracking-wider"
+              )}
+            >
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              {label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        {/* ── Company Profile ── */}
-        <TabsContent value="company" className="mt-8">
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border rounded-xl p-8 space-y-0 divide-y divide-border/40">
-            {company ? (
-              <>
-                <div className="pb-6">
-                  <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Company Profile</p>
-                  <p className="text-sm text-muted-foreground">Read-only. Only a Super Admin can modify company details.</p>
-                </div>
-                {[
-                  { label: "Company Name",  value: company.companyName },
-                  { label: "Company Type",  value: company.companyType },
-                  { label: "GST Number",    value: company.gstNumber },
-                  { label: "PAN Number",    value: company.panNumber },
-                  { label: "Address",       value: company.address },
-                  { label: "Website",       value: company.website || "—" },
-                  { label: "Fleet Size",    value: String(company.fleetSize) + " vehicles" },
-                  { label: "Status",        value: company.status },
-                  { label: "Trust Score",   value: String(company.trustScore) },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex items-center justify-between gap-4 py-4">
-                    <p className="text-sm font-medium text-foreground">{label}</p>
-                    <p className="text-sm text-muted-foreground text-right">{value}</p>
-                  </div>
-                ))}
-                <div className="pt-4 space-y-2">
-                  <p className="text-sm font-medium text-foreground">Operating States</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {company.operatingStates.map((s) => (
-                      <span key={s} className="text-[11px] bg-muted/20 border border-border px-2 py-0.5 rounded text-muted-foreground">{s}</span>
-                    ))}
-                  </div>
-                </div>
-                <div className="pt-4 space-y-2">
-                  <p className="text-sm font-medium text-foreground">Cargo Categories</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {company.cargoCategories.map((c) => (
-                      <span key={c} className="text-[11px] bg-muted/20 border border-border px-2 py-0.5 rounded text-muted-foreground">{c}</span>
-                    ))}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                No company profile found.
+        {/* ── 1. Company Profile ── */}
+        <TabsContent value="company" className="space-y-6 outline-none mt-0">
+          <div className="panel p-5 bg-card space-y-4">
+            <div className="border-b border-border/40 pb-3">
+              <p className="label-meta">Company Identification</p>
+              <h3 className="text-sm font-bold text-foreground">Organization Context</h3>
+            </div>
+
+            <div className="space-y-4 max-w-lg">
+              <div className="space-y-1.5">
+                <label className="label-meta">Company Name</label>
+                <Input
+                  value={company?.companyName ?? ""}
+                  disabled
+                  className="h-10 bg-muted/20 border-border text-xs font-medium text-muted-foreground cursor-not-allowed"
+                />
               </div>
-            )}
-          </motion.div>
+
+              <div className="space-y-1.5">
+                <label className="label-meta">Company ID</label>
+                <Input
+                  value={company?.companyId ?? ""}
+                  disabled
+                  className="h-10 bg-muted/20 border-border text-xs font-mono text-muted-foreground cursor-not-allowed"
+                />
+              </div>
+            </div>
+          </div>
         </TabsContent>
 
-        {/* ── Notifications ── */}
-        <TabsContent value="notifications" className="mt-8">
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border rounded-xl p-8 divide-y divide-border/40">
-            {([
-              { key: "notifyRiskAlerts",        label: "Predictive Risk Alerts",         desc: "Notify when route risk score exceeds threshold" },
-              { key: "notifyDispatchConfirm",   label: "Shipment Dispatch Confirmation", desc: "Send confirmation on every dispatch action" },
-              { key: "notifyDisruptions",       label: "Route Disruption Events",        desc: "Real-time alerts for road closures and disruptions" },
-              { key: "notifyCompletionSummary", label: "Completion Summaries",           desc: "Daily summary of completed shipments" },
-              { key: "notifyWeatherWarnings",   label: "Weather Impact Warnings",        desc: "Early warnings for weather-related route risks" },
-              { key: "notifyAnalyticsDigest",   label: "Analytics Digest",              desc: "Weekly analytics report to registered email" },
-            ] as { key: keyof UserSettings; label: string; desc: string }[]).map((item) => (
-              <SettingRow key={item.key} label={item.label} description={item.desc}>
+        {/* ── 2. Notifications ── */}
+        <TabsContent value="notifications" className="space-y-6 outline-none mt-0">
+          <div className="panel p-5 bg-card space-y-4">
+            <div className="border-b border-border/40 pb-3">
+              <p className="label-meta">Notification Channels</p>
+              <h3 className="text-sm font-bold text-foreground">Alert Routing Preferences</h3>
+            </div>
+
+            <div className="divide-y divide-border/40">
+              <SettingRow label="Risk Alert Notifications" description="Receive high-priority risk alerts.">
                 <Switch
-                  checked={!!(draft[item.key] ?? false)}
-                  onCheckedChange={(v) => patch(item.key, v as UserSettings[typeof item.key])}
+                  checked={draft.notifyRiskAlerts ?? true}
+                  onCheckedChange={(v) => patch("notifyRiskAlerts", v)}
                 />
               </SettingRow>
-            ))}
-          </motion.div>
+
+              <SettingRow label="Disruption Warnings" description="Receive notification for route disruption events.">
+                <Switch
+                  checked={draft.notifyDisruptions ?? true}
+                  onCheckedChange={(v) => patch("notifyDisruptions", v)}
+                />
+              </SettingRow>
+
+              <SettingRow label="Weather Warnings" description="Receive automated severe weather warnings.">
+                <Switch
+                  checked={draft.notifyWeatherWarnings ?? true}
+                  onCheckedChange={(v) => patch("notifyWeatherWarnings", v)}
+                />
+              </SettingRow>
+
+              <SettingRow label="Dispatch Confirmations" description="Receive confirmation upon trip dispatch.">
+                <Switch
+                  checked={draft.notifyDispatchConfirm ?? true}
+                  onCheckedChange={(v) => patch("notifyDispatchConfirm", v)}
+                />
+              </SettingRow>
+            </div>
+          </div>
         </TabsContent>
 
-        {/* ── Risk Thresholds ── */}
-        <TabsContent value="thresholds" className="mt-8">
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border rounded-xl p-8 space-y-8">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-foreground">Auto-Flag Threshold</p>
-                  <p className="text-sm text-muted-foreground">Shipments above this risk score are flagged for review</p>
-                </div>
-                <span className="text-2xl font-bold text-amber-400">{draft.autoFlagThreshold ?? 60}</span>
-              </div>
-              <Slider
-                value={[draft.autoFlagThreshold ?? 60]}
-                onValueChange={([v]) => patch("autoFlagThreshold", v)}
-                min={0} max={100} step={5}
-              />
-              <div className="flex justify-between">
-                <span className="text-xs text-emerald-400">Low Risk</span>
-                <span className="text-xs text-red-400">Critical</span>
-              </div>
+        {/* ── 3. Risk Thresholds ── */}
+        <TabsContent value="thresholds" className="space-y-6 outline-none mt-0">
+          <div className="panel p-5 bg-card space-y-4">
+            <div className="border-b border-border/40 pb-3">
+              <p className="label-meta">Sensitivity Calibration</p>
+              <h3 className="text-sm font-bold text-foreground">Operational Risk Thresholds</h3>
             </div>
-            <Separator className="opacity-30" />
-            {([
-              { key: "requireApprovalAbove", label: "Require Approval Above", desc: "Require manager approval for dispatch when risk exceeds" },
-              { key: "autoBlockThreshold",   label: "Auto-Block Threshold",   desc: "Automatically block dispatch above this risk level" },
-            ] as { key: keyof UserSettings; label: string; desc: string }[]).map((item) => (
-              <div key={item.key} className="flex items-center justify-between gap-6">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-foreground">{item.label}</p>
-                  <p className="text-sm text-muted-foreground">{item.desc}</p>
+
+            <div className="space-y-6 max-w-lg">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-foreground">Auto Flag Risk Threshold</span>
+                  <span className="font-mono font-bold text-amber-400 tabular-nums">
+                    {draft.autoFlagThreshold ?? 60}/100
+                  </span>
                 </div>
-                <Input
-                  type="number"
-                  min={0} max={100}
-                  value={String(draft[item.key] ?? "")}
-                  onChange={(e) => patch(item.key, Number(e.target.value) as UserSettings[typeof item.key])}
-                  className="w-20 h-11 text-sm text-center bg-muted/20 border-border"
+                <Slider
+                  min={10}
+                  max={90}
+                  step={5}
+                  value={[draft.autoFlagThreshold ?? 60]}
+                  onValueChange={([v]) => patch("autoFlagThreshold", v)}
+                  className="w-full"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Shipments exceeding this composite score trigger warning alerts.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-foreground">Approval Cutoff Threshold</span>
+                  <span className="font-mono font-bold text-red-400 tabular-nums">
+                    {draft.requireApprovalAbove ?? 75}/100
+                  </span>
+                </div>
+                <Slider
+                  min={20}
+                  max={90}
+                  step={5}
+                  value={[draft.requireApprovalAbove ?? 75]}
+                  onValueChange={([v]) => patch("requireApprovalAbove", v)}
+                  className="w-full"
                 />
               </div>
-            ))}
-            <Separator className="opacity-30" />
-            <SettingRow label="Preferred Route Type" description="Default route selection preference for new shipments">
-              <Select
-                value={draft.preferredRouteType ?? "balanced"}
-                onValueChange={(v) => { if (v) patch("preferredRouteType", v as "fastest" | "balanced" | "safest"); }}
-              >
-                <SelectTrigger className="w-36 h-11 text-sm bg-muted/20 border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fastest">Fastest</SelectItem>
-                  <SelectItem value="balanced">Balanced</SelectItem>
-                  <SelectItem value="safest">Safest</SelectItem>
-                </SelectContent>
-              </Select>
-            </SettingRow>
-          </motion.div>
-        </TabsContent>
-
-        {/* ── Dispatch Defaults ── */}
-        <TabsContent value="dispatch" className="mt-8">
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border rounded-xl p-8 divide-y divide-border/40">
-            <SettingRow label="Default Vehicle Type" description="Pre-selected vehicle for new shipments">
-              <Select
-                value={draft.defaultVehicleType ?? "Container Truck"}
-                onValueChange={(v) => { if (v) patch("defaultVehicleType", v); }}
-              >
-                <SelectTrigger className="w-44 h-11 text-sm bg-muted/20 border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Mini Truck">Mini Truck</SelectItem>
-                  <SelectItem value="Container Truck">Container Truck</SelectItem>
-                  <SelectItem value="Reefer Truck">Reefer Truck</SelectItem>
-                  <SelectItem value="Express Van">Express Van</SelectItem>
-                </SelectContent>
-              </Select>
-            </SettingRow>
-            <SettingRow label="Dispatch Confirmation Window" description="Time window to confirm before auto-cancel">
-              <Select
-                value={String(draft.dispatchConfirmWindow ?? 30)}
-                onValueChange={(v) => { if (v) patch("dispatchConfirmWindow", Number(v)); }}
-              >
-                <SelectTrigger className="w-36 h-11 text-sm bg-muted/20 border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="15">15 minutes</SelectItem>
-                  <SelectItem value="30">30 minutes</SelectItem>
-                  <SelectItem value="60">1 hour</SelectItem>
-                </SelectContent>
-              </Select>
-            </SettingRow>
-          </motion.div>
-        </TabsContent>
-
-        {/* ── Security ── */}
-        <TabsContent value="security" className="mt-8">
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border rounded-xl p-8 space-y-8">
-            <p className="text-sm font-semibold text-foreground">Change Password</p>
-            <div className="grid gap-5 max-w-sm">
-              {([
-                { key: "current", label: "Current Password" },
-                { key: "next",    label: "New Password" },
-                { key: "confirm", label: "Confirm New Password" },
-              ] as { key: keyof typeof pwForm; label: string }[]).map((f) => (
-                <div key={f.key} className="space-y-2">
-                  <Label className="text-sm text-muted-foreground">{f.label}</Label>
-                  <Input
-                    type="password"
-                    placeholder="••••••••"
-                    value={pwForm[f.key]}
-                    onChange={(e) => setPwForm((p) => ({ ...p, [f.key]: e.target.value }))}
-                    className="h-11 text-sm bg-muted/20 border-border"
-                  />
-                </div>
-              ))}
             </div>
-            <Button
-              variant="outline"
-              className="h-10 px-5 text-sm"
-              onClick={handleUpdatePassword}
-              disabled={pwLoading || !pwForm.current || !pwForm.next || !pwForm.confirm}
+          </div>
+        </TabsContent>
+
+        {/* ── 4. Dispatch Defaults ── */}
+        <TabsContent value="dispatch" className="space-y-6 outline-none mt-0">
+          <div className="panel p-5 bg-card space-y-4">
+            <div className="border-b border-border/40 pb-3">
+              <p className="label-meta">Operational Presets</p>
+              <h3 className="text-sm font-bold text-foreground">Default Dispatch Parameters</h3>
+            </div>
+
+            <div className="space-y-4 max-w-md">
+              <div className="space-y-1.5">
+                <label className="label-meta">Default Vehicle Type</label>
+                <Select
+                  value={draft.defaultVehicleType ?? "Container Truck"}
+                  onValueChange={(v: string | null) => {
+                    if (v) patch("defaultVehicleType", v);
+                  }}
+                >
+                  <SelectTrigger className="h-10 bg-muted/20 border-border text-xs font-medium">
+                    <SelectValue placeholder="Select vehicle type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Mini Truck">Mini Truck</SelectItem>
+                    <SelectItem value="Container Truck">Container Truck</SelectItem>
+                    <SelectItem value="Reefer Truck">Reefer Truck</SelectItem>
+                    <SelectItem value="Express Van">Express Van</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="label-meta">Preferred Routing Profile</label>
+                <Select
+                  value={draft.preferredRouteType ?? "balanced"}
+                  onValueChange={(v: string | null) => {
+                    if (v) patch("preferredRouteType", v as "fastest" | "safest" | "balanced");
+                  }}
+                >
+                  <SelectTrigger className="h-10 bg-muted/20 border-border text-xs font-medium">
+                    <SelectValue placeholder="Select profile" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="balanced">Balanced Corridor</SelectItem>
+                    <SelectItem value="fastest">Fastest Transit</SelectItem>
+                    <SelectItem value="safest">Safest Path</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ── 5. Account Security ── */}
+        <TabsContent value="security" className="space-y-6 outline-none mt-0">
+          <div className="panel p-5 bg-card space-y-4">
+            <div className="border-b border-border/40 pb-3">
+              <p className="label-meta">Credentials</p>
+              <h3 className="text-sm font-bold text-foreground">Account Security & Password</h3>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleUpdatePassword();
+              }}
+              className="space-y-4 max-w-md"
             >
-              {pwLoading ? "Updating..." : "Update Password"}
-            </Button>
-          </motion.div>
+              <div className="space-y-1.5">
+                <label className="label-meta">Current Password</label>
+                <Input
+                  type="password"
+                  value={pwForm.current}
+                  onChange={(e) => setPwForm((p) => ({ ...p, current: e.target.value }))}
+                  required
+                  placeholder="••••••••"
+                  className="h-10 bg-muted/20 border-border text-xs font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="label-meta">New Password</label>
+                <Input
+                  type="password"
+                  value={pwForm.next}
+                  onChange={(e) => setPwForm((p) => ({ ...p, next: e.target.value }))}
+                  required
+                  placeholder="••••••••"
+                  className="h-10 bg-muted/20 border-border text-xs font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="label-meta">Confirm New Password</label>
+                <Input
+                  type="password"
+                  value={pwForm.confirm}
+                  onChange={(e) => setPwForm((p) => ({ ...p, confirm: e.target.value }))}
+                  required
+                  placeholder="••••••••"
+                  className="h-10 bg-muted/20 border-border text-xs font-medium"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={pwLoading}
+                className="h-9 px-4 text-xs font-bold uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+              >
+                {pwLoading ? "Updating…" : "Update Password"}
+              </Button>
+            </form>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

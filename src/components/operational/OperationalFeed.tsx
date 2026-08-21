@@ -39,7 +39,7 @@ export function OperationalFeed() {
   };
 
   return (
-    <Card className="flex flex-col h-full border shadow-sm col-span-full xl:col-span-1">
+    <Card className="flex flex-col border shadow-sm col-span-full xl:col-span-1">
       <CardHeader className="pb-3 border-b bg-muted/20">
         <div className="flex items-center justify-between">
           <div>
@@ -95,7 +95,7 @@ export function OperationalFeed() {
           </TabsList>
           
           <TabsContent value="recommendations" className="flex-1 m-0 overflow-hidden">
-            <ScrollArea className="h-[400px] w-full p-4">
+            <ScrollArea className="h-auto max-h-[320px] w-full p-4">
               {loading ? (
                 <div className="animate-pulse bg-muted h-20 rounded-lg mb-2" />
               ) : feedData?.recommendations && feedData.recommendations.length > 0 ? (
@@ -130,16 +130,19 @@ export function OperationalFeed() {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-12">
-                  <Activity className="h-8 w-8 mb-2 opacity-50" />
-                  <p className="text-sm">No active recommendations</p>
+                <div className="flex flex-col items-center justify-center text-center text-muted-foreground py-8 px-4 space-y-2">
+                  <div className="w-8 h-8 rounded-full bg-muted/40 border border-border flex items-center justify-center">
+                    <Activity className="h-4 w-4 opacity-50" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground/70">No active recommendations</p>
+                  <p className="text-xs text-muted-foreground max-w-[200px]">System is monitoring. Recommendations appear when route or operational adjustments are needed.</p>
                 </div>
               )}
             </ScrollArea>
           </TabsContent>
           
           <TabsContent value="events" className="flex-1 m-0 overflow-hidden">
-             <ScrollArea className="h-[400px] w-full p-4">
+             <ScrollArea className="h-auto max-h-[320px] w-full p-4">
               {loading ? (
                 <div className="animate-pulse bg-muted h-20 rounded-lg mb-2" />
               ) : feedData?.events && (feedData.events?.length ?? 0) > 0 ? (
@@ -164,9 +167,12 @@ export function OperationalFeed() {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-12">
-                  <Activity className="h-8 w-8 mb-2 opacity-50" />
-                  <p className="text-sm">No recent events</p>
+                <div className="flex flex-col items-center justify-center text-center text-muted-foreground py-8 px-4 space-y-2">
+                  <div className="w-8 h-8 rounded-full bg-muted/40 border border-border flex items-center justify-center">
+                    <Activity className="h-4 w-4 opacity-50" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground/70">No recent events</p>
+                  <p className="text-xs text-muted-foreground max-w-[200px]">Live operational events will stream here as network activity is detected.</p>
                 </div>
               )}
             </ScrollArea>

@@ -34,10 +34,16 @@ export async function addTimelineEvent(
 /**
  * Retrieves the full immutable timeline for a shipment.
  */
-export async function getShipmentTimeline(shipmentId: string): Promise<ShipmentTimelineEvent[]> {
+export async function getShipmentTimeline(shipmentId: string, companyId?: string): Promise<ShipmentTimelineEvent[]> {
   const db = await getDb();
+  
+  const query: { shipmentId: string; companyId?: string } = { shipmentId };
+  if (companyId) {
+    query.companyId = companyId;
+  }
+  
   const events = await db.collection("shipment_timelines")
-    .find({ shipmentId })
+    .find(query)
     .sort({ timestamp: -1 })
     .toArray();
 

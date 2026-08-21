@@ -1,13 +1,12 @@
 "use client";
+
 import { fetchApi } from "@/lib/api-client";
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { DashboardCard } from "@/components/ui/dashboard-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useCompany } from "@/lib/company-context";
 import type { Shipment, DriverLocation, ShipmentExecution, ShipmentCheckpoint } from "@/lib/types";
-import { Play, Pause, Square, CheckSquare, MapPin, Truck } from "lucide-react";
+import { Play, Pause, CheckSquare, MapPin, Truck, Navigation, Activity } from "lucide-react";
 import { toast } from "sonner";
 
 export default function DriverOpsPage() {
@@ -15,32 +14,34 @@ export default function DriverOpsPage() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [selectedShipmentId, setSelectedShipmentId] = useState<string>("");
   const [execution, setExecution] = useState<ShipmentExecution | null>(null);
-  
+
   // Location simulation
   const [simLat, setSimLat] = useState<number>(0);
   const [simLng, setSimLng] = useState<number>(0);
 
   useEffect(() => {
     if (!company) return;
-    
-    // Fetch shipments assigned to drivers (status active/draft with assignedDriverId)
+
     fetchApi(`/api/shipments?companyId=${company.companyId}`)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data.shipments) {
-          const assigned = data.shipments.filter((s: Shipment) => s.assignedDriverId && ["draft", "active", "at-risk", "completed"].includes(s.status));
+          const assigned = data.shipments.filter(
+            (s: Shipment) => s.assignedDriverId && ["draft", "active", "at-risk", "completed"].includes(s.status)
+          );
           setShipments(assigned);
         }
       });
   }, [company]);
 
-  const fetchExecution = async () => {
+  const fetchExecution = useCallback(async () => {
+    if (!selectedShipmentId) return;
     try {
       const res = await fetchApi(`/api/execution/${selectedShipmentId}`);
       if (res.ok) {
         const data = await res.json();
         setExecution(data.execution);
-        
+
         if (data.execution && data.execution.lastKnownLocation) {
           setSimLat(data.execution.lastKnownLocation.latitude);
           setSimLng(data.execution.lastKnownLocation.longitude);
@@ -57,179 +58,273 @@ export default function DriverOpsPage() {
     } catch {
       setExecution(null);
     }
-  };
-
-  useEffect(() => {
-    if (!selectedShipmentId) {
-      setExecution(null);
-      return;
-    }
-    fetchExecution();
   }, [selectedShipmentId]);
 
-  const handleAction = async (action: string) => {
+  useEffect(() => {
+    if (selectedShipmentId) {
+      fetchExecution();
+    }
+  }, [selectedShipmentId, fetchExecution]);
+
+  const handleStartTrip = async () => {
     if (!selectedShipmentId) return;
     try {
       const res = await fetchApi(`/api/execution/${selectedShipmentId}/workflow`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, notes: `Driver action: ${action}` })
+        body: JSON.stringify({ action: "start" }),
       });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || await res.text());
+      if (res.ok) {
+        toast.success("Trip started successfully!");
+        fetchExecution();
+      } else {
+        toast.error("Failed to start trip.");
       }
-      toast.success(`Trip ${action} successful`);
-      fetchExecution();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Action failed");
+    } catch {
+      toast.error("Network error.");
     }
   };
 
-  const handleCheckpoint = async (checkpointId: string, action: string) => {
+  const handlePauseTrip = async () => {
+    if (!selectedShipmentId) return;
+    try {
+      const res = await fetchApi(`/api/execution/${selectedShipmentId}/workflow`, {
+        method: "POST",
+        body: JSON.stringify({ action: "pause", reason: "Driver rest break" }),
+      });
+      if (res.ok) {
+        toast.info("Trip paused.");
+        fetchExecution();
+      }
+    } catch {
+      toast.error("Error pausing trip.");
+    }
+  };
+
+  const handleResumeTrip = async () => {
+    if (!selectedShipmentId) return;
+    try {
+      const res = await fetchApi(`/api/execution/${selectedShipmentId}/workflow`, {
+        method: "POST",
+        body: JSON.stringify({ action: "resume" }),
+      });
+      if (res.ok) {
+        toast.success("Trip resumed.");
+        fetchExecution();
+      }
+    } catch {
+      toast.error("Error resuming trip.");
+    }
+  };
+
+  const handleCompleteTrip = async () => {
+    if (!selectedShipmentId) return;
+    try {
+      const res = await fetchApi(`/api/execution/${selectedShipmentId}/workflow`, {
+        method: "POST",
+        body: JSON.stringify({ action: "complete" }),
+      });
+      if (res.ok) {
+        toast.success("Trip marked complete!");
+        fetchExecution();
+      }
+    } catch {
+      toast.error("Error completing trip.");
+    }
+  };
+
+  const handleSendLocation = async () => {
+    if (!selectedShipmentId || !execution) return;
+    try {
+      const locationPayload: DriverLocation = {
+        latitude: simLat,
+        longitude: simLng,
+        speed: 55,
+        timestamp: new Date().toISOString(),
+      };
+
+      const res = await fetchApi(`/api/execution/${selectedShipmentId}/location`, {
+        method: "POST",
+        body: JSON.stringify(locationPayload),
+      });
+
+      if (res.ok) {
+        toast.success("Location ping sent!");
+        fetchExecution();
+      }
+    } catch {
+      toast.error("Failed to send location.");
+    }
+  };
+
+  const handlePassCheckpoint = async (checkpointId: string) => {
+    if (!selectedShipmentId) return;
     try {
       const res = await fetchApi(`/api/execution/${selectedShipmentId}/checkpoint`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ checkpointId, action, notes: `Checkpoint ${action}` })
+        body: JSON.stringify({ checkpointId, action: "arrive" }),
       });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || await res.text());
+      if (res.ok) {
+        toast.success("Checkpoint recorded!");
+        fetchExecution();
       }
-      toast.success(`Checkpoint ${action} successful`);
-      fetchExecution();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Action failed");
+    } catch {
+      toast.error("Error updating checkpoint.");
     }
   };
 
-  const handlePingLocation = async () => {
-    try {
-      const res = await fetchApi(`/api/execution/${selectedShipmentId}/location`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          latitude: Number(simLat),
-          longitude: Number(simLng),
-          speed: 45,
-          accuracy: 10,
-          recalculateETA: true
-        })
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || await res.text());
-      }
-      toast.success("Location pinged");
-      fetchExecution();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Location ping failed");
-    }
-  };
-
-  if (!company) return <div className="p-8 text-center text-muted-foreground font-mono text-sm uppercase tracking-wider">Select a company first.</div>;
-
-  const selectedShipment = shipments.find(s => s.id === selectedShipmentId);
+  if (!company) {
+    return (
+      <div className="panel p-12 text-center text-muted-foreground font-mono text-xs uppercase tracking-widest">
+        Select a company to load driver execution.
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto w-full space-y-8">
-      <div className="pb-8 border-b border-border space-y-2">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest">Fleet Operations</p>
-        <h1 className="text-3xl font-bold tracking-tight">Driver Operations</h1>
-        <p className="text-muted-foreground">Simulate driver app actions for assigned shipments.</p>
+    <div className="max-w-5xl mx-auto w-full space-y-7 pb-12">
+      {/* Header */}
+      <div className="pb-6 border-b border-border">
+        <p className="label-meta flex items-center gap-2 mb-2">
+          <Truck className="w-3.5 h-3.5 text-primary" />
+          Driver Ops & Active Execution Simulator
+        </p>
+        <h1 className="text-3xl font-bold text-foreground tracking-tight">Driver Execution</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Simulate location pings, checkpoint arrival, and trip workflow state transitions.
+        </p>
       </div>
 
-      <DashboardCard title="Select Assigned Shipment" icon={Truck}>
+      {/* Shipment Selector */}
+      <div className="panel p-5 bg-card space-y-3">
+        <label className="label-meta">Select Assigned Shipment</label>
         <select
-          className="w-full bg-background border border-border focus:border-primary/50 outline-none p-3 rounded-lg font-mono text-sm"
           value={selectedShipmentId}
           onChange={(e) => setSelectedShipmentId(e.target.value)}
+          className="w-full h-10 bg-muted/20 border border-border text-xs font-semibold rounded-lg px-3.5 focus:border-primary text-foreground"
         >
-          <option value="">-- Select Shipment --</option>
-          {shipments.map(s => (
+          <option value="">-- Choose active driver shipment --</option>
+          {shipments.map((s) => (
             <option key={s.id} value={s.id}>
-              {s.shipmentCode} - {s.originName || s.origin} to {s.destinationName || s.destination} (Driver: {s.assignedDriverName || s.assignedDriverId})
+              {s.shipmentCode} ({s.origin} → {s.destination}) — {s.status}
             </option>
           ))}
         </select>
-      </DashboardCard>
+      </div>
 
-      {selectedShipment && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-          <DashboardCard title={selectedShipment.shipmentCode} icon={Truck} action={execution ? <StatusBadge status={execution.status} /> : undefined}>
-            <div className="flex justify-between items-center flex-wrap gap-4">
-              <div>
-                {execution?.currentETA && (
-                  <p className="text-sm text-emerald-400 uppercase tracking-wider">Live ETA: {execution.currentETA}</p>
-                )}
+      {selectedShipmentId && execution && (
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          {/* Main Controls (7 cols) */}
+          <div className="md:col-span-7 space-y-6">
+            {/* Status & Controls Panel */}
+            <div className="panel p-5 bg-card space-y-5">
+              <div className="flex items-center justify-between border-b border-border/40 pb-3">
+                <div className="space-y-0.5">
+                  <p className="label-meta">Trip Workflow State</p>
+                  <p className="text-sm font-bold text-foreground capitalize">{execution.status}</p>
+                </div>
+                <StatusBadge status={execution.status === "driving" ? "active" : execution.status} />
               </div>
-              <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" size="sm" onClick={() => handleAction("start")} disabled={execution?.status && execution.status !== "pending" && execution.status !== "cancelled"}>
-                  <Play className="w-4 h-4 mr-2" /> Start Trip
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => handleAction("pause")} disabled={execution?.status !== "driving"}>
-                  <Pause className="w-4 h-4 mr-2" /> Pause
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => handleAction("resume")} disabled={execution?.status !== "paused"}>
-                  <Play className="w-4 h-4 mr-2" /> Resume
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => handleAction("complete")} disabled={!execution || execution.status === "completed"}>
-                  <CheckSquare className="w-4 h-4 mr-2" /> Complete
-                </Button>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-2.5">
+                {execution.status === "pending" && (
+                  <Button onClick={handleStartTrip} className="h-9 text-xs font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-600 text-white gap-2">
+                    <Play className="w-3.5 h-3.5" /> Start Trip
+                  </Button>
+                )}
+
+                {execution.status === "driving" && (
+                  <Button onClick={handlePauseTrip} variant="outline" className="h-9 text-xs font-bold uppercase tracking-wider gap-2 border-amber-400/40 text-amber-400 hover:bg-amber-400/10">
+                    <Pause className="w-3.5 h-3.5" /> Pause Trip
+                  </Button>
+                )}
+
+                {execution.status === "paused" && (
+                  <Button onClick={handleResumeTrip} className="h-9 text-xs font-bold uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
+                    <Play className="w-3.5 h-3.5" /> Resume Trip
+                  </Button>
+                )}
+
+                {(execution.status === "driving" || execution.status === "paused") && (
+                  <Button onClick={handleCompleteTrip} variant="outline" className="h-9 text-xs font-bold uppercase tracking-wider gap-2 border-emerald-400/40 text-emerald-400 hover:bg-emerald-400/10">
+                    <CheckSquare className="w-3.5 h-3.5" /> Complete Trip
+                  </Button>
+                )}
               </div>
             </div>
 
-            {execution && execution.status === "driving" && (
-              <div className="border-t border-border/20 pt-6">
-                <h4 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wider">Simulate Location Ping</h4>
-                <div className="flex gap-4 items-end flex-wrap">
-                  <div className="space-y-2 flex-1 min-w-[200px]">
-                    <label className="text-xs uppercase tracking-wider text-muted-foreground font-mono">Latitude</label>
-                    <input type="number" step="0.0001" className="w-full bg-background border border-border/50 p-2 rounded-md font-mono text-sm focus:border-primary/50 outline-none" value={simLat} onChange={e => setSimLat(Number(e.target.value))} />
-                  </div>
-                  <div className="space-y-2 flex-1 min-w-[200px]">
-                    <label className="text-xs uppercase tracking-wider text-muted-foreground font-mono">Longitude</label>
-                    <input type="number" step="0.0001" className="w-full bg-background border border-border/50 p-2 rounded-md font-mono text-sm focus:border-primary/50 outline-none" value={simLng} onChange={e => setSimLng(Number(e.target.value))} />
-                  </div>
-                  <Button onClick={handlePingLocation} className="shrink-0 bg-primary/10 text-primary hover:bg-primary/20 border-none">
-                    <MapPin className="w-4 h-4 mr-2" /> Ping
-                  </Button>
+            {/* Location Simulator */}
+            <div className="panel p-5 bg-card space-y-4">
+              <div className="flex items-center gap-2 border-b border-border/40 pb-3">
+                <Navigation className="w-3.5 h-3.5 text-primary" />
+                <h3 className="text-sm font-bold text-foreground">GPS Location Ping Simulator</h3>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="label-meta">Latitude</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    value={simLat}
+                    onChange={(e) => setSimLat(parseFloat(e.target.value))}
+                    className="w-full h-9 bg-muted/20 border border-border rounded-lg px-3 text-xs font-mono text-foreground"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="label-meta">Longitude</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    value={simLng}
+                    onChange={(e) => setSimLng(parseFloat(e.target.value))}
+                    className="w-full h-9 bg-muted/20 border border-border rounded-lg px-3 text-xs font-mono text-foreground"
+                  />
                 </div>
               </div>
-            )}
-            
-            {execution && execution.checkpoints && (
-              <div className="border-t border-border/20 pt-6">
-                <h4 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wider">Checkpoints</h4>
-                <div className="space-y-2">
-                  {execution.checkpoints.map((cp: ShipmentCheckpoint, idx: number) => (
-                    <motion.div 
-                      key={cp.id} 
-                      initial={{ opacity: 0, x: -10 }} 
-                      animate={{ opacity: 1, x: 0 }} 
-                      transition={{ delay: idx * 0.1 }}
-                      className="flex justify-between items-center p-4 bg-muted/10 border border-border/30 rounded-lg"
-                    >
-                      <div>
-                        <p className="font-medium text-sm">{cp.name}</p>
-                        <p className="text-xs text-muted-foreground font-mono mt-1">Status: {cp.status}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="h-8" disabled={cp.status !== "pending" || execution.status !== "driving"} onClick={() => handleCheckpoint(cp.id, "arrive")}>
-                          Arrive
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-8" disabled={cp.status !== "arrived" || execution.status !== "driving"} onClick={() => handleCheckpoint(cp.id, "depart")}>
-                          Depart
-                        </Button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+
+              <Button onClick={handleSendLocation} className="w-full h-9 text-xs font-bold uppercase tracking-wider bg-primary text-primary-foreground gap-2">
+                <MapPin className="w-3.5 h-3.5" /> Send GPS Location Ping
+              </Button>
+            </div>
+          </div>
+
+          {/* Checkpoints & Timeline (5 cols) */}
+          <div className="md:col-span-5 space-y-6">
+            <div className="panel p-5 bg-card space-y-4">
+              <div className="flex items-center gap-2 border-b border-border/40 pb-3">
+                <Activity className="w-3.5 h-3.5 text-primary" />
+                <h3 className="text-sm font-bold text-foreground">Route Checkpoints</h3>
               </div>
-            )}
-          </DashboardCard>
-        </motion.div>
+
+              <div className="space-y-2.5">
+                {execution.checkpoints?.map((cp: ShipmentCheckpoint) => {
+                  const isPassed = cp.status === "arrived" || cp.status === "departed";
+                  return (
+                    <div key={cp.id} className="flex items-center justify-between p-3 bg-muted/10 border border-border/40 rounded-lg text-xs">
+                      <div className="min-w-0 pr-2">
+                        <p className="font-bold text-foreground truncate">{cp.name}</p>
+                        <p className="text-[10px] text-muted-foreground capitalize">{cp.status}</p>
+                      </div>
+
+                      {!isPassed ? (
+                        <Button
+                          size="sm"
+                          onClick={() => handlePassCheckpoint(cp.id)}
+                          className="h-7 text-[10px] font-bold uppercase tracking-wider px-2 bg-emerald-500 hover:bg-emerald-600 text-white shrink-0"
+                        >
+                          Pass
+                        </Button>
+                      ) : (
+                        <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Passed</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

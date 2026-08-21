@@ -12,20 +12,20 @@ import {
 } from "lucide-react"
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors",
+  "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors",
   {
     variants: {
       variant: {
         default:
           "bg-primary/10 text-primary border border-primary/20",
         success:
-          "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20",
+          "bg-[var(--sr-emerald)]/10 text-[var(--sr-emerald)] border border-[var(--sr-emerald)]/20",
         warning:
-          "bg-amber-500/10 text-amber-500 border border-amber-500/20",
+          "bg-[var(--sr-amber)]/10 text-[var(--sr-amber)] border border-[var(--sr-amber)]/20",
         critical:
-          "bg-red-500/10 text-red-500 border border-red-500/20",
+          "bg-[var(--sr-danger)]/10 text-[var(--sr-danger)] border border-[var(--sr-danger)]/20",
         info:
-          "bg-blue-500/10 text-blue-500 border border-blue-500/20",
+          "bg-[var(--sr-steel)]/10 text-[var(--sr-steel)] border border-[var(--sr-steel)]/20",
         inactive:
           "bg-muted/50 text-muted-foreground border border-border",
       },

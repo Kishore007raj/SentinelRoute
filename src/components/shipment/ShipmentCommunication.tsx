@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { MessageSquare, Send, Paperclip, Check, CheckCheck, FileText, Download, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCompany } from "@/lib/company-context";
+import { useUser } from "@/lib/auth-context";
 import { useSocket } from "@/hooks/use-socket";
 import type { ShipmentMessage, MessageType } from "@/lib/types";
 import { toast } from "sonner";
@@ -14,15 +15,17 @@ interface TypingUser {
   senderType: string;
 }
 
-export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
+export function ShipmentCommunication({ shipmentId, status }: { shipmentId: string; status?: string }) {
   const { userRecord } = useCompany();
+  const { user } = useUser();
   const [messages, setMessages] = useState<ShipmentMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
-  
+  const [sendError, setSendError] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -30,6 +33,8 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
   const isSuperAdmin = userRecord?.role === "super_admin";
   const isCrossCompany = isSuperAdmin && typeof window !== "undefined" && new URLSearchParams(window.location.search).has("companyId");
   const targetCompanyId = isCrossCompany && typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("companyId") : null;
+  const isCompleted = status === "completed" || status === "cancelled";
+  const isLocked = isCrossCompany || isCompleted;
 
   const { emit } = useSocket({
     on: {
@@ -74,9 +79,13 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
   // Fetch messages and mark as read
   useEffect(() => {
     async function fetchMessages() {
+      if (!user) return;
       try {
+        const token = await user.getIdToken();
         const query = targetCompanyId ? `?companyId=${targetCompanyId}` : "";
-        const res = await fetch(`/api/intelligence/shipments/${shipmentId}/messages${query}`);
+        const res = await fetch(`/api/intelligence/shipments/${shipmentId}/messages${query}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (res.ok) {
           const data = await res.json();
           setMessages(data.messages || []);
@@ -139,6 +148,10 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
         const data = await res.json();
         setMessages(prev => [...prev, data.message]);
         setNewMessage("");
+        setSendError(null);
+      } else {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        setSendError(body.error ?? `Failed to send (${res.status})`);
       }
     } catch (err) {
       console.error(err);
@@ -317,6 +330,15 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
       </div>
 
       <div className="p-3 border-t border-border bg-muted/10">
+        {sendError && (
+          <p className="text-xs text-red-400 px-2 pb-2">{sendError}</p>
+        )}
+        {isCompleted && (
+          <p className="text-xs text-muted-foreground px-2 pb-2 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
+            {status === "cancelled" ? "Cancelled shipment — communication locked." : "Completed shipment — communication locked."}
+          </p>
+        )}
         <form onSubmit={handleSend} className="flex items-center gap-2">
           <input 
             ref={fileInputRef}
@@ -341,12 +363,12 @@ export function ShipmentCommunication({ shipmentId }: { shipmentId: string }) {
             value={newMessage}
             onChange={handleInputChange}
             placeholder={isCrossCompany ? "Read-only mode (Super Admin)" : "Type message..."}
-            className="flex-1 bg-background border border-input rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            disabled={sending || uploading || isCrossCompany}
+            className="flex-1 bg-background border border-input rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={sending || uploading || isLocked}
           />
           <button 
             type="submit" 
-            disabled={sending || uploading || isCrossCompany || !newMessage.trim()}
+            disabled={sending || uploading || isLocked || !newMessage.trim()}
             className="p-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             <Send className="w-4 h-4" />

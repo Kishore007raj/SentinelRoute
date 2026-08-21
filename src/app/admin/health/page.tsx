@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { ActivitySquare, Database, Server, Cpu, MemoryStick, Clock, Activity, RefreshCw } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -46,7 +45,6 @@ export default function PlatformHealthCenter() {
   const fetchHealth = useCallback(async () => {
     setError(null);
     try {
-      // fetchApi automatically injects the Firebase auth token
       const res = await fetchApi("/api/admin/health");
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
@@ -77,10 +75,10 @@ export default function PlatformHealthCenter() {
 
   if (error && !health) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <p className="text-destructive text-sm">{error}</p>
-        <Button variant="outline" size="sm" onClick={fetchHealth} className="gap-2">
-          <RefreshCw className="w-4 h-4" /> Retry
+      <div className="panel p-8 text-center max-w-lg mx-auto">
+        <p className="text-xs text-rose-400 mb-3">{error}</p>
+        <Button variant="outline" size="sm" onClick={fetchHealth} className="gap-2 text-xs">
+          <RefreshCw className="w-3.5 h-3.5" /> Retry Gateway Connection
         </Button>
       </div>
     );
@@ -92,172 +90,203 @@ export default function PlatformHealthCenter() {
   const heapUsagePercent = (health.system.memory.processHeapUsed / health.system.memory.processHeapTotal) * 100;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6 animate-in fade-in duration-300 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <ActivitySquare className="w-6 h-6 text-emerald-500" />
-            Platform Health & Telemetry
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Deep infrastructure observability and diagnostics.
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              <ActivitySquare className="w-5 h-5 text-emerald-400" />
+              Platform Health & Telemetry
+            </h1>
+            {health.status === "healthy" ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                All Systems Operational
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                System Degraded
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Deep infrastructure telemetry, process resource utilization, and database status.
             {lastFetched && (
-              <span className="ml-2 opacity-60">
-                Last updated {lastFetched.toLocaleTimeString()}
+              <span className="ml-2 font-mono text-[10px] text-muted-foreground">
+                (Synced {lastFetched.toLocaleTimeString()})
               </span>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={fetchHealth} disabled={loading} className="gap-2">
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-          {health.status === "healthy" ? (
-            <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20 px-3 py-1 text-sm font-medium">
-              <span className="relative flex h-2 w-2 mr-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              All Systems Operational
-            </Badge>
-          ) : (
-            <Badge variant="destructive" className="px-3 py-1 text-sm font-medium">
-              System Degraded
-            </Badge>
-          )}
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={fetchHealth}
+          disabled={loading}
+          className="h-8 text-xs gap-1.5 border-border"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          <span>Refresh Telemetry</span>
+        </Button>
       </div>
 
-      {/* Show non-fatal errors as a banner while still displaying stale data */}
       {error && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-500">
-          Could not refresh: {error}
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-400">
+          Stale telemetry warning: {error}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-border/50 shadow-sm">
-          <CardContent className="p-5 flex flex-col items-center justify-center text-center space-y-2">
-            <Database className="w-8 h-8 text-blue-500" />
-            <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">DB Latency</p>
-            <p className="text-3xl font-bold font-mono">
-              {health.database.latencyMs}<span className="text-sm text-muted-foreground">ms</span>
-            </p>
-          </CardContent>
-        </Card>
+      {/* Primary Telemetry Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="panel p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <span className="label-meta">Database Latency</span>
+            <div className="p-1.5 bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded">
+              <Database className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground">
+              {health.database.latencyMs}
+            </span>
+            <span className="text-xs text-muted-foreground font-mono">ms</span>
+          </div>
+          <div className="mt-3 pt-3 border-t border-border/50 text-[11px] text-emerald-400 font-mono">
+            {health.database.latencyMs < 50 ? "Optimal (<50ms)" : "Elevated response time"}
+          </div>
+        </div>
 
-        <Card className="border-border/50 shadow-sm">
-          <CardContent className="p-5 flex flex-col items-center justify-center text-center space-y-2">
-            <Activity className="w-8 h-8 text-indigo-500" />
-            <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">DB Connections</p>
-            <p className="text-3xl font-bold font-mono">
+        <div className="panel p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <span className="label-meta">Connection Pool</span>
+            <div className="p-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded">
+              <Activity className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground">
               {health.database.connections.current}
-              <span className="text-sm text-muted-foreground"> / {health.database.connections.available}</span>
-            </p>
-          </CardContent>
-        </Card>
+            </span>
+            <span className="text-xs text-muted-foreground font-mono">
+              / {health.database.connections.available} available
+            </span>
+          </div>
+          <div className="mt-3 pt-3 border-t border-border/50 text-[11px] text-muted-foreground font-mono">
+            Active MongoDB pool connections
+          </div>
+        </div>
 
-        <Card className="border-border/50 shadow-sm">
-          <CardContent className="p-5 flex flex-col items-center justify-center text-center space-y-2">
-            <Cpu className="w-8 h-8 text-amber-500" />
-            <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">System Load (1m)</p>
-            <p className="text-3xl font-bold font-mono">{health.system.loadavg[0].toFixed(2)}</p>
-          </CardContent>
-        </Card>
+        <div className="panel p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <span className="label-meta">System Load (1m)</span>
+            <div className="p-1.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded">
+              <Cpu className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground">
+            {health.system.loadavg[0].toFixed(2)}
+          </div>
+          <div className="mt-3 pt-3 border-t border-border/50 text-[11px] text-muted-foreground font-mono">
+            Across {health.system.cpus} CPU cores
+          </div>
+        </div>
 
-        <Card className="border-border/50 shadow-sm">
-          <CardContent className="p-5 flex flex-col items-center justify-center text-center space-y-2">
-            <Clock className="w-8 h-8 text-emerald-500" />
-            <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">Node Uptime</p>
-            <p className="text-3xl font-bold font-mono">
-              {Math.floor(health.node.uptime / 3600)}<span className="text-sm text-muted-foreground">h</span>{" "}
-              {Math.floor((health.node.uptime % 3600) / 60)}<span className="text-sm text-muted-foreground">m</span>
-            </p>
-          </CardContent>
-        </Card>
+        <div className="panel p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <span className="label-meta">Node Uptime</span>
+            <div className="p-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">
+              <Clock className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground">
+            {Math.floor(health.node.uptime / 3600)}h {Math.floor((health.node.uptime % 3600) / 60)}m
+          </div>
+          <div className="mt-3 pt-3 border-t border-border/50 text-[11px] text-muted-foreground font-mono">
+            Continuous process execution
+          </div>
+        </div>
       </div>
 
+      {/* Memory & Environment Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-border/50 shadow-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base flex items-center gap-2">
-              <MemoryStick className="w-4 h-4 text-primary" />
-              Memory Allocation
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
+        {/* Memory Allocation */}
+        <div className="panel p-6">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300 mb-5 flex items-center gap-2">
+            <MemoryStick className="w-4 h-4 text-amber-500" />
+            Memory Allocation & Heap
+          </h2>
+          <div className="space-y-5">
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">System Memory</span>
-                <span className="font-medium font-mono">
+                <span className="font-medium font-mono text-foreground">
                   {health.system.memory.used} MB / {health.system.memory.total} MB
                 </span>
               </div>
-              <Progress value={memUsagePercent} className="h-2" />
+              <Progress value={memUsagePercent} className="h-1.5" />
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">V8 Heap Usage</span>
-                <span className="font-medium font-mono">
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">V8 Process Heap</span>
+                <span className="font-medium font-mono text-foreground">
                   {health.system.memory.processHeapUsed} MB / {health.system.memory.processHeapTotal} MB
                 </span>
               </div>
-              <Progress value={heapUsagePercent} className="h-2" />
+              <Progress value={heapUsagePercent} className="h-1.5" />
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Node RSS</span>
-                <span className="font-medium font-mono">{health.system.memory.rss} MB</span>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Node RSS (Resident Set)</span>
+                <span className="font-medium font-mono text-foreground">{health.system.memory.rss} MB</span>
               </div>
               <Progress
                 value={Math.min((health.system.memory.rss / health.system.memory.total) * 100, 100)}
-                className="h-2"
+                className="h-1.5"
               />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card className="border-border/50 shadow-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Server className="w-4 h-4 text-emerald-500" />
-              Environment Specs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-y-4 text-sm border-b border-border/50 pb-4">
-                <div>
-                  <p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">Platform</p>
-                  <p className="font-medium capitalize">{health.system.platform}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">OS Release</p>
-                  <p className="font-medium">{health.system.release}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">CPU Cores</p>
-                  <p className="font-medium">{health.system.cpus}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">Node Version</p>
-                  <p className="font-medium">{health.node.version}</p>
-                </div>
+        {/* Environment Specs */}
+        <div className="panel p-6">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300 mb-5 flex items-center gap-2">
+            <Server className="w-4 h-4 text-emerald-400" />
+            Runtime Environment Specifications
+          </h2>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-y-3 text-xs border-b border-border/50 pb-3">
+              <div>
+                <span className="label-meta">Operating Platform</span>
+                <p className="font-medium capitalize text-foreground mt-0.5">{health.system.platform}</p>
               </div>
-              <div className="grid grid-cols-2 gap-y-4 text-sm pt-2">
-                <div>
-                  <p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">MongoDB Version</p>
-                  <p className="font-medium">{health.database.version}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">Network Requests</p>
-                  <p className="font-medium font-mono">{health.database.network.numRequests}</p>
-                </div>
+              <div>
+                <span className="label-meta">OS Kernel Release</span>
+                <p className="font-medium font-mono text-foreground mt-0.5">{health.system.release}</p>
+              </div>
+              <div>
+                <span className="label-meta">CPU Hardware</span>
+                <p className="font-medium font-mono text-foreground mt-0.5">{health.system.cpus} Logical Cores</p>
+              </div>
+              <div>
+                <span className="label-meta">Node.js Engine</span>
+                <p className="font-medium font-mono text-foreground mt-0.5">{health.node.version}</p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="grid grid-cols-2 gap-y-3 text-xs pt-1">
+              <div>
+                <span className="label-meta">Database Engine</span>
+                <p className="font-medium font-mono text-foreground mt-0.5">MongoDB v{health.database.version}</p>
+              </div>
+              <div>
+                <span className="label-meta">Network Request Ingestion</span>
+                <p className="font-medium font-mono text-foreground mt-0.5">{health.database.network.numRequests.toLocaleString()} reqs</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

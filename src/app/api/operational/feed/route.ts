@@ -14,36 +14,39 @@ export async function GET(req: NextRequest) {
   try {
     const db = await getDb();
 
-    // 1. Fetch pending recommendations
-    const recommendations = await db.collection("operational_recommendations")
-      .find({ companyId, status: "pending" })
-      .sort({ confidence: -1 })
-      .limit(10)
-      .toArray();
+    // Parallelize all 3 queries instead of sequential fetches
+    const [recommendations, recentIncidents, timelineEvents] = await Promise.all([
+      // 1. Fetch pending recommendations
+      db.collection("operational_recommendations")
+        .find({ companyId, status: "pending" })
+        .sort({ confidence: -1 })
+        .limit(10)
+        .toArray(),
 
-    // 2. Fetch recent alerts (incidents in area or system alerts)
-    const recentIncidents = await db.collection("incidents")
-      .find({ $or: [{ companyId }, { companyId: { $exists: false } }, { companyId: null }] })
-      .sort({ timestamp: -1 })
-      .limit(5)
-      .toArray();
+      // 2. Fetch recent alerts (incidents in area or system alerts)
+      db.collection("incidents")
+        .find({ $or: [{ companyId }, { companyId: { $exists: false } }, { companyId: null }] })
+        .sort({ timestamp: -1 })
+        .limit(5)
+        .toArray(),
 
-    // 3. Fetch recent timeline events marked for operational feed
-    const timelineEvents = await db.collection("timeline_events")
-      .find({ 
-        companyId, 
-        type: { 
-          $in: [
-            "Shipment Created", "Shipment Assigned", "Driver Assigned", "Vehicle Assigned", 
-            "Vehicle Maintenance", "Driver Suspension", "Incident Reported", "Route Changed", 
-            "Risk Increased", "Risk Decreased", "Recommendation Generated", 
-            "Recommendation Accepted", "Shipment Completed", "Shipment Cancelled"
-          ] 
-        } 
-      })
-      .sort({ timestamp: -1 })
-      .limit(20)
-      .toArray();
+      // 3. Fetch recent timeline events marked for operational feed
+      db.collection("timeline_events")
+        .find({ 
+          companyId, 
+          type: { 
+            $in: [
+              "Shipment Created", "Shipment Assigned", "Driver Assigned", "Vehicle Assigned", 
+              "Vehicle Maintenance", "Driver Suspension", "Incident Reported", "Route Changed", 
+              "Risk Increased", "Risk Decreased", "Recommendation Generated", 
+              "Recommendation Accepted", "Shipment Completed", "Shipment Cancelled"
+            ] 
+          } 
+        })
+        .sort({ timestamp: -1 })
+        .limit(20)
+        .toArray(),
+    ]);
 
     return NextResponse.json({
       data: {

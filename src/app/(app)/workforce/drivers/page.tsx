@@ -3,8 +3,9 @@
 import { fetchApi } from "@/lib/api-client";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { UserCheck, AlertTriangle, RefreshCw, Plus } from "lucide-react";
+import { AlertTriangle, RefreshCw, Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -14,7 +15,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
 import { useUser } from "@/lib/auth-context";
 import { useCompany } from "@/lib/company-context";
 import { useI18n } from "@/lib/i18n";
@@ -22,11 +22,9 @@ import { DriverTable } from "@/components/workforce/DriverTable";
 import { DriverForm } from "@/components/workforce/DriverForm";
 import type { Driver } from "@/lib/types";
 
-// ─── Loading skeleton ─────────────────────────────────────────────────────────
-
 function PageSkeleton() {
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-8">
+    <div className="max-w-7xl mx-auto w-full space-y-7">
       <div className="pb-6 border-b border-border space-y-2">
         <Skeleton className="h-3 w-32" />
         <Skeleton className="h-8 w-56" />
@@ -34,27 +32,15 @@ function PageSkeleton() {
       <div className="flex flex-col sm:flex-row gap-3">
         <Skeleton className="h-10 flex-1 max-w-xs" />
         <Skeleton className="h-10 w-40" />
-        <Skeleton className="h-10 w-32 sm:ml-auto" />
       </div>
-      <Card className="bg-card border border-border rounded-2xl">
-        <CardContent className="p-0">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-border/30 last:border-0">
-              <Skeleton className="h-4 w-36" />
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-6 w-16 rounded-full ml-auto" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <div className="panel p-5 bg-card space-y-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
     </div>
   );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DriverManagementPage() {
   const router = useRouter();
@@ -118,7 +104,11 @@ export default function DriverManagementPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: "suspended" }),
       });
-    } catch { /* non-fatal */ } finally { fetchDrivers(); }
+    } catch {
+      /* non-fatal */
+    } finally {
+      fetchDrivers();
+    }
   };
 
   const handleActivate = async (driver: Driver) => {
@@ -130,12 +120,24 @@ export default function DriverManagementPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: "active" }),
       });
-    } catch { /* non-fatal */ } finally { fetchDrivers(); }
+    } catch {
+      /* non-fatal */
+    } finally {
+      fetchDrivers();
+    }
   };
 
-  const handleEdit = (driver: Driver) => { setEditingDriver(driver); setModalOpen(true); };
-  const handleAdd = () => { setEditingDriver(undefined); setModalOpen(true); };
-  const handleRowClick = (driverId: string) => { router.push(`/workforce/drivers/${driverId}`); };
+  const handleEdit = (driver: Driver) => {
+    setEditingDriver(driver);
+    setModalOpen(true);
+  };
+  const handleAdd = () => {
+    setEditingDriver(undefined);
+    setModalOpen(true);
+  };
+  const handleRowClick = (driverId: string) => {
+    router.push(`/workforce/drivers/${driverId}`);
+  };
 
   const filteredDrivers = drivers.filter((d) => {
     const q = searchQuery.trim().toLowerCase();
@@ -152,14 +154,14 @@ export default function DriverManagementPage() {
   if (error) {
     return (
       <div className="max-w-7xl mx-auto w-full">
-        <div className="flex flex-col items-center justify-center py-24 gap-5 text-center bg-card border border-border rounded-2xl">
-          <AlertTriangle className="w-8 h-8 text-amber-400" />
+        <div className="panel p-12 text-center space-y-4 border border-dashed border-border/70">
+          <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
           <div className="space-y-1">
-            <p className="text-base font-semibold text-foreground">{t("workforce.failedToLoadDrivers")}</p>
-            <p className="text-sm text-muted-foreground max-w-sm">{error}</p>
+            <p className="text-sm font-bold text-foreground">{t("workforce.failedToLoadDrivers")}</p>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error}</p>
           </div>
-          <Button variant="outline" className="gap-2 h-10 px-5 text-sm" onClick={fetchDrivers}>
-            <RefreshCw className="w-4 h-4" />
+          <Button variant="outline" className="gap-2 h-9 px-4 text-xs font-bold uppercase tracking-wider" onClick={fetchDrivers}>
+            <RefreshCw className="w-3.5 h-3.5" />
             {t("workforce.retry")}
           </Button>
         </div>
@@ -168,27 +170,23 @@ export default function DriverManagementPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-8">
-
+    <div className="max-w-7xl mx-auto w-full space-y-7 pb-12">
       {/* Header */}
-      <div className="pb-6 border-b border-border">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2 font-bold">
-          {t("workforce.workforce")}
-        </p>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <UserCheck className="w-7 h-7 text-muted-foreground shrink-0" />
-            <h1 className="text-3xl font-bold text-foreground tracking-tight">
-              {t("workforce.drivers")}
-            </h1>
-          </div>
-          {!isReadOnly && (
-            <Button onClick={handleAdd} className="gap-2 h-10 px-5 text-sm self-start sm:self-auto">
-              <Plus className="w-4 h-4" />
-              {t("workforce.addDriver")}
-            </Button>
-          )}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
+        <div>
+          <p className="label-meta flex items-center gap-2 mb-2">
+            <Users className="w-3.5 h-3.5 text-primary" />
+            {t("workforce.workforce")}
+          </p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">{t("workforce.drivers")}</h1>
         </div>
+
+        {!isReadOnly && (
+          <Button onClick={handleAdd} className="h-10 px-4 text-xs font-bold uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
+            <Plus className="w-3.5 h-3.5" />
+            {t("workforce.addDriver")}
+          </Button>
+        )}
       </div>
 
       {availability.length > 0 && (
@@ -215,40 +213,45 @@ export default function DriverManagementPage() {
       )}
 
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Input
-          placeholder={t("workforce.searchDrivers")}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 max-w-md h-10 text-sm"
-        />
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
-          <SelectTrigger className="w-full sm:w-44 h-10 text-sm">
-            <SelectValue placeholder={t("workforce.allStatuses")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("workforce.allStatuses")}</SelectItem>
-            <SelectItem value="active">{t("workforce.active")}</SelectItem>
-            <SelectItem value="suspended">{t("workforce.suspended")}</SelectItem>
-            <SelectItem value="inactive">{t("workforce.inactive")}</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-sm text-muted-foreground self-center sm:ml-auto whitespace-nowrap">
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto flex-1 max-w-md">
+          <Input
+            placeholder={t("workforce.searchDrivers")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-10 bg-muted/20 border-border text-xs font-medium rounded-lg"
+          />
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
+            <SelectTrigger className="w-full sm:w-44 h-10 bg-muted/20 border-border text-xs font-medium">
+              <SelectValue placeholder={t("workforce.allStatuses")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("workforce.allStatuses")}</SelectItem>
+              <SelectItem value="active">{t("workforce.active")}</SelectItem>
+              <SelectItem value="suspended">{t("workforce.suspended")}</SelectItem>
+              <SelectItem value="inactive">{t("workforce.inactive")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <p className="text-xs text-muted-foreground self-center font-mono font-medium">
           {filteredDrivers.length}{" "}
           {filteredDrivers.length === 1 ? t("workforce.driver") : t("workforce.drivers").toLowerCase()}
         </p>
       </div>
 
       {/* Driver table */}
-      <DriverTable
-        drivers={filteredDrivers}
-        currentUserRole={role ?? "dispatcher"}
-        currentUserId={userRecord?.userId ?? ""}
-        onEdit={handleEdit}
-        onSuspend={handleSuspend}
-        onActivate={handleActivate}
-        onRowClick={handleRowClick}
-      />
+      <div className="panel p-0 overflow-hidden bg-card">
+        <DriverTable
+          drivers={filteredDrivers}
+          currentUserRole={role ?? "dispatcher"}
+          currentUserId={userRecord?.userId ?? ""}
+          onEdit={handleEdit}
+          onSuspend={handleSuspend}
+          onActivate={handleActivate}
+          onRowClick={handleRowClick}
+        />
+      </div>
 
       {/* Add / Edit form dialog */}
       <DriverForm

@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Bell, ChevronRight, Menu, Users, Radio } from "lucide-react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Bell, ChevronRight, Menu, Users } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
@@ -26,7 +25,6 @@ import { auth } from "@/lib/firebase";
 import { useUser } from "@/lib/auth-context";
 import { useStore } from "@/lib/store";
 import type { PresenceUser } from "@/lib/store";
-import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 const routeLabels: Record<string, string> = {
   "/dashboard":          "Dashboard",
@@ -53,48 +51,41 @@ export function AppHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const segments = pathname.split("/").filter(Boolean);
 
-  // Calculate total online users globally across the platform
-  const onlineUsers = Object.values(presence).filter((p): p is PresenceUser => p.status === "online");
+  const onlineUsers = Object.values(presence).filter(
+    (p): p is PresenceUser => p.status === "online",
+  );
   const onlineCount = onlineUsers.length;
 
-  // Derive a human-readable title - handle dynamic segments gracefully
   const pageTitle = (() => {
-    // Exact match first
     if (routeLabels[pathname]) return routeLabels[pathname];
-    // /shipments/[id] → "Shipment Detail"
     if (segments[0] === "shipments" && segments.length >= 2) return "Shipment Detail";
-    // /workforce/drivers/[id] → "Driver Profile"
-    if (segments[0] === "workforce" && segments[1] === "drivers" && segments.length >= 3) return "Driver Profile";
-    // /workforce/vehicles/[id] → "Vehicle Profile"
+    if (segments[0] === "workforce" && segments[1] === "drivers"  && segments.length >= 3) return "Driver Profile";
     if (segments[0] === "workforce" && segments[1] === "vehicles" && segments.length >= 3) return "Vehicle Profile";
-    // /admin/company/[id] → "Company Detail"
-    if (segments[0] === "admin" && segments[1] === "company" && segments.length >= 3) return "Company Detail";
-    // Fallback: last segment, title-cased
+    if (segments[0] === "admin"     && segments[1] === "company"  && segments.length >= 3) return "Company Detail";
     const last = segments[segments.length - 1] ?? "Dashboard";
     return last.charAt(0).toUpperCase() + last.slice(1).replace(/-/g, " ");
   })();
 
   const handleSignOut = async () => {
     await signOut(auth);
-    // Clear session cookie
     document.cookie = "sr_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     router.push("/auth/signin");
   };
 
-  // Derive initials from email or display name
   const displayName = user?.displayName ?? user?.email ?? "User";
-  const initials = displayName
-    .split(/[\s@.]+/)
-    .slice(0, 2)
-    .map((s: string) => s[0]?.toUpperCase() ?? "")
-    .join("") || "U";
+  const initials =
+    displayName
+      .split(/[\s@.]+/)
+      .slice(0, 2)
+      .map((s: string) => s[0]?.toUpperCase() ?? "")
+      .join("") || "U";
 
   return (
     <>
       <MobileNav open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
-      <header className="h-[72px] flex items-center gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8 border-b border-border bg-background/95 backdrop-blur-md shadow-sm sticky top-0 z-30">
-        {/* Mobile hamburger - only on small screens */}
+      <header className="h-14 flex items-center gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8 border-b border-border bg-background sticky top-0 z-30">
+        {/* Mobile hamburger */}
         <button
           className="md:hidden text-muted-foreground hover:text-foreground p-1.5 -ml-1 rounded-md hover:bg-accent transition-colors"
           onClick={() => setMobileNavOpen(true)}
@@ -102,10 +93,6 @@ export function AppHeader() {
         >
           <Menu className="w-5 h-5" />
         </button>
-
-        {/* Desktop sidebar trigger */}
-        <SidebarTrigger className="hidden md:flex text-muted-foreground hover:text-foreground -ml-1" />
-        <Separator orientation="vertical" className="h-5 opacity-30 hidden md:block" />
 
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm min-w-0">
@@ -116,19 +103,19 @@ export function AppHeader() {
 
         <div className="flex-1" />
 
-        {/* Global Presence & Live Connection Indicator */}
+        {/* Live presence indicator */}
         <Tooltip>
           <TooltipTrigger className="hidden md:flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-muted/20 text-muted-foreground text-sm hover:bg-muted/40 transition-colors">
             <div className="relative flex h-2 w-2 items-center justify-center">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
             </div>
             <span className="text-xs font-medium">Live</span>
             <Separator orientation="vertical" className="h-4 mx-1" />
             <Users className="w-3.5 h-3.5" />
             <span className="text-xs font-medium">{onlineCount}</span>
           </TooltipTrigger>
-          <TooltipContent className="max-w-[200px] text-xs">
+          <TooltipContent className="max-w-50 text-xs">
             <p className="font-semibold mb-1">Active Collaborators</p>
             {onlineCount > 0 ? (
               <ul className="space-y-1">
@@ -138,7 +125,9 @@ export function AppHeader() {
                   </li>
                 ))}
                 {onlineCount > 5 && (
-                  <li className="text-muted-foreground italic">+{onlineCount - 5} more...</li>
+                  <li className="text-muted-foreground italic">
+                    +{onlineCount - 5} more&hellip;
+                  </li>
                 )}
               </ul>
             ) : (
@@ -147,16 +136,24 @@ export function AppHeader() {
           </TooltipContent>
         </Tooltip>
 
-        {/* Shipments quick-link - navigates to shipments list */}
+        {/* Shipments quick-link */}
         <Link
           href="/shipments"
           className="hidden md:flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-muted/30 text-muted-foreground text-sm hover:bg-muted/50 hover:text-foreground transition-colors"
         >
-          <span>Shipments</span>
+          Shipments
         </Link>
 
-        {/* Notifications */}
-        <NotificationBell />
+        {/* Notifications placeholder */}
+        <Tooltip>
+          <TooltipTrigger
+            aria-label="Notifications"
+            className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground opacity-40 cursor-not-allowed"
+          >
+            <Bell className="w-4 h-4" />
+          </TooltipTrigger>
+          <TooltipContent>Notifications coming soon</TooltipContent>
+        </Tooltip>
 
         {/* User menu */}
         <DropdownMenu>
@@ -165,7 +162,9 @@ export function AppHeader() {
             aria-label="User menu"
           >
             <Avatar className="h-7 w-7">
-              <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">{initials}</AvatarFallback>
+              <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
+                {initials}
+              </AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
