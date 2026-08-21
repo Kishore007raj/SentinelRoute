@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState, useRef } from "react";
 import dynamic from 'next/dynamic';
 import { useUser } from "@/lib/auth-context";
@@ -6,7 +8,7 @@ import { ShipmentExecution, ShipmentCheckpoint } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { DashboardCard } from "@/components/ui/dashboard-card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { MapPin, Navigation, Truck, AlertTriangle, CheckCircle2, Eraser, TrendingUp, CheckCircle, Clock, Camera, Upload } from "lucide-react";
+import { MapPin, Navigation, Truck, AlertTriangle, CheckCircle2, Eraser, TrendingUp, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import SignatureCanvas from 'react-signature-canvas';

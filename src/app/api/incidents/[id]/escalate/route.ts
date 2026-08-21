@@ -10,11 +10,11 @@ import type { IncidentTimelineEvent } from "@/lib/types";
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId, userRecord, company } = await requireCompany(req);
-    const { id: incidentId } = params;
+    const { id: incidentId } = await params;
     const body = await req.json().catch(() => ({}));
     const { reason = "Manually escalated" } = body;
 

@@ -10,11 +10,11 @@ import { utcNow } from "@/lib/time";
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { company } = await requireCompany(req);
-    const { id: alertId } = params;
+    const { id: alertId } = await params;
 
     const body = await req.json().catch(() => ({}));
     const { snoozeDurationMinutes = 60 } = body;
