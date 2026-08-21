@@ -23,7 +23,8 @@ export async function GET(
     
     const executions = await db.collection("shipment_executions").find(query).toArray();
     
-    // Check for pending assignments if no execution is found (meaning driver hasn't accepted yet)
+    // Check for real pending assignments in the shipments collection
+    let pendingAssignment = null;
     if (executions.length === 0 && driverId) {
       const pendingShipments = await db.collection("shipments").find({
         companyId: auth.company.companyId,
@@ -32,25 +33,18 @@ export async function GET(
       }).toArray();
       
       if (pendingShipments.length > 0) {
-        // Return a mocked execution representing the assignment offer
-        const s = pendingShipments[0];
-        executions.push({
-          _id: s._id,
-          shipmentId: s.shipmentId,
-          companyId: s.companyId,
-          driverId: s.assignedDriverId,
-          vehicleId: s.assignedVehicleId,
-          plannedRoute: s.route,
-          status: "pending",
-          driverAccepted: false
-        });
+        pendingAssignment = pendingShipments[0];
       }
     }
     
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const cleanExecutions = executions.map(({ _id, ...rest }) => rest);
     
-    return NextResponse.json({ executions: cleanExecutions });
+    return NextResponse.json({ 
+      hasExecution: cleanExecutions.length > 0, 
+      executions: cleanExecutions,
+      pendingAssignment 
+    });
   } catch (err) {
     return handleAuthError(err);
   }

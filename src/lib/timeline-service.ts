@@ -14,7 +14,7 @@ export async function addTimelineEvent(
   affectedMetrics?: string[]
 ): Promise<ShipmentTimelineEvent> {
   const event: ShipmentTimelineEvent = {
-    eventId: `evt-${shipmentId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    eventId: `evt-${crypto.randomUUID()}`,
     shipmentId,
     companyId,
     timestamp: new Date().toISOString(),

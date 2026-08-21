@@ -87,3 +87,34 @@ export async function getShipmentsCollection() {
 export function getMongoClient(): Promise<MongoClient> {
   return getClientPromise();
 }
+
+/**
+ * Helper to run multi-document operations inside a MongoDB transaction when supported by the cluster.
+ * Gracefully falls back to running the callback with db if standalone MongoDB instance is used.
+ */
+export async function withTransaction<T>(
+  fn: (db: Db, session?: import("mongodb").ClientSession) => Promise<T>
+): Promise<T> {
+  const client = await getMongoClient();
+  const db = client.db(dbName);
+  const session = client.startSession();
+
+  try {
+    let result: T;
+    try {
+      await session.withTransaction(async () => {
+        result = await fn(db, session);
+      });
+      return result!;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Fallback for standalone dev instances that don't support replica set transactions
+      if (msg.includes("Transaction numbers are only allowed") || (err as { code?: number })?.code === 20) {
+        return await fn(db);
+      }
+      throw err;
+    }
+  } finally {
+    await session.endSession();
+  }
+}

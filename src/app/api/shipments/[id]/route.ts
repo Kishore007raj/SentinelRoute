@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { emitToUser } from "@/lib/socket-server";
 import { utcNow } from "@/lib/time";
 import type { UserRecord } from "@/lib/types";
 import { addTimelineEvent } from "@/lib/timeline-service";
@@ -177,38 +176,32 @@ export async function PATCH(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { _id, userId: _uid, ...shipment } = result;
 
-    // Emit real-time status update
-    emitToUser(userId, "shipment:status", {
-      id,
-      status:     newStatus,
-      lastUpdate: now,
-    });
 
-    // Timeline entry for status transitions (fire-and-forget)
-    const shipmentCompanyId = (result.companyId as string) ?? companyId ?? "";
+    const shipmentCompanyIdForTimeline = (result.companyId as string) ?? companyId ?? "";
     if (newStatus === "completed") {
       addTimelineEvent(
-        id, shipmentCompanyId, "Shipment Completed",
+        id, shipmentCompanyIdForTimeline, "Shipment Completed",
         "Shipment marked as completed.",
         "SentinelRoute", 100, ["status"]
       ).catch(() => {});
       createIntelligenceAudit({
-        companyId: shipmentCompanyId, shipmentId: id, userId,
+        companyId: shipmentCompanyIdForTimeline, shipmentId: id, userId,
         eventType: "risk_calculated", source: "ShipmentStatusUpdate",
         metadata: { shipmentId: id, newStatus, action: "shipment_completed" },
       }).catch(() => {});
     } else if (newStatus === "cancelled") {
       addTimelineEvent(
-        id, shipmentCompanyId, "Shipment Cancelled",
+        id, shipmentCompanyIdForTimeline, "Shipment Cancelled",
         `Shipment cancelled. Reason: ${typeof body.cancellationReason === "string" ? body.cancellationReason : "Not specified"}.`,
         "SentinelRoute", 100, ["status"]
       ).catch(() => {});
       createIntelligenceAudit({
-        companyId: shipmentCompanyId, shipmentId: id, userId,
+        companyId: shipmentCompanyIdForTimeline, shipmentId: id, userId,
         eventType: "alert_created", source: "ShipmentStatusUpdate",
         metadata: { shipmentId: id, newStatus, reason: body.cancellationReason, action: "shipment_cancelled" },
       }).catch(() => {});
     }
+
 
     return NextResponse.json({ shipment });
   } catch (err) {

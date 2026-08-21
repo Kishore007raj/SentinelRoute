@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     }
 
     const now = new Date().toISOString();
-    const companyId = `co-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const companyId = `co-${crypto.randomUUID()}`;
 
     const company: Company = {
       companyId,

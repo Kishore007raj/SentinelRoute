@@ -49,23 +49,31 @@ export async function POST(
         return NextResponse.json({ error: "Checkpoint is not pending" }, { status: 400 });
       }
       
-      const updatedCheckpoints = [...execution.checkpoints];
-      updatedCheckpoints[checkpointIndex] = {
-        ...checkpoint,
-        status: "arrived",
-        arrivalTime: now
-      };
-      
-      await db.collection("shipment_executions").updateOne(
-        { shipmentId },
+      const updateResult = await db.collection("shipment_executions").updateOne(
+        { 
+          shipmentId, 
+          companyId: auth.company.companyId,
+          "checkpoints.id": checkpointId
+        },
         { 
           $set: { 
-            checkpoints: updatedCheckpoints,
+            "checkpoints.$.status": "arrived",
+            "checkpoints.$.arrivalTime": now,
             currentCheckpoint: checkpointId,
             lastUpdated: now
           }
         }
       );
+      
+      if (updateResult.modifiedCount === 0) {
+        return NextResponse.json({ error: "Failed to update checkpoint, it may have already been updated" }, { status: 409 });
+      }
+      
+      const updatedCheckpoint = {
+        ...checkpoint,
+        status: "arrived",
+        arrivalTime: now
+      };
       
       await addTimelineEvent(
         shipmentId,
@@ -84,7 +92,7 @@ export async function POST(
         details: { shipmentId, checkpointId, notes }
       });
       
-      return NextResponse.json({ success: true, checkpoint: updatedCheckpoints[checkpointIndex] });
+      return NextResponse.json({ success: true, checkpoint: updatedCheckpoint });
     }
     
     if (action === "depart") {
@@ -92,21 +100,19 @@ export async function POST(
         return NextResponse.json({ error: "Must arrive at checkpoint before departing" }, { status: 400 });
       }
       
-      const updatedCheckpoints = [...execution.checkpoints];
-      updatedCheckpoints[checkpointIndex] = {
-        ...checkpoint,
-        status: "departed",
-        departureTime: now
-      };
-      
       const completedCount = execution.completedCheckpoints + 1;
       const remainingCount = execution.remainingCheckpoints - 1;
       
-      await db.collection("shipment_executions").updateOne(
-        { shipmentId },
+      const updateResult = await db.collection("shipment_executions").updateOne(
+        { 
+          shipmentId, 
+          companyId: auth.company.companyId,
+          "checkpoints.id": checkpointId
+        },
         { 
           $set: { 
-            checkpoints: updatedCheckpoints,
+            "checkpoints.$.status": "departed",
+            "checkpoints.$.departureTime": now,
             currentCheckpoint: null,
             completedCheckpoints: completedCount,
             remainingCheckpoints: remainingCount < 0 ? 0 : remainingCount,
@@ -114,6 +120,16 @@ export async function POST(
           }
         }
       );
+      
+      if (updateResult.modifiedCount === 0) {
+        return NextResponse.json({ error: "Failed to update checkpoint, it may have already been updated" }, { status: 409 });
+      }
+      
+      const updatedCheckpoint = {
+        ...checkpoint,
+        status: "departed",
+        departureTime: now
+      };
       
       await addTimelineEvent(
         shipmentId,
@@ -132,7 +148,7 @@ export async function POST(
         details: { shipmentId, checkpointId, notes }
       });
       
-      return NextResponse.json({ success: true, checkpoint: updatedCheckpoints[checkpointIndex] });
+      return NextResponse.json({ success: true, checkpoint: updatedCheckpoint });
     }
     
     if (action === "skip") {
@@ -140,24 +156,31 @@ export async function POST(
         return NextResponse.json({ error: "Can only skip pending checkpoints" }, { status: 400 });
       }
       
-      const updatedCheckpoints = [...execution.checkpoints];
-      updatedCheckpoints[checkpointIndex] = {
-        ...checkpoint,
-        status: "skipped"
-      };
-      
       const remainingCount = execution.remainingCheckpoints - 1;
       
-      await db.collection("shipment_executions").updateOne(
-        { shipmentId },
+      const updateResult = await db.collection("shipment_executions").updateOne(
+        { 
+          shipmentId, 
+          companyId: auth.company.companyId,
+          "checkpoints.id": checkpointId
+        },
         { 
           $set: { 
-            checkpoints: updatedCheckpoints,
+            "checkpoints.$.status": "skipped",
             remainingCheckpoints: remainingCount < 0 ? 0 : remainingCount,
             lastUpdated: now
           }
         }
       );
+      
+      if (updateResult.modifiedCount === 0) {
+        return NextResponse.json({ error: "Failed to update checkpoint, it may have already been updated" }, { status: 409 });
+      }
+      
+      const updatedCheckpoint = {
+        ...checkpoint,
+        status: "skipped"
+      };
       
       await addTimelineEvent(
         shipmentId,
@@ -168,7 +191,7 @@ export async function POST(
         100
       );
       
-      return NextResponse.json({ success: true, checkpoint: updatedCheckpoints[checkpointIndex] });
+      return NextResponse.json({ success: true, checkpoint: updatedCheckpoint });
     }
     
     return NextResponse.json({ error: "Unexpected error" }, { status: 500 });

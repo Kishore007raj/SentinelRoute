@@ -54,7 +54,7 @@ export async function runCompanyEscalationRules(companyId?: string): Promise<Esc
 
     // Create persistent app notification
     const notification: AppNotification = {
-      id: `notif-esc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: `notif-esc-${crypto.randomUUID()}`,
       companyId: incident.companyId,
       userId: incident.assignedToId || "all",
       type: "incident_reported",

@@ -49,7 +49,7 @@ export class ReportEngine {
     }
 
     const generationTime = Date.now() - startTime;
-    const reportId = `rpt-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const reportId = `rpt-${crypto.randomUUID()}`;
 
     const reportRecord = {
       reportId,

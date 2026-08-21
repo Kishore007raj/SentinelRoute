@@ -133,9 +133,9 @@ function conditionCodeToRisk(code: number): number {
   if (code === 762)               return 60; // Volcanic ash
   if (code === 771)               return 70; // Squalls
   if (code === 781)               return 95; // Tornado
-  if (code === 800)               return 5;  // Clear
-  if (code >= 801 && code <= 804) return 10; // Clouds
-  return 20; // Unknown - neutral
+  if (code === 800)               return 0;  // Clear
+  if (code >= 801 && code <= 804) return 0; // Clouds
+  return 0; // Unknown - neutral
 }
 
 function windRiskBonus(windSpeedMs: number, gustMs?: number): number {
@@ -167,7 +167,7 @@ function visibilityRiskBonus(visibility?: number): number {
  */
 export function weatherToRiskScore(weather: OWCurrentWeather): number {
   const primaryCondition = weather.weather[0];
-  if (!primaryCondition) return 20;
+  if (!primaryCondition) return 0;
 
   const base       = conditionCodeToRisk(primaryCondition.id);
   const windBonus  = windRiskBonus(weather.wind.speed, weather.wind.gust);
@@ -320,7 +320,7 @@ export async function getWeatherIntelligence(
     stormRisk:         0,
     visibilityRisk:    0,
     temperatureAnomaly: 0,
-    overallRisk:       20,
+    overallRisk:       0,
     weatherAlert:      null,
     current:           null,
   };
@@ -351,13 +351,12 @@ export async function getWeatherIntelligence(
   // ── Visibility risk ────────────────────────────────────────────────────────
   const visibilityRisk = visibilityRiskBonus(current.visibility);
 
-  // ── Temperature anomaly - difference from ~28°C seasonal norm for India ───
-  const INDIA_NORM_TEMP = 28;
-  const temperatureAnomaly = Math.round(current.main.temp - INDIA_NORM_TEMP);
+  // ── Temperature anomaly - requires strict historical data not available here ───
+  const temperatureAnomaly = 0;
 
   // ── Overall risk ──────────────────────────────────────────────────────────
   const currentRisk   = weatherToRiskScore(current);
-  const overallRisk   = Math.min(100, Math.max(currentRisk, stormRisk, Math.round(rainProbability * 0.5)));
+  const overallRisk   = Math.min(100, Math.max(currentRisk, stormRisk));
 
   const weatherAlert  = weatherToAlertText(current);
 
@@ -396,7 +395,7 @@ export async function getRouteWeather(
   destination: string
 ): Promise<RouteWeatherResult> {
   const NEUTRAL: RouteWeatherResult = {
-    weatherScore: 20,
+    weatherScore: 0,
     weatherAlert: null,
     originWeather: null,
     destinationWeather: null,
@@ -420,8 +419,8 @@ export async function getRouteWeather(
   }
 
   // Score each endpoint
-  const originScore      = originWeather      ? weatherToRiskScore(originWeather)      : 20;
-  const destinationScore = destinationWeather ? weatherToRiskScore(destinationWeather) : 20;
+  const originScore      = originWeather      ? weatherToRiskScore(originWeather)      : 0;
+  const destinationScore = destinationWeather ? weatherToRiskScore(destinationWeather) : 0;
 
   // Use the worse of the two - conservative estimate for the corridor
   const weatherScore = Math.max(originScore, destinationScore);
@@ -449,7 +448,7 @@ export async function getRouteWeatherByCoords(
   destLon: number
 ): Promise<RouteWeatherResult> {
   const NEUTRAL: RouteWeatherResult = {
-    weatherScore: 20,
+    weatherScore: 0,
     weatherAlert: null,
     originWeather: null,
     destinationWeather: null,
@@ -471,8 +470,8 @@ export async function getRouteWeatherByCoords(
     return NEUTRAL;
   }
 
-  const originScore      = originWeather      ? weatherToRiskScore(originWeather)      : 20;
-  const destinationScore = destinationWeather ? weatherToRiskScore(destinationWeather) : 20;
+  const originScore      = originWeather      ? weatherToRiskScore(originWeather)      : 0;
+  const destinationScore = destinationWeather ? weatherToRiskScore(destinationWeather) : 0;
   const weatherScore     = Math.max(originScore, destinationScore);
 
   const worseWeather     = originScore >= destinationScore ? originWeather : destinationWeather;
@@ -567,7 +566,7 @@ export async function getRouteWeatherRisk(coordinates: [number, number][]): Prom
       const temp = data.main.temp as number;
 
       // Risk score based on condition
-      let riskScore = 10; // Base: Clear
+      let riskScore = 0; // Base: Clear
       if (condition === "Thunderstorm")           riskScore = 80;
       else if (condition === "Snow")              riskScore = 60;
       else if (condition === "Rain")              riskScore = 40;

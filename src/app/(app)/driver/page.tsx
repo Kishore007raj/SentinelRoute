@@ -28,6 +28,7 @@ export default function DriverAppPage() {
   const { user } = useUser();
   const { t } = useI18n();
   const [execution, setExecution] = useState<ShipmentExecution | null>(null);
+  const [pendingAssignment, setPendingAssignment] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState<{ totalCompleted: number, totalOnTime: number, incidentsCount: number } | null>(null);
   const [isAvailable, setIsAvailable] = useState(true);
@@ -59,6 +60,11 @@ export default function DriverAppPage() {
           setExecution(data.executions[0]);
         } else {
           setExecution(null);
+        }
+        if (data.pendingAssignment) {
+          setPendingAssignment(data.pendingAssignment);
+        } else {
+          setPendingAssignment(null);
         }
       }
       
@@ -382,6 +388,80 @@ export default function DriverAppPage() {
   }
 
   if (!execution) {
+    if (pendingAssignment) {
+      return (
+        <div className="max-w-md mx-auto w-full pb-20">
+          <div className="bg-primary/5 border-b border-primary/10 p-6 pt-8 mb-6 sticky top-0 z-10 backdrop-blur-md">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <p className="text-xs font-bold text-primary uppercase tracking-widest mb-1">
+                  New Assignment Offer
+                </p>
+                <h1 className="text-3xl font-black">{pendingAssignment.shipmentId}</h1>
+              </div>
+              <StatusBadge status="pending" />
+            </div>
+          </div>
+          <div className="px-4 space-y-6">
+            <DashboardCard title="Assignment Details" icon={MapPin}>
+              <div className="py-2">
+                <p className="text-sm text-muted-foreground mb-4">You have been assigned a new shipment. Please review and accept to begin execution.</p>
+              </div>
+            </DashboardCard>
+            <div className="grid grid-cols-2 gap-4">
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="col-span-1 h-16 text-lg border-destructive text-destructive hover:bg-destructive/10"
+                onClick={async () => {
+                  try {
+                    setSubmittingComplete(true);
+                    const res = await fetchApi(`/api/execution/${pendingAssignment.shipmentId}/workflow`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ action: "decline", notes: "Driver declined" })
+                    });
+                    if (!res.ok) throw new Error("Failed to decline");
+                    toast.success("Assignment declined");
+                    fetchActiveExecution();
+                  } catch (e: any) {
+                    toast.error(e.message);
+                  } finally {
+                    setSubmittingComplete(false);
+                  }
+                }}
+              >
+                Decline
+              </Button>
+              <Button 
+                size="lg" 
+                className="col-span-1 h-16 text-lg bg-emerald-600 hover:bg-emerald-700"
+                onClick={async () => {
+                  try {
+                    setSubmittingComplete(true);
+                    const res = await fetchApi(`/api/execution/${pendingAssignment.shipmentId}/workflow`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ action: "accept", notes: "Driver accepted" })
+                    });
+                    if (!res.ok) throw new Error("Failed to accept");
+                    toast.success("Assignment accepted");
+                    fetchActiveExecution();
+                  } catch (e: any) {
+                    toast.error(e.message);
+                  } finally {
+                    setSubmittingComplete(false);
+                  }
+                }}
+              >
+                Accept
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col h-[calc(100vh-100px)] items-center justify-center text-center p-6">
         <div className="w-24 h-24 bg-muted/20 rounded-full flex items-center justify-center mb-6">
@@ -466,25 +546,6 @@ export default function DriverAppPage() {
 
         {/* Core Actions (Giant Touch Targets) */}
         <div className="grid grid-cols-2 gap-4">
-          {execution.status === "pending" && execution.driverAccepted === false && (
-            <>
-              <Button 
-                size="lg" 
-                variant="outline"
-                className="col-span-1 h-16 text-lg border-destructive text-destructive hover:bg-destructive/10"
-                onClick={() => handleAction("decline")}
-              >
-                Decline
-              </Button>
-              <Button 
-                size="lg" 
-                className="col-span-1 h-16 text-lg bg-emerald-600 hover:bg-emerald-700"
-                onClick={() => handleAction("accept")}
-              >
-                Accept
-              </Button>
-            </>
-          )}
           {execution.status === "pending" && execution.driverAccepted !== false && (
             <Button 
               size="lg" 

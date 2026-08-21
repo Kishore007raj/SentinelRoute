@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/mongodb";
+import { getDb, withTransaction } from "@/lib/mongodb";
 import { requireApprovedCompany, handleAuthError } from "@/lib/auth-helpers";
 import { createAuditEvent } from "@/lib/audit";
 import { addTimelineEvent } from "@/lib/timeline-service";
 import { utcNow } from "@/lib/time";
 import { ShipmentExecution, TimelineEventType } from "@/lib/types";
+import { emitToCompany } from "@/lib/socket-server";
 
 export async function POST(
   req: NextRequest,
@@ -28,8 +29,9 @@ export async function POST(
     const db = await getDb();
     
     // Check if shipment exists and is assigned
+    // NOTE: shipments collection uses field "id" (not "shipmentId") as the primary lookup key.
     const shipment = await db.collection("shipments").findOne({
-      shipmentId,
+      id: shipmentId,
       companyId: auth.company.companyId
     });
     
@@ -97,7 +99,7 @@ export async function POST(
         );
       }
       await db.collection("shipments").updateOne(
-        { shipmentId, companyId: auth.company.companyId },
+        { id: shipmentId, companyId: auth.company.companyId },
         { $set: { status: "pending", assignedDriverId: null, assignedVehicleId: null } }
       );
     } else if (action === "start") {
@@ -140,30 +142,51 @@ export async function POST(
           status: "driving"
         };
         
-        await db.collection("shipment_executions").insertOne(newExecution);
+        // Wrap all writes in a transaction to prevent partial state on failure
+        await withTransaction(async (txDb, session) => {
+          const opts = session ? { session } : {};
+          await txDb.collection("shipment_executions").insertOne(newExecution, opts);
+          await txDb.collection("shipments").updateOne(
+            { id: shipmentId, companyId: auth.company.companyId },
+            { $set: { status: "active" } },
+            opts
+          );
+          await txDb.collection("drivers").updateOne(
+            { driverId: shipment.assignedDriverId, companyId: auth.company.companyId },
+            { $set: { operationalStatus: "Driving", updatedAt: now } },
+            opts
+          );
+          await txDb.collection("vehicles").updateOne(
+            { vehicleId: shipment.assignedVehicleId, companyId: auth.company.companyId },
+            { $set: { operationalStatus: "In Transit", updatedAt: now } },
+            opts
+          );
+        });
       } else {
-        await db.collection("shipment_executions").updateOne(
-          { shipmentId, companyId: auth.company.companyId },
-          { $set: { status: "driving", tripStartTime: now, lastUpdated: now } }
-        );
+        await withTransaction(async (txDb, session) => {
+          const opts = session ? { session } : {};
+          await txDb.collection("shipment_executions").updateOne(
+            { shipmentId, companyId: auth.company.companyId },
+            { $set: { status: "driving", tripStartTime: now, lastUpdated: now } },
+            opts
+          );
+          await txDb.collection("shipments").updateOne(
+            { id: shipmentId, companyId: auth.company.companyId },
+            { $set: { status: "active" } },
+            opts
+          );
+          await txDb.collection("drivers").updateOne(
+            { driverId: shipment.assignedDriverId, companyId: auth.company.companyId },
+            { $set: { operationalStatus: "Driving", updatedAt: now } },
+            opts
+          );
+          await txDb.collection("vehicles").updateOne(
+            { vehicleId: shipment.assignedVehicleId, companyId: auth.company.companyId },
+            { $set: { operationalStatus: "In Transit", updatedAt: now } },
+            opts
+          );
+        });
       }
-      
-      // Update shipment
-      await db.collection("shipments").updateOne(
-        { shipmentId, companyId: auth.company.companyId },
-        { $set: { status: "active" } }
-      );
-      
-      // Update Driver and Vehicle status
-      await db.collection("drivers").updateOne(
-        { driverId: shipment.assignedDriverId },
-        { $set: { operationalStatus: "Driving", updatedAt: now } }
-      );
-      
-      await db.collection("vehicles").updateOne(
-        { vehicleId: shipment.assignedVehicleId },
-        { $set: { operationalStatus: "In Transit", updatedAt: now } }
-      );
       
       await addTimelineEvent(shipmentId, auth.company.companyId, "Trip Started", notes || "Trip execution has started", "system", 100);
       
@@ -174,6 +197,7 @@ export async function POST(
         performedBy: auth.userId,
         details: { shipmentId, driverId: shipment.assignedDriverId, vehicleId: shipment.assignedVehicleId }
       });
+
       
       return NextResponse.json({ success: true, status: "driving" });
     }
@@ -194,7 +218,7 @@ export async function POST(
       );
       
       await db.collection("drivers").updateOne(
-        { driverId: shipment.assignedDriverId },
+        { driverId: shipment.assignedDriverId, companyId: auth.company.companyId },
         { $set: { operationalStatus: "Paused", updatedAt: now } }
       );
       
@@ -207,6 +231,7 @@ export async function POST(
         performedBy: auth.userId,
         details: { shipmentId, driverId: shipment.assignedDriverId }
       });
+
       
       return NextResponse.json({ success: true, status: "paused" });
     }
@@ -222,7 +247,7 @@ export async function POST(
       );
       
       await db.collection("drivers").updateOne(
-        { driverId: shipment.assignedDriverId },
+        { driverId: shipment.assignedDriverId, companyId: auth.company.companyId },
         { $set: { operationalStatus: "Driving", updatedAt: now } }
       );
       
@@ -235,6 +260,7 @@ export async function POST(
         performedBy: auth.userId,
         details: { shipmentId, driverId: shipment.assignedDriverId }
       });
+
       
       return NextResponse.json({ success: true, status: "driving" });
     }
@@ -248,26 +274,33 @@ export async function POST(
         return NextResponse.json({ error: "Proof of Delivery signature is required to complete a shipment" }, { status: 400 });
       }
       
-      await db.collection("shipment_executions").updateOne(
-        { shipmentId, companyId: auth.company.companyId },
-        { $set: { status: "completed", tripEndTime: now, lastUpdated: now, podSignatureSvg, ...(podPhotoUrl ? { podPhotoUrl } : {}) } }
-      );
-      
-      await db.collection("shipments").updateOne(
-        { shipmentId },
-        { $set: { status: "completed", updatedAt: now } }
-      );
-      
-      // Free driver and vehicle
-      await db.collection("drivers").updateOne(
-        { driverId: shipment.assignedDriverId },
-        { $set: { operationalStatus: "Available", status: "active", assignedVehicleId: null, updatedAt: now } }
-      );
-      
-      await db.collection("vehicles").updateOne(
-        { vehicleId: shipment.assignedVehicleId },
-        { $set: { operationalStatus: "Available", status: "available", currentDriverId: null, updatedAt: now } }
-      );
+      // Wrap all terminal-state writes in a transaction to prevent partial completion.
+      await withTransaction(async (txDb, session) => {
+        const opts = session ? { session } : {};
+        await txDb.collection("shipment_executions").updateOne(
+          { shipmentId, companyId: auth.company.companyId },
+          { $set: { status: "completed", tripEndTime: now, lastUpdated: now, podSignatureSvg, ...(podPhotoUrl ? { podPhotoUrl } : {}) } },
+          opts
+        );
+        // P0 fix: shipments collection uses field "id", not "shipmentId".
+        // P1 fix: add companyId to prevent cross-tenant IDOR.
+        await txDb.collection("shipments").updateOne(
+          { id: shipmentId, companyId: auth.company.companyId },
+          { $set: { status: "completed", updatedAt: now } },
+          opts
+        );
+        // P2 fix: add companyId to driver and vehicle updates.
+        await txDb.collection("drivers").updateOne(
+          { driverId: shipment.assignedDriverId, companyId: auth.company.companyId },
+          { $set: { operationalStatus: "Available", status: "active", assignedVehicleId: null, updatedAt: now } },
+          opts
+        );
+        await txDb.collection("vehicles").updateOne(
+          { vehicleId: shipment.assignedVehicleId, companyId: auth.company.companyId },
+          { $set: { operationalStatus: "Available", status: "available", currentDriverId: null, updatedAt: now } },
+          opts
+        );
+      });
       
       await addTimelineEvent(shipmentId, auth.company.companyId, "Shipment Completed", notes || "Trip execution has been completed successfully", "system", 100);
       
@@ -278,6 +311,9 @@ export async function POST(
         performedBy: auth.userId,
         details: { shipmentId }
       });
+
+      // The drivers change stream or manual emit handles driver availability, but since we don't have a drivers change stream yet, we keep driver:availability.
+      emitToCompany(auth.company.companyId, "driver:availability", { driverId: shipment.assignedDriverId, operationalStatus: "Available" });
       
       return NextResponse.json({ success: true, status: "completed" });
     }
@@ -287,26 +323,32 @@ export async function POST(
         return NextResponse.json({ error: "Trip is already completed or cancelled" }, { status: 400 });
       }
       
-      await db.collection("shipment_executions").updateOne(
-        { shipmentId, companyId: auth.company.companyId },
-        { $set: { status: "cancelled", tripEndTime: now, lastUpdated: now } }
-      );
-      
-      await db.collection("shipments").updateOne(
-        { shipmentId },
-        { $set: { status: "cancelled", updatedAt: now } }
-      );
-      
-      // Free driver and vehicle
-      await db.collection("drivers").updateOne(
-        { driverId: shipment.assignedDriverId },
-        { $set: { operationalStatus: "Available", status: "active", assignedVehicleId: null, updatedAt: now } }
-      );
-      
-      await db.collection("vehicles").updateOne(
-        { vehicleId: shipment.assignedVehicleId },
-        { $set: { operationalStatus: "Available", status: "available", currentDriverId: null, updatedAt: now } }
-      );
+      // Wrap all terminal-state writes in a transaction to prevent partial cancellation.
+      await withTransaction(async (txDb, session) => {
+        const opts = session ? { session } : {};
+        await txDb.collection("shipment_executions").updateOne(
+          { shipmentId, companyId: auth.company.companyId },
+          { $set: { status: "cancelled", tripEndTime: now, lastUpdated: now } },
+          opts
+        );
+        // P0 fix: use "id", not "shipmentId". P1 fix: add companyId.
+        await txDb.collection("shipments").updateOne(
+          { id: shipmentId, companyId: auth.company.companyId },
+          { $set: { status: "cancelled", updatedAt: now } },
+          opts
+        );
+        // P2 fix: add companyId to driver and vehicle updates.
+        await txDb.collection("drivers").updateOne(
+          { driverId: shipment.assignedDriverId, companyId: auth.company.companyId },
+          { $set: { operationalStatus: "Available", status: "active", assignedVehicleId: null, updatedAt: now } },
+          opts
+        );
+        await txDb.collection("vehicles").updateOne(
+          { vehicleId: shipment.assignedVehicleId, companyId: auth.company.companyId },
+          { $set: { operationalStatus: "Available", status: "available", currentDriverId: null, updatedAt: now } },
+          opts
+        );
+      });
       
       await addTimelineEvent(shipmentId, auth.company.companyId, "Shipment Cancelled", notes || "Trip execution has been cancelled", "system", 100);
       
@@ -317,6 +359,9 @@ export async function POST(
         performedBy: auth.userId,
         details: { shipmentId, reason: notes }
       });
+
+      // Keep driver:availability until we get a drivers change stream.
+      emitToCompany(auth.company.companyId, "driver:availability", { driverId: shipment.assignedDriverId, operationalStatus: "Available" });
       
       return NextResponse.json({ success: true, status: "cancelled" });
     }

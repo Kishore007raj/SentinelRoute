@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     const db = await getDb();
     
     // Check if the user is actually a driver in the collection
-    const driverDoc = await db.collection("drivers").findOne({ userId: userId });
+    const driverDoc = await db.collection("drivers").findOne({ userId, companyId: company.companyId });
     
     if (!driverDoc) {
       return NextResponse.json({ error: "Driver profile not found" }, { status: 404 });
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString();
 
     await db.collection("drivers").updateOne(
-      { userId: userId },
+      { userId, companyId: company.companyId },
       { 
         $set: { 
           status: newStatus,

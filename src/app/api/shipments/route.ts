@@ -4,7 +4,6 @@ import { generateShipmentCode, getRiskLabel } from "@/lib/utils";
 import { getDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { encryptObjectFields, decryptObjectFields } from "@/lib/encryption";
-import { emitToUser } from "@/lib/socket-server";
 import { utcNow } from "@/lib/time";
 import type { UserRecord } from "@/lib/types";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
@@ -280,12 +279,14 @@ export async function POST(req: NextRequest) {
     ...(deadline               ? { deadline }               : {}),
   };
 
+  let companyId: string | undefined;
+
   try {
     const db = await getDb();
 
     // Resolve companyId for tenant isolation
     const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
-    const companyId  = userRecord?.companyId;
+    companyId = userRecord?.companyId;
 
     // Task 5: enforce ownership fields - both required on every new shipment
     // companyId comes from the authenticated user's company, never from request body
@@ -341,14 +342,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Failed to save shipment: ${detail}` }, { status: 500 });
   }
 
-  // Emit real-time event to the user's connected clients
-  emitToUser(userId, "shipment:created", { shipment });
-  // Notify analytics listeners in the company room that KPI data changed
-  if (shipment.companyId) {
-    import("@/lib/socket-server").then(({ emitAnalyticsRefresh }) => {
-      emitAnalyticsRefresh(shipment.companyId!);
-    }).catch(() => {});
-  }
+  // Trigger Analytics Refresh
+  import("@/lib/socket-server").then(({ emitAnalyticsRefresh }) => {
+    emitAnalyticsRefresh(companyId);
+  }).catch(() => {});
 
   // Write "Shipment Created" timeline event so the timeline is never empty
   addTimelineEvent(

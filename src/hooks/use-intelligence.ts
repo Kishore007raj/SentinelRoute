@@ -133,11 +133,69 @@ export function useIntelligence(options: IntelligenceOptions = {}) {
   }, [user, shouldFetchKpis, shouldFetchAlerts, shouldFetchIncidents]);
 
   const socketHandlers = useMemo(() => ({
+    // KPI update: re-fetch for accurate aggregated numbers
     "kpi:updated": () => { if (shouldFetchKpis) void load(); },
-    "alert:updated": () => { if (shouldFetchAlerts) void load(); },
-    "incident:reported": () => { if (shouldFetchIncidents) void load(); },
-    "incident:updated": () => { if (shouldFetchIncidents) void load(); },
-  }), [load, shouldFetchKpis, shouldFetchAlerts, shouldFetchIncidents]);
+    // New alert: prepend to list from payload (no full reload)
+    "alert:new": (data: unknown) => {
+      if (shouldFetchAlerts) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const a = (data as any)?.alert ?? (data as LiveAlert);
+        if (a?.alertId) setAlerts(prev => [a, ...prev.filter(x => x.alertId !== a.alertId)]);
+      }
+    },
+    "alert:created": (data: unknown) => {
+      if (shouldFetchAlerts) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const a = (data as any)?.alert ?? (data as LiveAlert);
+        if (a?.alertId) setAlerts(prev => [a, ...prev.filter(x => x.alertId !== a.alertId)]);
+      }
+    },
+    // Alert status change: update in list
+    "alert:updated": (data: unknown) => {
+      if (shouldFetchAlerts) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const a = (data as any)?.alert ?? (data as LiveAlert);
+        if (a?.alertId) setAlerts(prev => prev.map(x => x.alertId === a.alertId ? { ...x, ...a } : x));
+      }
+    },
+    // New incident: prepend from payload
+    "incident:reported": (data: unknown) => {
+      if (shouldFetchIncidents) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const inc = (data as any)?.incident ?? (data as LiveIncident);
+        if (inc?.incidentId) setIncidents(prev => [inc, ...prev.filter(x => x.incidentId !== inc.incidentId)]);
+      }
+    },
+    "incident:created": (data: unknown) => {
+      if (shouldFetchIncidents) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const inc = (data as any)?.incident ?? (data as LiveIncident);
+        if (inc?.incidentId) setIncidents(prev => [inc, ...prev.filter(x => x.incidentId !== inc.incidentId)]);
+      }
+    },
+    // Incident updated (status change, reassignment)
+    "incident:updated": (data: unknown) => {
+      if (shouldFetchIncidents) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const inc = (data as any)?.incident ?? (data as LiveIncident);
+        if (inc?.incidentId) setIncidents(prev => prev.map(x => x.incidentId === inc.incidentId ? { ...x, ...inc } as LiveIncident : x));
+      }
+    },
+    // Escalation: severity/status bump in list
+    "incident:escalated": (data: unknown) => {
+      if (shouldFetchIncidents) {
+        const { incidentId, severity, escalationLevel } = data as { incidentId?: string; severity?: string; escalationLevel?: number };
+        if (incidentId) setIncidents(prev => prev.map(x => x.incidentId === incidentId ? { ...x, severity: (severity ?? x.severity) as LiveIncident["severity"] } : x));
+      }
+    },
+    // Resolved: remove from active list
+    "incident:resolved": (data: unknown) => {
+      if (shouldFetchIncidents) {
+        const { incidentId } = data as { incidentId?: string };
+        if (incidentId) setIncidents(prev => prev.filter(x => x.incidentId !== incidentId));
+      }
+    },
+  }), [load, shouldFetchKpis, shouldFetchAlerts, shouldFetchIncidents, setAlerts, setIncidents]);
 
   useSocket({ on: socketHandlers });
 

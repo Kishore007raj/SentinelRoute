@@ -99,7 +99,7 @@ export async function createIntelligenceAudit(
 ): Promise<void> {
   const { companyId, eventType, source, shipmentId, incidentId, userId, metadata } = input;
 
-  const auditId   = `iaudit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const auditId   = `iaudit-${crypto.randomUUID()}`;
   const timestamp = new Date().toISOString();
 
   const record: IntelligenceAuditRecord = {

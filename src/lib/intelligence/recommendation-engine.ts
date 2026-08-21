@@ -125,7 +125,7 @@ export class RecommendationEngine {
     estimatedImpact: string
   ): OperationalRecommendation {
     return {
-      recommendationId: `rec-${shipment.id}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      recommendationId: `rec-${crypto.randomUUID()}`,
       shipmentId: shipment.id,
       companyId: shipment.companyId || "system",
       type,

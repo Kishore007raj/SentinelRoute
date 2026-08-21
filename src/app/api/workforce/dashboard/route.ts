@@ -187,7 +187,7 @@ export async function GET(req: NextRequest) {
     if (isSuperAdmin) {
       db.collection("workforce_audits")
         .insertOne({
-          auditId:    `waudit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          auditId:    `waudit-${crypto.randomUUID()}`,
           companyId:  companyId || "ALL",
           eventType:  "super_admin_read",
           actorId:    userId,

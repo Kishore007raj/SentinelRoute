@@ -124,10 +124,6 @@ export async function POST(
               { id: recommendation.shipmentId, companyId: auth.companyId },
               { $set: shipmentUpdate }
             );
-            emitToCompany(auth.companyId, "shipment:updated", {
-              id: recommendation.shipmentId,
-              ...shipmentUpdate
-            });
           }
         }
         break;
@@ -180,7 +176,7 @@ export async function POST(
     else if (action === "override") timelineType = "Recommendation Overridden";
 
     const timelineEvent = {
-      eventId: `te-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      eventId: `te-${crypto.randomUUID()}`,
       shipmentId: recommendation.shipmentId,
       companyId: auth.companyId,
       timestamp: now,

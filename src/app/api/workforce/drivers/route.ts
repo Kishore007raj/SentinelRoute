@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
   }
 
   const now      = new Date().toISOString();
-  const driverId = `drv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const driverId = `drv-${crypto.randomUUID()}`;
 
   // Encrypt aadhaarNumber if provided
   const aadhaarRaw = typeof body.aadhaarNumber === "string" ? body.aadhaarNumber : "";

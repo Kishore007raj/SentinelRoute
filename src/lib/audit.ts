@@ -28,7 +28,7 @@ export interface AuditEventInput {
 export async function createAuditEvent(input: AuditEventInput): Promise<void> {
   const { db, companyId, eventType, performedBy, details, description } = input;
 
-  const auditId   = `audit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const auditId   = `audit-${crypto.randomUUID()}`;
   const timestamp = new Date().toISOString();
 
   const record: Record<string, unknown> = {

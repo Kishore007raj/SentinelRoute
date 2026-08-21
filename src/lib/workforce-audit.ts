@@ -67,7 +67,7 @@ export async function createWorkforceAuditEvent(
 ): Promise<void> {
   const { db, companyId, eventType, actorId, targetId, targetType, details } = input;
 
-  const auditId   = `waudit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const auditId   = `waudit-${crypto.randomUUID()}`;
   const timestamp = new Date().toISOString();
 
   const record: WorkforceAuditRecord = {

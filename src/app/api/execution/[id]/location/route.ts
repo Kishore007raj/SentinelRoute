@@ -6,6 +6,7 @@ import { utcNow } from "@/lib/time";
 import { addTimelineEvent } from "@/lib/timeline-service";
 import { geoapifyRoute } from "@/lib/geoapify";
 import { DriverLocation, ShipmentCheckpoint, TimelineEventType } from "@/lib/types";
+import { emitToCompany } from "@/lib/socket-server";
 
 export async function POST(
   req: NextRequest,
@@ -182,9 +183,24 @@ export async function POST(
     }
     
     await db.collection("shipment_executions").updateOne(
-      { shipmentId },
+      { shipmentId, companyId: auth.company.companyId },
       { $set: updatePayload }
     );
+
+    // Emit live location to all company subscribers immediately after DB write
+    emitToCompany(auth.company.companyId, "driver:location", {
+      shipmentId,
+      driverId: execution.driverId,
+      latitude,
+      longitude,
+      heading,
+      speed,
+      accuracy,
+      timestamp: now,
+      currentETA: updatePayload.currentETA ?? null,
+      remainingDistance: updatePayload.remainingDistance ?? null,
+      deviationDetected,
+    });
     
     if (deviationDetected) {
       await addTimelineEvent(

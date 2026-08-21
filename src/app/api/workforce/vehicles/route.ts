@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date().toISOString();
-  const vehicleId = `veh-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const vehicleId = `veh-${crypto.randomUUID()}`;
 
   const vehicle: Vehicle = {
     vehicleId,

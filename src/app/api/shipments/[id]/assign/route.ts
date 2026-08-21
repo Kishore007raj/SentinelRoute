@@ -5,6 +5,7 @@ import { addTimelineEvent } from "@/lib/timeline-service";
 import { createIntelligenceAudit } from "@/lib/intelligence-audit";
 import { utcNow } from "@/lib/time";
 import type { Driver, Vehicle } from "@/lib/types";
+import { emitToCompany } from "@/lib/socket-server";
 
 /**
  * POST /api/shipments/[id]/assign
@@ -103,19 +104,7 @@ export async function POST(
         { status: 400 }
       );
     }
-    // Check driver not already assigned to another active shipment
-    const conflictShipment = await db.collection("shipments").findOne({
-      companyId,
-      assignedDriverId: driverId,
-      status: { $in: ["active", "at-risk", "draft"] },
-      id: { $ne: shipmentId },
-    });
-    if (conflictShipment) {
-      return NextResponse.json(
-        { error: `Driver is already assigned to shipment ${String(conflictShipment.id)}` },
-        { status: 409 }
-      );
-    }
+    // (Conflict check moved inside transaction to prevent double-assignment race condition)
 
     updateFields.assignedDriverId   = driverId;
     updateFields.assignedDriverName = driverDoc.fullName;
@@ -154,19 +143,7 @@ export async function POST(
         { status: 400 }
       );
     }
-    // Check vehicle not already assigned to another active shipment
-    const conflictShipment = await db.collection("shipments").findOne({
-      companyId,
-      assignedVehicleId: vehicleId,
-      status: { $in: ["active", "at-risk", "draft"] },
-      id: { $ne: shipmentId },
-    });
-    if (conflictShipment) {
-      return NextResponse.json(
-        { error: `Vehicle is already assigned to shipment ${String(conflictShipment.id)}` },
-        { status: 409 }
-      );
-    }
+    // (Conflict check moved inside transaction to prevent double-assignment race condition)
 
     updateFields.assignedVehicleId     = vehicleId;
     updateFields.assignedVehicleNumber = vehicleDoc.vehicleNumber;
@@ -174,52 +151,85 @@ export async function POST(
   }
 
   try {
-    // ── Update shipment ───────────────────────────────────────────────────────
-    await db.collection("shipments").updateOne(
-      { id: shipmentId, companyId },
-      { $set: updateFields }
-    );
+    // ── Execute multi-document updates inside a transaction ────────────────────
+    const { withTransaction } = await import("@/lib/mongodb");
+    await withTransaction(async (transactionDb, session) => {
+      const opts = session ? { session } : {};
 
-    // ── Update vehicle status ─────────────────────────────────────────────────
-    if (vehicleDoc) {
-      await db.collection("vehicles").updateOne(
-        { vehicleId: vehicleDoc.vehicleId, companyId },
-        {
-          $set: {
-            status:          "assigned",
-            operationalStatus: "Assigned",
-            currentDriverId: driverDoc?.driverId ?? vehicleDoc.currentDriverId,
-            updatedAt:       now,
-          },
+      // P1-003 Fix: Perform conflict checks INSIDE the transaction
+      if (driverId) {
+        const driverConflict = await transactionDb.collection("shipments").findOne({
+          companyId,
+          assignedDriverId: driverId,
+          status: { $in: ["active", "at-risk", "draft"] },
+          id: { $ne: shipmentId },
+        }, opts);
+        if (driverConflict) {
+          throw new Error(`CONFLICT_DRIVER:${driverConflict.id}`);
         }
-      );
-    }
+      }
 
-    // ── Update driver's assigned vehicle ──────────────────────────────────────
-    if (driverDoc && vehicleDoc) {
-      await db.collection("drivers").updateOne(
-        { driverId: driverDoc.driverId, companyId },
-        { $set: { assignedVehicleId: vehicleDoc.vehicleId, operationalStatus: "Assigned", updatedAt: now } }
+      if (vehicleId) {
+        const vehicleConflict = await transactionDb.collection("shipments").findOne({
+          companyId,
+          assignedVehicleId: vehicleId,
+          status: { $in: ["active", "at-risk", "draft"] },
+          id: { $ne: shipmentId },
+        }, opts);
+        if (vehicleConflict) {
+          throw new Error(`CONFLICT_VEHICLE:${vehicleConflict.id}`);
+        }
+      }
+      
+      // Update shipment
+      await transactionDb.collection("shipments").updateOne(
+        { id: shipmentId, companyId },
+        { $set: updateFields },
+        opts
       );
-    }
 
-    // ── Store assignment record ───────────────────────────────────────────────
-    // Write a record whenever at least one resource is assigned (not just paired)
-    if (driverDoc || vehicleDoc) {
-      const assignment = {
-        assignmentId:  `asgn-${shipmentId}-${Date.now()}`,
-        shipmentId,
-        companyId,
-        driverId:      driverDoc?.driverId ?? null,
-        driverName:    driverDoc?.fullName ?? null,
-        vehicleId:     vehicleDoc?.vehicleId ?? null,
-        vehicleNumber: vehicleDoc?.vehicleNumber ?? null,
-        assignedBy:    userId,
-        assignedAt:    now,
-        active:        true,
-      };
-      await db.collection("shipment_assignments").insertOne(assignment);
-    }
+      // Update vehicle status
+      if (vehicleDoc) {
+        await transactionDb.collection("vehicles").updateOne(
+          { vehicleId: vehicleDoc.vehicleId, companyId },
+          {
+            $set: {
+              status:            "assigned",
+              operationalStatus: "Assigned",
+              currentDriverId:   driverDoc?.driverId ?? vehicleDoc.currentDriverId,
+              updatedAt:         now,
+            },
+          },
+          opts
+        );
+      }
+
+      // Update driver's assigned vehicle
+      if (driverDoc && vehicleDoc) {
+        await transactionDb.collection("drivers").updateOne(
+          { driverId: driverDoc.driverId, companyId },
+          { $set: { assignedVehicleId: vehicleDoc.vehicleId, operationalStatus: "Assigned", updatedAt: now } },
+          opts
+        );
+      }
+
+      // Store assignment record
+      if (driverDoc || vehicleDoc) {
+        const assignment = {
+          assignmentId:  `asgn-${shipmentId}-${Date.now()}`,
+          shipmentId,
+          companyId,
+          driverId:      driverDoc?.driverId ?? null,
+          driverName:    driverDoc?.fullName ?? null,
+          vehicleId:     vehicleDoc?.vehicleId ?? null,
+          vehicleNumber: vehicleDoc?.vehicleNumber ?? null,
+          assignedBy:    userId,
+          assignedAt:    now,
+          active:        true,
+        };
+        await transactionDb.collection("shipment_assignments").insertOne(assignment, opts);
+      }
+    });
 
     // ── Timeline & audit (fire-and-forget) ───────────────────────────────────
     if (timelineLines.length > 0) {
@@ -251,8 +261,36 @@ export async function POST(
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { _id, userId: _uid, ...shipment } = updatedDoc;
+
+    // We do NOT manually emit "shipment:assigned" anymore.
+    // The MongoDB change stream automatically detects the update to the "shipments" collection
+    // and emits "shipment:updated" to all subscribed clients with the full document snapshot.
+    // Also update driver availability state for dispatcher views
+    if (driverDoc) {
+      emitToCompany(companyId, "driver:availability", {
+        driverId: driverDoc.driverId,
+        operationalStatus: "Assigned",
+      });
+    }
+
     return NextResponse.json({ shipment });
   } catch (err) {
+    if (err instanceof Error) {
+      if (err.message.startsWith("CONFLICT_DRIVER:")) {
+        const conflictId = err.message.split(":")[1];
+        return NextResponse.json(
+          { error: `Driver is already assigned to shipment ${conflictId}` },
+          { status: 409 }
+        );
+      }
+      if (err.message.startsWith("CONFLICT_VEHICLE:")) {
+        const conflictId = err.message.split(":")[1];
+        return NextResponse.json(
+          { error: `Vehicle is already assigned to shipment ${conflictId}` },
+          { status: 409 }
+        );
+      }
+    }
     console.error("[POST /api/shipments/[id]/assign] DB error:", err);
     return NextResponse.json({ error: "Failed to assign resources" }, { status: 500 });
   }

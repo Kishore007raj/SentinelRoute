@@ -80,8 +80,8 @@ export function formatNumber(n: number): string {
   return n.toLocaleString();
 }
 
-/** Generates a random shipment code like SR-2026-0412 */
+/** Generates a unique shipment code like SR-2026-A1B2 */
 export function generateShipmentCode(): string {
-  const num = Math.floor(Math.random() * 900) + 100
-  return `SR-2026-0${num}`
+  const hex = crypto.randomUUID().replace(/-/g, "").substring(0, 4).toUpperCase();
+  return `SR-${new Date().getFullYear()}-${hex}`;
 }

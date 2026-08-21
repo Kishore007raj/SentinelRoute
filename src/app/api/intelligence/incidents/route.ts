@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
 
     const now       = new Date().toISOString();
     const incident: Incident = {
-      incidentId:         `inc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      incidentId:         `inc-${crypto.randomUUID()}`,
       companyId,
       title:              title.slice(0, 150),
       description:        (description ?? "").slice(0, 300),

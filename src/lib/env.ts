@@ -137,6 +137,15 @@ export const TRAFFIC_API_KEY = lazyEnv("TRAFFIC_API_KEY");
  */
 export const TOMTOM_API_KEY = TRAFFIC_API_KEY;
 
+// ─── Internal API ─────────────────────────────────────────────────────────────
+
+/**
+ * INTERNAL_SOCKET_SECRET - Used to authenticate internal requests from API 
+ * routes to the Socket.io server.
+ * Call INTERNAL_SOCKET_SECRET() inside a request handler.
+ */
+export const INTERNAL_SOCKET_SECRET = lazyEnv("INTERNAL_SOCKET_SECRET");
+
 // ─── Data encryption ──────────────────────────────────────────────────────────
 
 /**
@@ -215,6 +224,7 @@ export function validateStartup(): void {
     "TRAFFIC_API_KEY",
     "DATA_ENCRYPTION_KEY",
     "AADHAAR_ENCRYPTION_KEY",
+    "INTERNAL_SOCKET_SECRET",
   ];
 
   const missing: string[] = [];
@@ -265,6 +275,7 @@ export function logEnvStatus(): void {
     "TRAFFIC_API_KEY",
     "DATA_ENCRYPTION_KEY",
     "AADHAAR_ENCRYPTION_KEY",
+    "INTERNAL_SOCKET_SECRET",
     // Firebase Admin
     "FIREBASE_PROJECT_ID",
     "FIREBASE_CLIENT_EMAIL",

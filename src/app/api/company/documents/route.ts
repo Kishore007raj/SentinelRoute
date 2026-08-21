@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
     }
 
     const now = new Date().toISOString();
-    const documentId = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const documentId = `doc-${crypto.randomUUID()}`;
 
     // Upsert by (companyId + type)
     await db.collection("company_documents").updateOne(

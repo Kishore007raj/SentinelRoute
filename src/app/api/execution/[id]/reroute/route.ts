@@ -30,23 +30,11 @@ export async function POST(
       return NextResponse.json({ error: "Execution not found" }, { status: 404 });
     }
 
-    const defaultRoute: Route = {
-      id: `route-${Date.now()}`,
-      label: "safest",
-      name: "Safe Alternate Route",
-      eta: shipment.eta || "N/A",
-      etaMinutes: 120,
-      distance: shipment.distance || "N/A",
-      distanceKm: 0,
-      riskScore: 20,
-      riskLevel: "low",
-      recommended: true,
-      summary: "System-generated alternate route to bypass current risks.",
-      riskBreakdown: { traffic: 20, weather: 10, disruption: 5, cargoSensitivity: shipment.riskBreakdown?.cargoSensitivity || 50 },
-      alerts: []
-    };
+    if (!newRoute) {
+      return NextResponse.json({ error: "Missing newRoute parameter. Route cannot be synthesized." }, { status: 400 });
+    }
 
-    const finalRoute = newRoute || defaultRoute;
+    const finalRoute = newRoute;
 
     // Update execution planned route
     await db.collection("shipment_executions").updateOne(

@@ -109,7 +109,7 @@ export async function POST(
     }
 
     const message: ShipmentMessage = {
-      messageId:   `msg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      messageId:   `msg-${crypto.randomUUID()}`,
       channelId,
       shipmentId: id,
       companyId,

@@ -77,56 +77,36 @@ export async function POST(req: NextRequest) {
     if (dSugg[0]?.lat && dSugg[0]?.lng) { dLat = dSugg[0].lat; dLng = dSugg[0].lng; }
   }
 
-  // ── Step 1: Geoapify routing ─────────────────────────────────────────────────
-  let geoapifyRoutes: Array<{ label: "fastest" | "balanced" | "safest", distanceKm: number, durationMinutes: number, geometry: [number, number][] }> = [];
+  // ── Step 1: OSRM Real Routing ─────────────────────────────────────────────────
+  let osrmRoutes: Array<{ label: "fastest" | "balanced" | "safest", distanceKm: number, durationMinutes: number, geometry: [number, number][] }> = [];
   
   if (oLat && oLng && dLat && dLng) {
-    const rawRoutes = await geoapifyRoute(oLng, oLat, dLng, dLat);
-    const labels: ("fastest" | "balanced" | "safest")[] = ["fastest", "balanced", "safest"];
-    // Sort by duration so fastest is first
-    rawRoutes.sort((a, b) => a.durationMinutes - b.durationMinutes);
-    geoapifyRoutes = rawRoutes.slice(0, 3).map((r, i) => ({
-      label: labels[i] || "balanced",
-      distanceKm: r.distanceKm,
-      durationMinutes: r.durationMinutes,
-      geometry: r.geometry,
-    }));
+    try {
+      const osrmRes = await fetch(`http://router.project-osrm.org/route/v1/driving/${oLng},${oLat};${dLng},${dLat}?alternatives=true&geometries=geojson&overview=full`);
+      if (osrmRes.ok) {
+        const osrmData = await osrmRes.json();
+        if (osrmData.routes && osrmData.routes.length > 0) {
+          const labels: ("fastest" | "balanced" | "safest")[] = ["fastest", "balanced", "safest"];
+          
+          osrmRoutes = osrmData.routes.slice(0, 3).map((r: any, i: number) => ({
+            label: labels[i] || "balanced",
+            distanceKm: Math.round(r.distance / 1000), // OSRM distance is in meters
+            durationMinutes: Math.round(r.duration / 60), // OSRM duration is in seconds
+            geometry: r.geometry.coordinates, // GeoJSON uses [lng, lat] arrays
+          }));
+        }
+      }
+    } catch (e) {
+      console.error("[analyze-routes] OSRM routing failed", e);
+    }
   }
 
-  if (geoapifyRoutes.length === 0) {
-    if (oLat && oLng && dLat && dLng) {
-      console.warn(`[analyze-routes] Geoapify routing failed for ${origin}→${destination} - using synthetic fallback`);
-      // Fallback: use haversine distance * 1.3 routing factor
-      const R = 6371; // km
-      const dLatRad = (dLat - oLat) * Math.PI / 180;
-      const dLngRad = (dLng - oLng) * Math.PI / 180;
-      const a = Math.sin(dLatRad/2) * Math.sin(dLatRad/2) +
-                Math.cos(oLat * Math.PI / 180) * Math.cos(dLat * Math.PI / 180) *
-                Math.sin(dLngRad/2) * Math.sin(dLngRad/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const dist = Math.round(R * c * 1.3);
-      const dur = Math.round((dist / 40) * 60);
-
-      geoapifyRoutes = [
-        { label: "fastest", distanceKm: dist, durationMinutes: dur, geometry: [[oLng, oLat], [dLng, dLat]] },
-        { label: "balanced", distanceKm: Math.round(dist * 1.05), durationMinutes: Math.round(dur * 1.1), geometry: [[oLng, oLat], [dLng, dLat]] },
-        { label: "safest", distanceKm: Math.round(dist * 1.1), durationMinutes: Math.round(dur * 1.2), geometry: [[oLng, oLat], [dLng, dLat]] }
-      ];
-    } else {
-      return NextResponse.json({ error: "Routing unavailable and geocoding failed" }, { status: 503 });
-    }
-  } else if (geoapifyRoutes.length < 3) {
-    const base = geoapifyRoutes[0];
-    if (!geoapifyRoutes.find(r => r.label === "balanced")) {
-      geoapifyRoutes.push({ label: "balanced", distanceKm: Math.round(base.distanceKm * 1.05), durationMinutes: Math.round(base.durationMinutes * 1.1), geometry: base.geometry });
-    }
-    if (!geoapifyRoutes.find(r => r.label === "safest")) {
-      geoapifyRoutes.push({ label: "safest", distanceKm: Math.round(base.distanceKm * 1.1), durationMinutes: Math.round(base.durationMinutes * 1.2), geometry: base.geometry });
-    }
+  if (osrmRoutes.length === 0) {
+    return NextResponse.json({ error: "Routing unavailable. Please try again later." }, { status: 503 });
   }
 
   // ── Step 2: Weather + TomTom Traffic + Intel (parallel) ───────────────────
-  const fastestRoute  = geoapifyRoutes[0];
+  const fastestRoute  = osrmRoutes[0];
   const fastestCoords = fastestRoute.geometry;
 
   const tomtom = new TomTomTrafficProvider();
@@ -160,14 +140,14 @@ export async function POST(req: NextRequest) {
   const disruptionBaseScore = Math.min(100, festivalRisk.congestionScore + newsRisk.disruptionBonus);
 
   // ── Step 3 & 4: Risk scoring + Route construction ─────────────────────────
-  const scoredRoutes = geoapifyRoutes.map((gRoute) => {
+  const scoredRoutes = osrmRoutes.map((gRoute) => {
     // Traffic score: use TomTom flow data when available.
     let trafficScore: number;
     if (tomtomTraffic.isLive && tomtomTraffic.trafficScore >= 0) {
       trafficScore = tomtomTraffic.trafficScore;
       if (tomtomTraffic.hasRoadClosure) trafficScore = Math.min(100, trafficScore + 25);
     } else {
-      // Fallback: estimate from Geoapify average speed
+      // Fallback: estimate from OSRM average speed
       const avgSpeedKmh = gRoute.distanceKm / (gRoute.durationMinutes / 60);
       trafficScore =
         avgSpeedKmh < 30 ? 75 :
@@ -182,7 +162,7 @@ export async function POST(req: NextRequest) {
       warnings:          [],
       distanceKm:        gRoute.distanceKm,
       etaMinutes:        gRoute.durationMinutes,
-      staticEtaMinutes:  gRoute.durationMinutes, // Geoapify may or may not include traffic based on options
+      staticEtaMinutes:  gRoute.durationMinutes, // OSRM baseline (traffic applied separately via TomTom)
       cargoType,
       urgency,
       vehicleType:       vehicleType ?? "Container Truck",
@@ -192,9 +172,9 @@ export async function POST(req: NextRequest) {
       ...riskResult.riskBreakdown,
       festival: festivalRisk.congestionScore,
       news: newsRisk.disruptionBonus,
-      historical: Math.floor(Math.random() * 20), // Simulated historical risk
-      road: Math.floor(Math.random() * 30), // Simulated road condition risk
-      operational: Math.floor(Math.random() * 15), // Simulated operational risk
+      historical: 0, // No historical DB aggregation available; zero is honest
+      road: 0,        // No road condition DB data; zero is honest
+      operational: 0, // No operational DB data; zero is honest
     };
 
     // Add intelligence disruptions
@@ -255,7 +235,7 @@ export async function POST(req: NextRequest) {
       const carbonEstimate = Math.round(fuelEstimate * 2.68); // 2.68kg CO2 per liter
       const predictionConfidence = Math.max(40, 95 - (riskResult.riskScore / 2));
       const historicalReliability = Math.max(50, 98 - (riskResult.riskScore / 3));
-      const historicalShipments = Math.floor(Math.random() * 500) + 50;
+      const historicalShipments = 0; // Requires DB aggregation — not available without real historical data
       
       const aiExplanation = buildAiReasoning(
         gRoute.label,

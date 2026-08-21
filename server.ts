@@ -8,6 +8,8 @@ import { validateStartup, logEnvStatus } from "./src/lib/env";
 import { getAdminAuth } from "./src/lib/firebase-admin";
 import { getDb } from "./src/lib/mongodb";
 import { logger } from "./src/lib/logger";
+import { createAdapter } from "@socket.io/redis-adapter";
+import Redis from "ioredis";
 
 // ── Startup validation -fail fast if critical env vars are missing ──────────
 validateStartup();
@@ -71,6 +73,16 @@ app.prepare().then(() => {
     // Prefer WebSocket, fall back to polling (works behind proxies/Vercel)
     transports: ["websocket", "polling"],
   });
+
+  // P1-006 Fix: Redis Socket.io Adapter for horizontal scaling
+  if (process.env.REDIS_URI) {
+    const pubClient = new Redis(process.env.REDIS_URI);
+    const subClient = pubClient.duplicate();
+    io.adapter(createAdapter(pubClient, subClient));
+    logger.info("server.redis_adapter", { message: "Redis adapter attached to Socket.io" });
+  } else {
+    logger.warn("server.redis_adapter_missing", { message: "REDIS_URI missing. Using in-memory adapter (No horizontal scaling support)" });
+  }
 
   // Attach io to global so API routes can emit events
   (global as Record<string, unknown>).__socketio = io;
@@ -274,6 +286,13 @@ app.prepare().then(() => {
         presence.delete(socket.id);
       }
     });
+  });
+
+  // Attach Change Streams for automatic MongoDB reactivity
+  import("./src/lib/change-streams").then(({ setupChangeStreams }) => {
+    setupChangeStreams(io);
+  }).catch(err => {
+    console.error("[server] Failed to dynamically load change-streams:", err);
   });
 
   httpServer.listen(port, () => {

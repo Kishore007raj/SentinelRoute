@@ -82,12 +82,10 @@ function extractCoords(text: string): { lat: number; lng: number; city: string; 
   const lower = text.toLowerCase();
   for (const region of REGION_COORDS) {
     if (region.keywords.some((kw) => lower.includes(kw))) {
-      const jitter = () => (Math.random() - 0.5) * 0.30;
-      return { lat: region.lat + jitter(), lng: region.lng + jitter(), city: region.city, state: region.state };
+      return { lat: region.lat, lng: region.lng, city: region.city, state: region.state };
     }
   }
-  const jitter = () => (Math.random() - 0.5) * 8.0;
-  return { lat: 20.5937 + jitter(), lng: 78.9629 + jitter(), city: "Unknown", state: "Multiple Regions" };
+  return { lat: 20.5937, lng: 78.9629, city: "Unknown", state: "Multiple Regions" };
 }
 
 // ─── Keyword → category + severity mapping ────────────────────────────────────
@@ -216,30 +214,6 @@ export interface NewsRiskContribution {
   normalizedIncidents: Incident[];
 }
 
-const MOCK_NEWS_ARTICLES: NewsAPIArticle[] = [
-  {
-    title:       "Truck strike blockades Chennai-Bengaluru highway NH-48, severe cargo delay expected",
-    description: "All India Motor Transport Congress calls strike. Hundreds of trucks blocked on highway NH-48 near Chennai. Traffic disruption is critical.",
-    url:         "https://timesofindia.indiatimes.com/india/truck-strike-nh48-chennai",
-    publishedAt: new Date().toISOString(),
-    source:      { name: "Times of India" },
-  },
-  {
-    title:       "Landslide on Mumbai-Pune Expressway near Lonavala halts logistics flow",
-    description: "Heavy rainfall triggers landslide near Lonavala on the Mumbai-Pune Expressway. Authorities close two lanes near Pune.",
-    url:         "https://indianexpress.com/article/cities/mumbai/landslide-expressway-lonavala",
-    publishedAt: new Date().toISOString(),
-    source:      { name: "Indian Express" },
-  },
-  {
-    title:       "Protest near Delhi-NCR Gurgaon causes major transport disruption",
-    description: "Political rally blockades regional highways near Delhi NCR. Traffic police issues warnings for heavy container vehicles on NH-48.",
-    url:         "https://www.thehindu.com/news/national/protest-delhi-ncr-transport",
-    publishedAt: new Date().toISOString(),
-    source:      { name: "The Hindu" },
-  },
-];
-
 export async function getNewsRiskContribution(
   companyId:   string,
   shipmentId?: string
@@ -256,8 +230,8 @@ export async function getNewsRiskContribution(
   let articles: NewsAPIArticle[] = [];
 
   if (!apiKey) {
-    console.warn("[news-intelligence] NEWS_API_KEY not set - using deterministic mock news");
-    articles = MOCK_NEWS_ARTICLES;
+    console.warn("[news-intelligence] NEWS_API_KEY not set - returning empty");
+    return EMPTY;
   } else {
     try {
       const url =
@@ -284,12 +258,13 @@ export async function getNewsRiskContribution(
         }
       }
     } catch (err) {
-      console.error("[news-intelligence] NewsAPI fetch failed, using mock news:", err);
+      console.error("[news-intelligence] NewsAPI fetch failed, returning empty:", err);
+      return EMPTY;
     }
 
     if (articles.length === 0) {
-      console.warn("[news-intelligence] No articles returned - using mock news");
-      articles = MOCK_NEWS_ARTICLES;
+      console.warn("[news-intelligence] No articles returned");
+      return EMPTY;
     }
   }
 

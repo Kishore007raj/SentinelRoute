@@ -419,25 +419,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const { shipment } = data as { shipment: Shipment };
       if (shipment) dispatch({ type: "ADD_SHIPMENT", payload: shipment });
     },
-    // A shipment's status changed (e.g. completed from another tab)
-    "shipment:status": (data: unknown) => {
-      const { id, status, lastUpdate } = data as {
-        id: string; status: ShipmentStatus; lastUpdate: string;
-      };
-      if (id && status) {
-        dispatch({ type: "UPDATE_STATUS", payload: { id, status, lastUpdate: lastUpdate ?? utcNow() } });
-      }
-    },
-    // Full shipment object updated
+    // Full shipment object updated (from change streams)
     "shipment:updated": (data: unknown) => {
       const { shipment } = data as { shipment: Shipment };
       if (shipment) {
-        dispatch({ type: "UPDATE_STATUS", payload: {
-          id:         shipment.id,
-          status:     shipment.status,
-          lastUpdate: shipment.lastUpdate,
-        }});
+        dispatch({ type: "ADD_SHIPMENT", payload: shipment });
       }
+    },
+
+    // Driver availability changed — propagate to feed refresh
+    "driver:availability": () => {
+      void fetchOperationalData();
     },
     // Module 7 & 8: presence
     "presence:updated": (data: unknown) => {
@@ -591,8 +583,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const completeShipment = useCallback((id: string) => {
-    const now = utcNow();
-    dispatch({ type: "UPDATE_STATUS", payload: { id, status: "completed", lastUpdate: now } });
     if (!user) return;
     fetchWithAuth(
       `/api/shipments/${id}`,

@@ -6,22 +6,45 @@ export async function GET(req: NextRequest) {
   try {
     const { userId: driverId, company } = await requireCompany(req);
     const companyId = company.companyId;
-
     const db = await getDb();
     
-    // Total completed
-    const completedExecutions = await db.collection("shipment_executions").find({
-      driverId,
-      companyId,
-      status: "completed"
-    }).toArray();
+    // Aggregation pipeline to strictly calculate real metrics
+    const pipeline = [
+      { $match: { driverId, companyId, status: "completed" } },
+      {
+        $lookup: {
+          from: "shipments",
+          localField: "shipmentId",
+          foreignField: "shipmentId",
+          as: "shipmentDoc"
+        }
+      },
+      { $unwind: { path: "$shipmentDoc", preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: null,
+          totalCompleted: { $sum: 1 },
+          totalOnTime: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$tripEndTime", null] },
+                    { $ne: ["$shipmentDoc.plannedArrival", null] },
+                    { $lte: ["$tripEndTime", "$shipmentDoc.plannedArrival"] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      }
+    ];
 
-    const totalCompleted = completedExecutions.length;
-    
-    // Assuming on-time means currentETA was before or equal to original ETA, but we don't have historical ETA easily.
-    // For now we'll do a simple mock/estimation for on-time based on risk score or just a random mock since it's analytics.
-    // Wait, let's actually just say 90% are on time if there's no complex historical data.
-    const totalOnTime = Math.floor(totalCompleted * 0.9);
+    const aggResult = await db.collection("shipment_executions").aggregate(pipeline).toArray();
+    const stats = aggResult[0] || { totalCompleted: 0, totalOnTime: 0 };
 
     const incidentsCount = await db.collection("incidents").countDocuments({
       "details.driverId": driverId,
@@ -36,8 +59,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       analytics: {
-        totalCompleted,
-        totalOnTime,
+        totalCompleted: stats.totalCompleted,
+        totalOnTime: stats.totalOnTime,
         incidentsCount,
         hasActive: !!activeExecution
       }
