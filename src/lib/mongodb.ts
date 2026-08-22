@@ -22,6 +22,7 @@ const dbName = "sentinelroute";
 
 declare global {
   var _mongoClientPromise: Promise<MongoClient> | undefined;
+  var _mongoIndexesEnsured: boolean | undefined;
 }
 
 function createClientPromise(): Promise<MongoClient> {
@@ -35,7 +36,17 @@ function createClientPromise(): Promise<MongoClient> {
       "Add it to .env.local (dev) or your deployment environment (prod) and restart."
     );
   }
-  const client = new MongoClient(uri);
+  
+  // Configure connection pooling and timeouts for better concurrency
+  // maxPoolSize: set to 50 for optimal concurrency without connection pool exhaustion on Atlas
+  // serverSelectionTimeoutMS: fail fast if MongoDB Atlas is unreachable (10s)
+  // socketTimeoutMS: connection timeout for individual operations (15s)
+  const uriWithOptions = uri.includes("?") 
+    ? `${uri}&maxPoolSize=50&serverSelectionTimeoutMS=10000&socketTimeoutMS=15000`
+    : `${uri}?maxPoolSize=50&serverSelectionTimeoutMS=10000&socketTimeoutMS=15000`;
+  
+  console.log("[mongodb] Creating client with options: maxPoolSize=50, serverSelectionTimeoutMS=10s, socketTimeoutMS=15s");
+  const client = new MongoClient(uriWithOptions);
   return client.connect();
 }
 
@@ -60,15 +71,36 @@ function getClientPromise(): Promise<MongoClient> {
 }
 
 /**
- * Returns the sentinelroute Db instance.
+ * Returns the sentinelroute Db instance with bounded connection timeout.
  * Reuses the cached MongoClient - never opens a second connection.
- * Triggers index creation on first call (idempotent, fire-and-forget).
+ * Triggers index creation on first call (idempotent, fire-and-forget, once per process).
+ * 
+ * @param timeoutMs - Maximum time to wait for MongoDB connection (default: 10s)
+ * @throws Error if connection times out or MongoDB is unavailable
  */
-export async function getDb(): Promise<Db> {
-  const client = await getClientPromise();
+export async function getDb(timeoutMs = 10_000): Promise<Db> {
+  const connectStart = Date.now();
+  const connectPromise = getClientPromise();
+  
+  // Race between connection and timeout
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("[mongodb] Connection timeout")), timeoutMs)
+  );
+
+  const client = await Promise.race([connectPromise, timeoutPromise]);
+  const connectTime = Date.now() - connectStart;
+  if (connectTime > 100) {
+    console.log(`[mongodb] getClientPromise took ${connectTime}ms (possible pool exhaustion or contention)`);
+  }
+
   const db = client.db(dbName);
-  ensureIndexes(db).catch(() => {/* already logged inside ensureIndexes */});
-  ensureWorkforceIndexes(db).catch(() => {/* already logged inside ensureWorkforceIndexes */});
+
+  if (!global._mongoIndexesEnsured) {
+    global._mongoIndexesEnsured = true;
+    ensureIndexes(db).catch(() => {/* logged inside ensureIndexes */});
+    ensureWorkforceIndexes(db).catch(() => {/* logged inside ensureWorkforceIndexes */});
+  }
+
   return db;
 }
 

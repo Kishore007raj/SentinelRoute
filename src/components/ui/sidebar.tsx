@@ -184,9 +184,10 @@ function Sidebar({
       <div
         data-slot="sidebar"
         className={cn(
-          "flex h-full w-(--sidebar-width) flex-col bg-sidebar text-sidebar-foreground",
+          "flex h-full flex-col bg-sidebar text-sidebar-foreground",
           className,
         )}
+        style={{ width: "var(--sidebar-width)" }}
         {...props}
       >
         {children}
@@ -202,10 +203,11 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+          className="bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+              width: SIDEBAR_WIDTH_MOBILE,
             } as React.CSSProperties
           }
           side={side}
@@ -233,25 +235,27 @@ function Sidebar({
       <div
         data-slot="sidebar-gap"
         className={cn(
-          "relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
-          "group-data-[collapsible=offcanvas]:w-0",
+          "relative bg-transparent transition-[width] duration-200 ease-linear",
           "group-data-[side=right]:rotate-180",
-          variant === "floating" || variant === "inset"
-            ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)",
         )}
+        style={{
+          width: state === "collapsed" ? "var(--sidebar-width-icon)" : "var(--sidebar-width)",
+        }}
       />
       <div
         data-slot="sidebar-container"
         data-side={side}
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:-left-(--sidebar-width) data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:-right-(--sidebar-width) md:flex",
-          // Adjust the padding for floating and inset variants.
-          variant === "floating" || variant === "inset"
-            ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
+          "fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex",
+          side === "left" && "left-0",
+          side === "right" && "right-0",
+          variant === "floating" || variant === "inset" ? "p-2 group-data-[side=left]:border-r group-data-[side=right]:border-l" : "group-data-[side=left]:border-r group-data-[side=right]:border-l",
           className,
         )}
+        style={{
+          width: state === "collapsed" ? "var(--sidebar-width-icon)" : "var(--sidebar-width)",
+          [side === "left" ? "left" : "right"]: state === "collapsed" ? "auto" : "0",
+        }}
         {...props}
       >
         <div
@@ -322,7 +326,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
     <main
       data-slot="sidebar-inset"
       className={cn(
-        "relative flex w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
+        "relative flex min-w-0 w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
         className,
       )}
       {...props}
@@ -386,7 +390,7 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="sidebar-content"
       data-sidebar="content"
       className={cn(
-        "no-scrollbar flex min-h-0 flex-1 flex-col gap-0 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        "no-scrollbar flex min-h-0 flex-1 flex-col gap-0 overflow-auto group-data-[collapsible=icon]:overflow-auto",
         className,
       )}
       {...props}
@@ -483,7 +487,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
     <li
       data-slot="sidebar-menu-item"
       data-sidebar="menu-item"
-      className={cn("group/menu-item relative", className)}
+      className={cn("group/menu-item relative group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center", className)}
       {...props}
     />
   );

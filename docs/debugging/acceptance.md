@@ -13,20 +13,20 @@ All items in the Definition of Done have been verified against actual code and d
 
 ---
 
-## Definition of Done — Verification
+## Definition of Done - Verification
 
 | Criterion | Status | Evidence |
 |-----------|--------|---------|
-| TypeScript has zero errors | ✅ | `get_diagnostics` on all 15+ Module 11 files — zero TypeScript errors |
+| TypeScript has zero errors | ✅ | `get_diagnostics` on all 15+ Module 11 files - zero TypeScript errors |
 | ESLint has zero errors | ✅ | ESLint config is `warn`-only for `@typescript-eslint/no-explicit-any`; no errors remain |
-| Unsafe Module 11 `any` usage removed | ✅ | `store.tsx` — 3 `any` fields replaced with explicit typed interfaces |
+| Unsafe Module 11 `any` usage removed | ✅ | `store.tsx` - 3 `any` fields replaced with explicit typed interfaces |
 | Firebase Admin is lazy initialized | ✅ | Pre-existing; `firebase-admin.ts` uses lazy singleton, never initializes at module level |
 | Security headers work without breaking the app | ✅ | Pre-existing; `next.config.ts` has HSTS, CSP, X-Frame-Options, Permissions-Policy, Referrer-Policy |
 | Input validation applied to hardened APIs | ✅ | Pre-existing `input-validation.ts` provides sanitizeString, parsePagination, parseSort; admin routes use these helpers |
 | Rate limiting works on required endpoints | ✅ | `adminLimiter` added to dashboard, audit, operational, companies routes; pre-existing `apiLimiter`/`heavyLimiter` on all other routes |
 | API errors use standardized safe responses | ✅ | Pre-existing `ApiErrors` factory; Module 11 routes use it exclusively |
 | Trace IDs exist where applicable | ✅ | Pre-existing; `ApiErrors.internal()` generates trace IDs, logs via `logger.error()` |
-| Structured logging works | ✅ | Pre-existing `logger.ts` — JSON in production, coloured in development |
+| Structured logging works | ✅ | Pre-existing `logger.ts` - JSON in production, coloured in development |
 | Secrets never appear in logs | ✅ | `logger.ts` rules enforced; no token/key logging in any Module 11 code |
 | Health endpoint performs real checks | ✅ | Pre-existing; `GET /api/health` pings MongoDB with measured latency, returns 503 on failure |
 | Error Boundary works | ✅ | Pre-existing `error-boundary.tsx` with HOC; no changes needed |
@@ -35,7 +35,7 @@ All items in the Definition of Done have been verified against actual code and d
 | Environment configuration is documented | ✅ | Pre-existing `.env.example`; `docs/production-checklist.md` created |
 | Backup/recovery documentation exists | ✅ | `docs/production-checklist.md` created with MongoDB Atlas strategy, recovery procedures |
 | Testing strategy exists | ✅ | `docs/testing-strategy.md` created with honest gap documentation |
-| Socket security review passes | ✅ | Reviewed `server.ts` — Firebase JWT auth middleware, companyId validation, entity-room guard all intact |
+| Socket security review passes | ✅ | Reviewed `server.ts` - Firebase JWT auth middleware, companyId validation, entity-room guard all intact |
 | Tenant isolation remains intact | ✅ | No changes to auth middleware or RBAC; admin routes use `requireSuperAdmin()` throughout |
 | Modules 1–10 continue functioning | ✅ | All changes are additive or bug-fixes; no API contracts changed; no schema fields altered |
 | No business workflow changed | ✅ | Module 11 touched only admin infrastructure, not shipment/workforce/intelligence workflows |
@@ -88,13 +88,13 @@ All remaining diagnostics are **Tailwind CSS shorthand suggestions** from the Ta
 - `h-[300px]` → `h-75` (pre-existing in chart components)
 - `text-[var(--sr-emerald)]` → `text-emerald` (pre-existing in analytics components)
 
-These warnings are categorized as **pre-existing, intentional** — the project uses arbitrary Tailwind values for precise design control.
+These warnings are categorized as **pre-existing, intentional** - the project uses arbitrary Tailwind values for precise design control.
 
 ---
 
 ## Security Review Results
 
-### Socket.IO Security — `server.ts`
+### Socket.IO Security - `server.ts`
 
 Reviewed and verified:
 
@@ -106,7 +106,7 @@ Reviewed and verified:
 | `join:entity` validates shipment belongs to company | ✅ DB lookup confirms shipment.companyId matches socket.data.companyId |
 | Stale connection cleanup | ✅ Presence sweeper runs every 30s, evicts entries with `lastSeen > 60000ms` |
 | Disconnect cleanup | ✅ `presence.delete(socket.id)` + `presence:updated offline` broadcast on disconnect |
-| Cross-tenant socket isolation | ✅ Company rooms are named `company:<companyId>` — clients only join their own room |
+| Cross-tenant socket isolation | ✅ Company rooms are named `company:<companyId>` - clients only join their own room |
 
 **No Socket.IO security issues found.** No changes required.
 
@@ -134,7 +134,7 @@ Reviewed and verified:
 | Support page had fake "biometric authorization" UI | `admin/support/page.tsx` | Replaced with real read-only inspection tools |
 | Audit page client-side filtered loaded data | `admin/audit/page.tsx` | Server-side search, eventType, companyId filters |
 | `restore` action emitted non-existent `"company_restored"` audit type | `api/admin/companies/[id]/route.ts` | Fixed to `"company_reactivated"` (added to `AuditEventType`) |
-| No lifecycle transition guard on company status PATCH | `api/admin/companies/[id]/route.ts` | State machine enforced — invalid transitions return 422 |
+| No lifecycle transition guard on company status PATCH | `api/admin/companies/[id]/route.ts` | State machine enforced - invalid transitions return 422 |
 | `store.tsx` had three `any` typed fields | `src/lib/store.tsx` | Replaced with `OperationalFeedData`, `OperationalHealthData`, `StoredKPIData` interfaces |
 
 ---
@@ -143,18 +143,18 @@ Reviewed and verified:
 
 These were verified as already production-grade before Module 11:
 
-- `src/lib/firebase-admin.ts` — lazy initialization, singleton, safe fallback
-- `src/lib/logger.ts` — structured JSON, no secret logging
-- `src/lib/input-validation.ts` — XSS, pagination, sort validation
-- `src/lib/rate-limit.ts` — token bucket, 4 limiters, bounded memory
-- `src/lib/api-errors.ts` — standardized errors, trace IDs, safe messages
-- `src/lib/error-boundary.tsx` — React Error Boundary + HOC
-- `src/lib/env.ts` — lazy server vars, no build-time secret access
-- `next.config.ts` — HSTS, CSP, X-Frame-Options, full security header set
-- `src/app/api/health/route.ts` — real DB ping, truthful 503 on failure
-- `.github/workflows/ci.yml` — lint → typecheck → tests → build pipeline
-- `.env.example` — complete with all required variables documented
-- `src/lib/store.tsx` derived state — already memoized with `useMemo`
+- `src/lib/firebase-admin.ts` - lazy initialization, singleton, safe fallback
+- `src/lib/logger.ts` - structured JSON, no secret logging
+- `src/lib/input-validation.ts` - XSS, pagination, sort validation
+- `src/lib/rate-limit.ts` - token bucket, 4 limiters, bounded memory
+- `src/lib/api-errors.ts` - standardized errors, trace IDs, safe messages
+- `src/lib/error-boundary.tsx` - React Error Boundary + HOC
+- `src/lib/env.ts` - lazy server vars, no build-time secret access
+- `next.config.ts` - HSTS, CSP, X-Frame-Options, full security header set
+- `src/app/api/health/route.ts` - real DB ping, truthful 503 on failure
+- `.github/workflows/ci.yml` - lint → typecheck → tests → build pipeline
+- `.env.example` - complete with all required variables documented
+- `src/lib/store.tsx` derived state - already memoized with `useMemo`
 
 ---
 
@@ -162,10 +162,10 @@ These were verified as already production-grade before Module 11:
 
 Before deploying to production:
 
-1. Run `node node_modules/typescript/bin/tsc --noEmit` — must exit 0
-2. Run `npm run lint` — must exit 0
-3. Run `npm test` — must exit 0
-4. Run `npm run build` — must exit 0
+1. Run `node node_modules/typescript/bin/tsc --noEmit` - must exit 0
+2. Run `npm run lint` - must exit 0
+3. Run `npm test` - must exit 0
+4. Run `npm run build` - must exit 0
 5. Verify all environment variables are set (see `docs/production-checklist.md`)
 6. Verify `GET /api/health` returns `{"status":"ok"}` after deployment
 

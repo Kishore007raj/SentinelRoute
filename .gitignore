@@ -117,3 +117,7 @@ AGENTS.md
 
 # VSCode workspace settings (personal)
 .vscode/
+update-store.js
+src/__tests__/shipment-overflow-bug-condition.test.ts
+src/__tests__/shipment-overflow-preservation.test.ts
+CHANGES_APPLIED.md

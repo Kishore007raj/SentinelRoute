@@ -17,6 +17,7 @@
 
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -66,7 +67,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Refresh the token and update the cookie. Returns the fresh token or null.
-  const refreshToken = async (): Promise<string | null> => {
+  const refreshToken = useCallback(async (): Promise<string | null> => {
     const currentUser = auth.currentUser;
     if (!currentUser) return null;
     try {
@@ -77,7 +78,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       console.error("[auth] Token refresh failed:", err);
       return null;
     }
-  };
+  }, []);
 
   // Start the 45-minute proactive refresh timer.
   const startRefreshTimer = () => {

@@ -7,7 +7,7 @@
  *
  * - Loading → full-screen spinner
  * - Not authenticated → redirect to /auth/signin
- * - Authenticated, super_admin → allow access
+ * - Authenticated, super_admin → redirect to /admin
  * - Authenticated, no company → redirect to /company/register
  * - Authenticated, company pending → redirect to /company/pending
  * - Authenticated, company rejected → redirect to /company/rejected
@@ -42,8 +42,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Not authenticated → sign in
     if (!user) { router.replace("/auth/signin"); return; }
 
-    // Super admins bypass all company checks
-    if (isSuperAdmin) return;
+    // Super admins should use the admin panel, not user dashboard
+    if (isSuperAdmin) {
+      router.replace("/admin");
+      return;
+    }
 
     // Company checks
     if (companyStatus === "none")      { router.replace("/company/register"); return; }
@@ -70,15 +73,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // ── Not ready - render nothing while redirect fires ──────────────────────
   if (!user) return null;
-  if (!isSuperAdmin && companyStatus !== "approved") return null;
+  if (isSuperAdmin) return null; // Super admins redirected to /admin
+  if (companyStatus !== "approved") return null;
 
   // ── Authenticated + approved - render app shell ──────────────────────────
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
         <AppHeader />
-        <main className="flex-1 min-h-0 px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12 overflow-x-hidden">
+        <main className="flex-1 min-h-0 min-w-0 px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
           <PageTransition>{children}</PageTransition>
         </main>
       </SidebarInset>

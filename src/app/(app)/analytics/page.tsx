@@ -1,69 +1,70 @@
 "use client";
-// Analytics Dashboard - SentinelRoute
+
 import { useEffect, useState, useMemo } from "react";
 import {
-  BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
-import { TrendingDown, TrendingUp, AlertTriangle, Zap } from "lucide-react";
+import { TrendingDown, TrendingUp, AlertTriangle, Zap, BarChart2 } from "lucide-react";
 
 const C = {
-  primary: "#5eadd4",   // cyan-blue - matches new --primary oklch(0.68 0.17 210)
-  violet:  "#a78bfa",   // violet    - matches new --accent-2 oklch(0.70 0.18 300)
-  amber:   "#fbbf24",   // amber     - matches --sr-amber
-  emerald: "#34d399",   // green     - matches --sr-emerald
-  danger:  "#f87171",   // red       - matches --sr-danger
-  muted:   "#6b7280",   // neutral axis labels
-  border:  "#1e2a3a",   // dark border for tooltip
-  popover: "#0a0f1a",   // tooltip background
-  fg:      "#f5f9ff",   // tooltip text
+  primary: "#c05621", // Muted industrial copper / primary
+  violet: "#9333ea", // Accent
+  amber: "#f59e0b", // Amber warning
+  emerald: "#10b981", // Emerald safe
+  danger: "#ef4444", // Red critical
+  muted: "#71717a", // Neutral axis labels
+  border: "#27272a", // Dark border for tooltip
+  popover: "#18181b", // Tooltip background
+  fg: "#f4f4f5", // Tooltip text
 };
 
 const tip = {
-  background: C.popover, border: `1px solid ${C.border}`,
-  borderRadius: 0, fontSize: 11, color: C.fg,
+  background: C.popover,
+  border: `1px solid ${C.border}`,
+  borderRadius: 6,
+  fontSize: 11,
+  color: C.fg,
 };
+
+// Static timestamp set once when module loads - pure during render
+const INITIAL_TIME = Date.now();
 
 export default function AnalyticsPage() {
   const { state } = useStore();
   const { shipments = [] } = state;
   const [hydrated, setHydrated] = useState(false);
 
-  // Handle hydration properly with useEffect
   useEffect(() => {
     const timer = setTimeout(() => setHydrated(true), 0);
     return () => clearTimeout(timer);
   }, []);
 
-  // Move Date.now() to useEffect to avoid calling impure function during render
-  const [currentTime, setCurrentTime] = useState<number>(0);
-  
-  useEffect(() => {
-    setCurrentTime(Date.now());
-  }, []);
-
   const memoStats = useMemo(() => {
     const total = (shipments || []).length;
     const active = (shipments || []).filter((s) => s.status === "active" || s.status === "at-risk").length;
-    
-    const avgRiskScore = total > 0
-      ? Math.round(shipments.reduce((sum, s) => sum + (s.riskScore || 0), 0) / total)
-      : 0;
-    
-    // "High-risk avoided" = non-fastest routes with riskScore > 50
-    // (consistent with dashboard definition)
+
+    const avgRiskScore =
+      total > 0 ? Math.round(shipments.reduce((sum, s) => sum + (s.riskScore || 0), 0) / total) : 0;
+
     const highRiskAvoided = (shipments || []).filter(
       (s) => s.selectedRoute !== "fastest" && s.riskScore > 50
     ).length;
 
-    // Volume chart: real per-week bucketing from createdAt, or empty if no data
-    // eslint-disable-next-line react-hooks/purity
-    const now = currentTime || Date.now(); // Fallback for SSR
+    const now = INITIAL_TIME;
     const volumeData = Array.from({ length: 7 }, (_, i) => {
       const weekStart = now - (6 - i) * 7 * 24 * 60 * 60 * 1000;
-      const weekEnd   = weekStart + 7 * 24 * 60 * 60 * 1000;
+      const weekEnd = weekStart + 7 * 24 * 60 * 60 * 1000;
       const weekShipments = (shipments || []).filter((s) => {
         const t = s.createdAt ? new Date(s.createdAt).getTime() : 0;
         return t >= weekStart && t < weekEnd;
@@ -75,182 +76,259 @@ export default function AnalyticsPage() {
       };
     });
 
-    // Volume trend: compare last 2 weeks vs prior 2 weeks (real calculation)
-    const last2  = volumeData.slice(-2).reduce((s, d) => s + d.shipments, 0);
+    const last2 = volumeData.slice(-2).reduce((s, d) => s + d.shipments, 0);
     const prior2 = volumeData.slice(-4, -2).reduce((s, d) => s + d.shipments, 0);
     const volTrend = last2 - prior2;
 
-    // Risk distribution calculation
     const riskDist = [
-      { 
-        name: "Low Risk", 
-        value: total > 0 ? Math.round(((shipments || []).filter(s => s.riskLevel === "low").length / total) * 100) : 33, 
-        color: C.emerald 
+      {
+        name: "Low Risk",
+        value:
+          total > 0
+            ? Math.round(
+                ((shipments || []).filter((s) => s.riskLevel === "low").length / total) * 100
+              )
+            : 33,
+        color: C.emerald,
       },
-      { 
-        name: "Medium Risk", 
-        value: total > 0 ? Math.round(((shipments || []).filter(s => s.riskLevel === "medium").length / total) * 100) : 33, 
-        color: C.violet
+      {
+        name: "Medium Risk",
+        value:
+          total > 0
+            ? Math.round(
+                ((shipments || []).filter((s) => s.riskLevel === "medium").length / total) * 100
+              )
+            : 33,
+        color: C.amber,
       },
-      { 
-        name: "High Risk", 
-        value: total > 0 ? Math.round(((shipments || []).filter(s => s.riskLevel !== "low" && s.riskLevel !== "medium").length / total) * 100) : 34, 
-        color: C.amber 
+      {
+        name: "High Risk",
+        value:
+          total > 0
+            ? Math.round(
+                ((shipments || []).filter(
+                  (s) => s.riskLevel !== "low" && s.riskLevel !== "medium"
+                ).length /
+                  total) *
+                  100
+              )
+            : 34,
+        color: C.danger,
       },
     ];
 
     return { total, active, avgRiskScore, highRiskAvoided, volumeData, riskDist, volTrend };
-  }, [shipments, currentTime]);
+  }, [shipments]);
 
   if (!hydrated) return null;
 
   const { total, active, avgRiskScore, highRiskAvoided, volumeData, riskDist, volTrend } = memoStats;
-
-  // ── Low-data guard ────────────────────────────────────────────────────────
-  // Charts are meaningless with fewer than 5 shipments - show a clear message instead.
   const hasEnoughData = total >= 5;
 
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-10">
-      <div className="pb-8 border-b border-border">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2 font-bold">Operational intelligence</p>
-        <h1 className="text-3xl font-bold text-foreground mb-8 tracking-tight">Analytics Dashboard</h1>
+    <div className="max-w-7xl mx-auto w-full space-y-7 pb-12">
+      {/* Header */}
+      <div className="pb-6 border-b border-border space-y-2">
+        <p className="label-meta flex items-center gap-2 mb-2">
+          <BarChart2 className="w-3.5 h-3.5 text-primary" />
+          Operational Analytics & Decision Support
+        </p>
+        <h1 className="text-3xl font-bold text-foreground tracking-tight">Analytics</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Historical risk distribution, corridor dispatch volume, and predictive safety trends.
+        </p>
+      </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            { label: "Volume trend", value: volTrend >= 0 ? `+${volTrend}` : String(volTrend), sub: "vs prior 2 weeks", icon: volTrend >= 0 ? TrendingUp : TrendingDown, color: volTrend >= 0 ? "text-emerald-400" : "text-amber-400" },
-            { label: "Avg risk exposure", value: String(avgRiskScore), sub: avgRiskScore < 40 ? "within safe range" : "elevated", icon: avgRiskScore > 50 ? AlertTriangle : TrendingDown, color: avgRiskScore > 50 ? "text-amber-400" : "text-emerald-400" },
-            { label: "High-risk avoided", value: String(highRiskAvoided), sub: `of ${total} total`, icon: TrendingUp, color: "text-primary" },
-            { label: "Active fleet", value: String(active), sub: "current operations", icon: Zap, color: "text-[oklch(0.70_0.18_300)]" },
-          ].map(({ label, value, sub, icon: Icon, color }) => (
-            <div key={label} className="bg-card border border-border rounded-2xl p-6 space-y-3 shadow-sm hover:border-border/60 transition-colors">
-              <div className="flex items-center gap-2.5">
-                <Icon className={cn("w-4 h-4 shrink-0", color)} />
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">{label}</p>
-              </div>
-              <p className={cn("text-4xl font-black tabular-nums tracking-tight", color)}>{value}</p>
-              <p className="text-xs text-muted-foreground font-medium">{sub}</p>
+      {/* KPI Cards Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          {
+            label: "Volume Trend",
+            value: volTrend >= 0 ? `+${volTrend}` : String(volTrend),
+            sub: "vs prior 2 weeks",
+            icon: volTrend >= 0 ? TrendingUp : TrendingDown,
+            color: volTrend >= 0 ? "text-emerald-400" : "text-amber-400",
+          },
+          {
+            label: "Avg Risk Exposure",
+            value: String(avgRiskScore),
+            sub: avgRiskScore < 40 ? "within safe range" : "elevated exposure",
+            icon: avgRiskScore > 50 ? AlertTriangle : TrendingDown,
+            color: avgRiskScore > 50 ? "text-amber-400" : "text-emerald-400",
+          },
+          {
+            label: "High-Risk Avoided",
+            value: String(highRiskAvoided),
+            sub: `of ${total} total shipments`,
+            icon: TrendingUp,
+            color: "text-primary",
+          },
+          {
+            label: "Active Fleet",
+            value: String(active),
+            sub: "current active trips",
+            icon: Zap,
+            color: "text-amber-400",
+          },
+        ].map(({ label, value, sub, icon: Icon, color }) => (
+          <div key={label} className="panel p-5 bg-card space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="label-meta">{label}</span>
+              <Icon className={cn("w-3.5 h-3.5", color)} />
             </div>
-          ))}
-        </div>
+            <p className={cn("text-3xl font-bold tabular-nums tracking-tight", color)}>{value}</p>
+            <p className="text-[11px] text-muted-foreground font-medium">{sub}</p>
+          </div>
+        ))}
       </div>
 
       {!hasEnoughData ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center bg-card border border-border rounded-2xl">
-          <p className="text-base font-semibold text-foreground">Not enough data to generate insights yet</p>
-          <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-            Create and dispatch at least 5 shipments to unlock charts and trend analysis.
-            {total > 0 && ` You have ${total} so far.`}
+        <div className="panel p-12 text-center space-y-3 border border-dashed border-border/70">
+          <div className="w-10 h-10 rounded-lg bg-muted/20 border border-border flex items-center justify-center mx-auto text-muted-foreground">
+            <BarChart2 className="w-5 h-5" />
+          </div>
+          <h3 className="text-sm font-bold text-foreground">Insights require at least 5 shipments</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+            Create and dispatch candidate shipments to populate route performance charts and risk distribution metrics.
+            {total > 0 && ` Currently recorded: ${total}.`}
           </p>
         </div>
       ) : (
         <>
-          <div className="flex flex-col lg:flex-row gap-8 min-w-0">
-            <div className="flex-1 min-w-0 bg-card border border-border rounded-2xl p-7 shadow-sm overflow-hidden">
-              <div className="mb-6 space-y-1">
-                <p className="text-lg font-bold text-foreground">Shipment Volume</p>
-                <p className="text-sm text-muted-foreground font-medium">Last 7 weeks performance tracking</p>
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Volume Bar Chart (8 cols) */}
+            <div className="lg:col-span-8 panel p-5 bg-card space-y-4">
+              <div className="flex items-center justify-between border-b border-border/40 pb-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Shipment Volume Trend</h3>
+                  <p className="text-[11px] text-muted-foreground">7-week dispatch tracking vs high-risk paths</p>
+                </div>
+                <span className="label-meta">Weekly Aggregate</span>
               </div>
-              <div className="h-[240px] w-full min-w-0">
+
+              <div className="h-60 w-full min-w-0">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
-                  <BarChart data={volumeData} barGap={3} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                  <BarChart data={volumeData} barGap={4} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="2 4" stroke={C.border} vertical={false} />
-                    <XAxis dataKey="week" tick={{ fontSize: 10, fill: C.muted, fontWeight: 600 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: C.muted, fontWeight: 600 }} axisLine={false} tickLine={false} />
+                    <XAxis
+                      dataKey="week"
+                      tick={{ fontSize: 10, fill: C.muted, fontWeight: 600 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: C.muted, fontWeight: 600 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
                     <Tooltip contentStyle={tip} labelStyle={{ color: C.fg }} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
-                    <Bar dataKey="shipments" name="Total" fill={C.primary} radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="highRisk" name="High Risk" fill={C.violet} radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="shipments" name="Total Volume" fill={C.primary} radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="highRisk" name="High Risk" fill={C.amber} radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            <div className="lg:w-80 shrink-0 bg-card border border-border rounded-2xl p-7 shadow-sm overflow-hidden">
-              <div className="mb-5 space-y-1">
-                <p className="text-lg font-bold text-foreground">Risk Distribution</p>
-                <p className="text-sm text-muted-foreground font-medium">System-wide safety metrics</p>
+            {/* Risk Distribution Pie Chart (4 cols) */}
+            <div className="lg:col-span-4 panel p-5 bg-card space-y-4">
+              <div className="border-b border-border/40 pb-3">
+                <h3 className="text-sm font-semibold text-foreground">Risk Distribution</h3>
+                <p className="text-[11px] text-muted-foreground">Corridor safety categorization</p>
               </div>
-              <div className="h-[180px] w-full min-w-0">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180}>
+
+              <div className="h-44 w-full min-w-0">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={170}>
                   <PieChart>
-                    <Pie data={riskDist} cx="50%" cy="50%" innerRadius={44} outerRadius={64} paddingAngle={4} dataKey="value">
-                      {riskDist.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    <Pie data={riskDist} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={4} dataKey="value">
+                      {riskDist.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
                     </Pie>
                     <Tooltip formatter={(v) => [`${v}%`, ""]} contentStyle={tip} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="space-y-3 mt-5">
+
+              <div className="space-y-2 pt-2 border-t border-border/40 text-xs">
                 {riskDist.map((d) => (
                   <div key={d.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color }} />
-                      <span className="text-sm text-muted-foreground font-medium">{d.name}</span>
+                      <span className="text-muted-foreground">{d.name}</span>
                     </div>
-                    <span className="text-sm font-mono font-bold text-foreground">{d.value}%</span>
+                    <span className="font-bold tabular-nums text-foreground">{d.value}%</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Data-driven insight cards */}
+          {/* Data Insights */}
           {(() => {
-            const fastestCount  = (shipments || []).filter((s) => s.selectedRoute === "fastest").length;
-            const safestCount   = (shipments || []).filter((s) => s.selectedRoute === "safest").length;
+            const fastestCount = (shipments || []).filter((s) => s.selectedRoute === "fastest").length;
+            const safestCount = (shipments || []).filter((s) => s.selectedRoute === "safest").length;
             const balancedCount = (shipments || []).filter((s) => s.selectedRoute === "balanced").length;
-            const atRiskCount   = (shipments || []).filter((s) => s.status === "at-risk").length;
+            const atRiskCount = (shipments || []).filter((s) => s.status === "at-risk").length;
 
             const insights: { title: string; context: string; tag: string; color: string }[] = [];
 
             if (balancedCount > fastestCount) {
               insights.push({
-                title:   "Balanced routing preferred",
-                context: `${balancedCount} of ${total} shipments used the balanced route - indicating a preference for risk-adjusted decisions over raw speed.`,
-                tag:     "Pattern",
-                color:   "blue",
+                title: "Balanced Routing Preferred",
+                context: `${balancedCount} of ${total} shipments selected balanced corridors, prioritizing risk-adjusted reliability.`,
+                tag: "Pattern",
+                color: "blue",
               });
             } else if (fastestCount > 0) {
               insights.push({
-                title:   "Speed-first routing detected",
-                context: `${fastestCount} of ${total} shipments used the fastest route. Consider balanced routing to reduce disruption exposure.`,
-                tag:     "Advisory",
-                color:   "amber",
+                title: "Speed-First Routing Active",
+                context: `${fastestCount} of ${total} shipments selected the fastest route. Consider balanced paths to reduce disruption exposure.`,
+                tag: "Advisory",
+                color: "amber",
               });
             }
 
             if (safestCount > 0) {
               insights.push({
-                title:   "Conservative routing active",
-                context: `${safestCount} shipment${safestCount !== 1 ? "s" : ""} used the safest route - appropriate for sensitive cargo or high-disruption corridors.`,
-                tag:     "Safety",
-                color:   "green",
+                title: "Conservative Routing Active",
+                context: `${safestCount} shipment(s) used safest routing — appropriate for high-value or temperature-sensitive freight.`,
+                tag: "Safety",
+                color: "green",
               });
             }
 
             if (atRiskCount > 0) {
               insights.push({
-                title:   "Active risk flags",
-                context: `${atRiskCount} shipment${atRiskCount !== 1 ? "s are" : " is"} currently at risk. Review predictive alerts and consider route adjustments.`,
-                tag:     "Alert",
-                color:   "amber",
+                title: "Active Risk Alerts",
+                context: `${atRiskCount} shipment(s) currently flagged at risk. Inspect predictive alerts for rerouting recommendations.`,
+                tag: "Alert",
+                color: "amber",
               });
             }
 
             if (insights.length === 0) return null;
 
             return (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {insights.slice(0, 3).map((card, i) => (
-                  <div key={i} className="flex bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-                    <div className={cn("w-1.5 shrink-0", card.color === "green" ? "bg-emerald-400" : card.color === "blue" ? "bg-primary" : "bg-amber-400")} />
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-bold text-foreground">{card.title}</p>
-                        <span className={cn("text-[9px] uppercase tracking-widest font-black", card.color === "green" ? "text-emerald-400" : card.color === "blue" ? "text-primary" : "text-amber-400")}>{card.tag}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed font-medium">{card.context}</p>
+                  <div key={i} className="panel p-4 bg-card flex flex-col justify-between space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-foreground">{card.title}</p>
+                      <span
+                        className={cn(
+                          "text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded border",
+                          card.color === "green"
+                            ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20"
+                            : card.color === "blue"
+                            ? "bg-primary/10 text-primary border-primary/20"
+                            : "bg-amber-400/10 text-amber-400 border-amber-400/20"
+                        )}
+                      >
+                        {card.tag}
+                      </span>
                     </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">{card.context}</p>
                   </div>
                 ))}
               </div>

@@ -43,6 +43,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
       ensureOperationalAlertsIndexes(db),
       ensureIntelligenceAuditsIndexes(db),
       ensureFestivalCalendarIndexes(db),
+      ensureTimelineEventsIndexes(db),
       // Pre-Module-4 Sprint Additions
       ensureRouteAnalysesIndexes(db),
       ensureWeatherSnapshotsIndexes(db),
@@ -56,6 +57,14 @@ export async function ensureIndexes(db: Db): Promise<void> {
       // Module 4/5B - assignments + executions
       ensureShipmentAssignmentsIndexes(db),
       ensureShipmentExecutionsIndexes(db),
+      // Module 5B - Execution performance optimization
+      ensureShipmentExecutionsOptimizedIndexes(db),
+      // Module 1 Task 7 - Shipment performance optimization
+      ensureShipmentsOptimizedIndexes(db),
+      // Workforce Management - Drivers
+      ensureDriversIndexes(db),
+      // Workforce Management - Vehicles
+      ensureVehiclesIndexes(db),
     ]);
     console.log("[mongodb-indexes] All indexes ensured.");
   } catch (err) {
@@ -292,6 +301,28 @@ async function ensureFestivalCalendarIndexes(db: Db): Promise<void> {
     col.createIndex({ state: 1 }, { name: "festival_state", background: true }),
     col.createIndex({ startDate: 1, endDate: 1 }, { name: "festival_date_range", background: true }),
     col.createIndex({ riskLevel: 1 }, { name: "festival_riskLevel", background: true }),
+  ]);
+}
+
+// ─── timeline_events (Operational Feed) ────────────────────────────────────────
+
+async function ensureTimelineEventsIndexes(db: Db): Promise<void> {
+  const col = db.collection("timeline_events");
+  await Promise.all([
+    // Primary query: company-scoped timeline events with type filter
+    col.createIndex(
+      { companyId: 1, type: 1, timestamp: -1 },
+      { name: "timeline_events_companyId_type_timestamp", background: true }
+    ),
+    // Fallback simple queries
+    col.createIndex(
+      { companyId: 1, timestamp: -1 },
+      { name: "timeline_events_companyId_timestamp", background: true }
+    ),
+    col.createIndex(
+      { type: 1 },
+      { name: "timeline_events_type", background: true }
+    ),
   ]);
 }
 
@@ -548,5 +579,89 @@ async function ensureShipmentExecutionsIndexes(db: Db): Promise<void> {
       { companyId: 1, status: 1, lastUpdated: -1 },
       { name: "executions_company_status_updated", background: true }
     ),
+  ]);
+}
+
+// ─── shipments_optimized (Performance - Module 1 Task 7) ──────────────────────
+
+/**
+ * Additional compound index for GET /api/shipments optimization.
+ * Covers: company-scoped shipment list sorted by date with status filter.
+ */
+async function ensureShipmentsOptimizedIndexes(db: Db): Promise<void> {
+  const col = db.collection("shipments");
+  await Promise.all([
+    col.createIndex(
+      { companyId: 1, status: 1, createdAt: -1 },
+      { name: "shipments_companyId_status_createdAt", background: true }
+    ),
+    // Detailed shipment lookup - optimize single shipment fetches by id alone
+    // Since 'id' is the natural key, use it uniquely for fastest single-document lookups
+    col.createIndex(
+      { id: 1 },
+      { name: "shipments_id", unique: true, background: true, sparse: true }
+    ),
+  ]);
+}
+
+// ─── shipment_executions_optimized (Module 5B) ────────────────────────────────
+
+/**
+ * Additional compound index for execution queries.
+ * Covers: driver's active assignments and company fleet status queries.
+ */
+async function ensureShipmentExecutionsOptimizedIndexes(db: Db): Promise<void> {
+  const col = db.collection("shipment_executions");
+  // Active driver assignments lookup
+  col.createIndex(
+    { driverId: 1, status: 1 },
+    { name: "executions_driverId_status", background: true }
+  );
+  // Company fleet status summary query
+  col.createIndex(
+    { companyId: 1, status: 1 },
+    { name: "executions_companyId_status", background: true }
+  );
+}
+
+// ─── drivers (Workforce Management) ───────────────────────────────────────────
+
+async function ensureDriversIndexes(db: Db): Promise<void> {
+  const col = db.collection("drivers");
+  await Promise.all([
+    // Primary lookup
+    col.createIndex({ driverId: 1 }, { unique: true, name: "drivers_driverId_unique", background: true }),
+    // Company-scoped queries
+    col.createIndex({ companyId: 1 }, { name: "drivers_companyId", background: true }),
+    // Branch manager scoped queries
+    col.createIndex({ companyId: 1, branchId: 1 }, { name: "drivers_companyId_branchId", background: true }),
+    // Operational status queries
+    col.createIndex({ operationalStatus: 1 }, { name: "drivers_operationalStatus", background: true }),
+    // Assignment queries
+    col.createIndex({ assignedVehicleId: 1 }, { name: "drivers_assignedVehicleId", background: true }),
+    // Sort by creation date
+    col.createIndex({ createdAt: -1 }, { name: "drivers_createdAt_desc", background: true }),
+  ]);
+}
+
+// ─── vehicles (Workforce Management) ──────────────────────────────────────────
+
+async function ensureVehiclesIndexes(db: Db): Promise<void> {
+  const col = db.collection("vehicles");
+  await Promise.all([
+    // Primary lookup
+    col.createIndex({ vehicleId: 1 }, { unique: true, name: "vehicles_vehicleId_unique", background: true }),
+    // Company-scoped queries
+    col.createIndex({ companyId: 1 }, { name: "vehicles_companyId", background: true }),
+    // Branch manager scoped queries
+    col.createIndex({ companyId: 1, branchId: 1 }, { name: "vehicles_companyId_branchId", background: true }),
+    // Status queries (fleet ops dashboard)
+    col.createIndex({ status: 1 }, { name: "vehicles_status", background: true }),
+    // Operational status queries
+    col.createIndex({ operationalStatus: 1 }, { name: "vehicles_operationalStatus", background: true }),
+    // Driver assignment queries
+    col.createIndex({ currentDriverId: 1 }, { name: "vehicles_currentDriverId", background: true }),
+    // Sort by creation date
+    col.createIndex({ createdAt: -1 }, { name: "vehicles_createdAt_desc", background: true }),
   ]);
 }

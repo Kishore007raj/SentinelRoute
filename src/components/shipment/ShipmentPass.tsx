@@ -2,7 +2,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import {
-  ArrowRight, Shield, Truck, Package, AlertTriangle, Zap,
+  ArrowRight, CheckCircle, Truck, Package, AlertTriangle, Zap,
   TrendingUp, ShieldCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,6 @@ import {
   selectionFeedback,
   liveInsightHint,
 } from "@/lib/route-utils";
-import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -130,9 +129,10 @@ export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId, urgenc
 
   const handleConfirm = () => {
     setTearPhase("tearing");
-    toast.success("Shipment dispatched", {
-      description: `${shipment.origin} → ${shipment.destination} • ${shipment.shipmentCode}`,
-    });
+    // ── FIX 3: Toast has already been fired by handleConfirmDispatch in
+    //    routes/page.tsx immediately after the DB write succeeded.
+    //    We do NOT fire it again here — doing so was the UX signal that
+    //    confused users into thinking this button was the real dispatch trigger.
     setTimeout(() => {
       setTearPhase("torn");
       setTimeout(() => onConfirm?.(), 200);
@@ -311,7 +311,10 @@ export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId, urgenc
         <ShipmentCode code={shipment.shipmentCode} />
       </div>
 
-      {/* ── Confirm button ────────────────────────────────────────────────── */}
+      {/* ── Done button ──────────────────────────────────────────────────── */}
+      {/* FIX 3: This is a summary panel — the shipment was already created
+          when the user clicked "Confirm Route & Dispatch". This button
+          simply dismisses the panel. Label and icon make that clear. */}
       <div className="px-6 pb-6">
         <Button
           className="w-full h-11 font-semibold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg"
@@ -325,12 +328,12 @@ export function ShipmentPass({ route, shipment, onConfirm, morphLayoutId, urgenc
                 transition={{ repeat: Infinity, duration: 0.8 }}
                 className="w-3.5 h-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full"
               />
-              Dispatching...
+              Closing...
             </span>
           ) : (
             <>
-              <Shield className="w-4 h-4 mr-2" />
-              Confirm &amp; Dispatch Shipment
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Done — View Shipments
             </>
           )}
         </Button>

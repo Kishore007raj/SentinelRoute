@@ -42,7 +42,21 @@ export async function POST(
     const shipment = shipmentDoc as unknown as Shipment;
 
     if (shipment.status !== "active" && shipment.status !== "at-risk") {
-      return NextResponse.json({ message: "Shipment is not active, polling skipped", shipment });
+      // Fetch the most recent prediction from DB for display purposes
+      const latestPrediction = await db.collection("route_predictions")
+        .find({ shipmentId: id, companyId })
+        .sort({ timestamp: -1 })
+        .limit(1)
+        .toArray();
+      const existingPrediction = latestPrediction.length > 0
+        ? (({ _id, ...rest }) => rest)(latestPrediction[0])
+        : null;
+      return NextResponse.json({
+        pollingSkipped: true,
+        reason: `Shipment is ${shipment.status} — predictions are only generated for active or at-risk shipments`,
+        prediction: existingPrediction,
+        alert: null,
+      });
     }
 
     const previousStatus = shipment.status;

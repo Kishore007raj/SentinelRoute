@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Activity, MapPin, Truck, AlertTriangle, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Activity, MapPin, Truck, AlertTriangle, Search, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,10 +46,10 @@ interface OperationalResponse {
 }
 
 const RISK_BADGE: Record<string, string> = {
-  critical: "bg-rose-500/10 text-rose-500 border-rose-500/20",
-  high:     "bg-orange-500/10 text-orange-500 border-orange-500/20",
-  medium:   "bg-amber-500/10 text-amber-500 border-amber-500/20",
-  low:      "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+  critical: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  high:     "bg-orange-500/10 text-orange-400 border-orange-500/20",
+  medium:   "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  low:      "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
 };
 
 export default function GlobalOperationalMonitor() {
@@ -69,7 +69,6 @@ export default function GlobalOperationalMonitor() {
     setError(null);
     try {
       const params = new URLSearchParams({ page: String(page), limit: "50" });
-      // Pass search as companyId filter if it looks like an ID, else just display-filter
       const res = await fetchApi(`/api/admin/operational?${params.toString()}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
@@ -80,7 +79,7 @@ export default function GlobalOperationalMonitor() {
       setTotal(data.total ?? 0);
       setPages(data.pages ?? 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load operational data");
+      setError(err instanceof Error ? err.message : "Failed to load operational telemetry");
     } finally {
       setLoading(false);
     }
@@ -96,7 +95,6 @@ export default function GlobalOperationalMonitor() {
     return () => clearInterval(interval);
   }, [fetchRoutes]);
 
-  // Client-side filter by tenant name or shipment code (already server-paginated)
   const filtered = search
     ? routes.filter(
         (r) =>
@@ -109,100 +107,119 @@ export default function GlobalOperationalMonitor() {
   const atRiskCount = routes.filter((r) => r.status === "at-risk").length;
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-theme(spacing.24))]">
+    <div className="space-y-6 flex flex-col h-[calc(100vh-theme(spacing.24))] max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 border-b border-border pb-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Activity className="w-6 h-6 text-indigo-500" />
-            Global Operational Monitor
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Cross-tenant active shipments with execution state.
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              <Activity className="w-5 h-5 text-sky-400" />
+              Global Operational Monitor
+            </h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              Stream Live
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Real-time cross-tenant shipment telemetry, live dispatch state, and risk monitoring.
           </p>
         </div>
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Filter tenant or shipment…"
-            value={searchRaw}
-            onChange={(e) => setSearchRaw(e.target.value)}
-            className="pl-9 h-9"
-          />
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Filter tenant or shipment…"
+              value={searchRaw}
+              onChange={(e) => setSearchRaw(e.target.value)}
+              className="pl-9 h-8 text-xs bg-background border-border"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchRoutes}
+            disabled={loading}
+            className="h-8 text-xs gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
         </div>
       </div>
 
-      {/* Summary bar */}
-      <div className="flex items-center gap-6 shrink-0 text-sm">
+      {/* Operational Summary Bar */}
+      <div className="flex items-center gap-4 shrink-0 text-xs panel px-4 py-2.5 bg-muted/20">
         <span className="text-muted-foreground">
-          <span className="font-semibold text-foreground">{total}</span> active shipments
+          Total Dispatched: <span className="font-semibold font-mono text-foreground">{total}</span> active
         </span>
-        {atRiskCount > 0 && (
-          <span className="flex items-center gap-1.5 text-rose-500 font-medium">
-            <AlertTriangle className="w-4 h-4" />
+        <span className="text-border">|</span>
+        {atRiskCount > 0 ? (
+          <span className="flex items-center gap-1.5 text-rose-400 font-semibold font-mono">
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
             {atRiskCount} at-risk
           </span>
-        )}
-        <span className="ml-auto">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+        ) : (
+          <span className="text-emerald-400 font-medium font-mono">
+            0 active disruptions
           </span>
+        )}
+        <span className="ml-auto text-[11px] text-muted-foreground font-mono">
+          Auto-sync: 30s interval
         </span>
-        <span className="text-xs text-muted-foreground">Live · refreshes every 30s</span>
       </div>
 
       {error && (
-        <div className="text-sm text-destructive bg-destructive/5 border border-destructive/20 rounded-lg px-4 py-3 shrink-0">
-          {error} —{" "}
-          <button onClick={fetchRoutes} className="underline">retry</button>
+        <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-4 py-2.5 shrink-0 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={fetchRoutes} className="underline font-semibold ml-2">retry</button>
         </div>
       )}
 
-      {/* Route list */}
-      <div className="flex-1 min-h-0 bg-card border border-border rounded-xl shadow-sm flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-border bg-muted/20 shrink-0">
-          <h2 className="font-semibold text-sm flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-primary" />
+      {/* Main Stream Table */}
+      <div className="flex-1 min-h-0 panel flex flex-col overflow-hidden">
+        <div className="p-3.5 border-b border-border bg-muted/30 shrink-0 flex items-center justify-between">
+          <span className="label-meta flex items-center gap-2">
+            <MapPin className="w-3.5 h-3.5 text-amber-500" />
             Active Route Stream
-            {loading && (
-              <span className="w-4 h-4 border-2 border-border border-t-indigo-500 rounded-full animate-spin ml-2" />
-            )}
-          </h2>
+          </span>
+          {loading && (
+            <span className="w-3.5 h-3.5 border-2 border-border border-t-amber-500 rounded-full animate-spin" />
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto">
           {!loading && filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-sm gap-2">
+            <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-xs gap-2">
               <Truck className="w-8 h-8 opacity-20" />
-              <span>No active shipments match your search.</span>
+              <span>No active shipments match your filter criteria.</span>
             </div>
           ) : (
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border sticky top-0 z-10">
+            <table className="w-full text-xs text-left">
+              <thead className="label-meta bg-muted/40 border-b border-border sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Tenant</th>
-                  <th className="px-4 py-3 font-semibold">Shipment</th>
-                  <th className="px-4 py-3 font-semibold">Route</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold">Risk</th>
-                  <th className="px-4 py-3 font-semibold">Driver / Vehicle</th>
-                  <th className="px-4 py-3 font-semibold">ETA</th>
+                  <th className="px-4 py-2.5 font-semibold">Tenant Organization</th>
+                  <th className="px-4 py-2.5 font-semibold">Shipment</th>
+                  <th className="px-4 py-2.5 font-semibold">Route Corridor</th>
+                  <th className="px-4 py-2.5 font-semibold">Status</th>
+                  <th className="px-4 py-2.5 font-semibold">Risk Index</th>
+                  <th className="px-4 py-2.5 font-semibold">Driver / Asset</th>
+                  <th className="px-4 py-2.5 font-semibold">Live ETA</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border/50">
                 {filtered.map((route) => (
                   <tr
                     key={route.id}
-                    className="border-b border-border/50 hover:bg-muted/20 transition-colors"
+                    className="hover:bg-muted/20 transition-colors"
                   >
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold uppercase tracking-wider ${
-                        route.tenantResolved ? "text-indigo-400" : "text-amber-500"
+                      <span className={`font-semibold uppercase tracking-wider text-[11px] ${
+                        route.tenantResolved ? "text-foreground" : "text-amber-400"
                       }`}>
                         {route.tenantName}
                         {!route.tenantResolved && (
-                          <span className="ml-1 text-[10px] text-amber-500/70 normal-case font-normal">
+                          <span className="ml-1 text-[9px] text-amber-500/70 normal-case font-normal">
                             (orphaned)
                           </span>
                         )}
@@ -210,12 +227,12 @@ export default function GlobalOperationalMonitor() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className="font-medium text-xs">{route.shipmentCode ?? route.id}</span>
+                        <span className="font-semibold text-foreground">{route.shipmentCode ?? route.id}</span>
                         <span className="text-[10px] text-muted-foreground font-mono">{route.id}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 max-w-[180px]">
-                      <p className="text-xs text-muted-foreground truncate">
+                    <td className="px-4 py-3 max-w-[200px]">
+                      <p className="text-muted-foreground truncate font-mono text-[11px]">
                         {route.originName ?? route.origin ?? "—"}
                         {" → "}
                         {route.destinationName ?? route.destination ?? "—"}
@@ -226,8 +243,8 @@ export default function GlobalOperationalMonitor() {
                         variant="outline"
                         className={
                           route.status === "at-risk"
-                            ? "bg-rose-500/10 text-rose-500 border-rose-500/20 text-[10px]"
-                            : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px]"
+                            ? "bg-rose-500/10 text-rose-400 border-rose-500/20 text-[10px]"
+                            : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]"
                         }
                       >
                         {route.status === "at-risk" ? (
@@ -242,22 +259,24 @@ export default function GlobalOperationalMonitor() {
                       {route.riskLevel ? (
                         <Badge
                           variant="outline"
-                          className={`text-[10px] ${RISK_BADGE[route.riskLevel] ?? ""}`}
+                          className={`text-[10px] font-mono ${RISK_BADGE[route.riskLevel] ?? ""}`}
                         >
-                          {route.riskScore !== undefined ? `${route.riskScore} ` : ""}
+                          {route.riskScore !== undefined ? `${route.riskScore} · ` : ""}
                           {route.riskLevel}
                         </Badge>
                       ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {route.assignedDriverName ?? "—"}
+                    <td className="px-4 py-3 text-muted-foreground">
+                      <span>{route.assignedDriverName ?? "—"}</span>
                       {route.assignedVehicleNumber && (
-                        <span className="font-mono ml-1">· {route.assignedVehicleNumber}</span>
+                        <span className="font-mono text-[10px] ml-1 bg-muted/40 px-1.5 py-0.5 rounded border border-border">
+                          {route.assignedVehicleNumber}
+                        </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                    <td className="px-4 py-3 text-muted-foreground font-mono text-[11px]">
                       {route.execution?.currentETA ?? route.eta ?? "—"}
                     </td>
                   </tr>
@@ -267,10 +286,10 @@ export default function GlobalOperationalMonitor() {
           )}
         </div>
 
-        {/* Pagination */}
+        {/* Pagination Bar */}
         {pages > 1 && (
-          <div className="px-4 py-3 border-t border-border flex items-center justify-between bg-muted/10 shrink-0">
-            <span className="text-xs text-muted-foreground">
+          <div className="px-4 py-2.5 border-t border-border flex items-center justify-between bg-muted/10 shrink-0">
+            <span className="text-xs text-muted-foreground font-mono">
               Showing {(page - 1) * 50 + 1}–{Math.min(page * 50, total)} of {total}
             </span>
             <div className="flex items-center gap-2">
@@ -282,7 +301,7 @@ export default function GlobalOperationalMonitor() {
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="text-xs px-2">{page} / {pages}</span>
+              <span className="text-xs px-2 font-mono">{page} / {pages}</span>
               <Button
                 variant="outline"
                 size="icon-sm"

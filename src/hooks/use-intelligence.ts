@@ -66,6 +66,10 @@ export function useIntelligence(options: IntelligenceOptions = {}) {
   const [loadingAlerts, setLoadingAlerts] = useState(shouldFetchAlerts);
   const [loadingIncidents, setLoadingIncidents] = useState(shouldFetchIncidents);
   
+  const [kpisAvailable, setKpisAvailable] = useState(true);
+  const [alertsAvailable, setAlertsAvailable] = useState(true);
+  const [incidentsAvailable, setIncidentsAvailable] = useState(true);
+  
   const [prevRisk, setPrevRisk] = useState<number | null>(null);
 
   const mounted = useRef(true);
@@ -78,9 +82,20 @@ export function useIntelligence(options: IntelligenceOptions = {}) {
       if (shouldFetchKpis) {
         promises.push(
           fetchApi("/api/intelligence/kpis")
-            .then(r => r.ok ? r.json() : null)
+            .then(r => {
+              // On 404/403, mark as unavailable but don't error
+              if (r.status === 404 || r.status === 403) {
+                if (mounted.current) {
+                  setKpisAvailable(false);
+                  setLoadingKpis(false);
+                }
+                return null;
+              }
+              return r.ok ? r.json() : null;
+            })
             .then(data => {
               if (mounted.current && data) {
+                setKpisAvailable(true);
                 setKpis(prev => {
                   if (prev !== null) setPrevRisk(prev.avgOperationalRisk);
                   return data;
@@ -97,9 +112,19 @@ export function useIntelligence(options: IntelligenceOptions = {}) {
       if (shouldFetchAlerts) {
         promises.push(
           fetchApi("/api/intelligence/alerts")
-            .then(r => r.ok ? r.json() : null)
+            .then(r => {
+              if (r.status === 404 || r.status === 403) {
+                if (mounted.current) {
+                  setAlertsAvailable(false);
+                  setLoadingAlerts(false);
+                }
+                return null;
+              }
+              return r.ok ? r.json() : null;
+            })
             .then(data => {
               if (mounted.current && data) {
+                setAlertsAvailable(true);
                 setAlerts(data.alerts ?? []);
               }
               if (mounted.current) setLoadingAlerts(false);
@@ -113,9 +138,19 @@ export function useIntelligence(options: IntelligenceOptions = {}) {
       if (shouldFetchIncidents) {
         promises.push(
           fetchApi("/api/intelligence/incidents")
-            .then(r => r.ok ? r.json() : null)
+            .then(r => {
+              if (r.status === 404 || r.status === 403) {
+                if (mounted.current) {
+                  setIncidentsAvailable(false);
+                  setLoadingIncidents(false);
+                }
+                return null;
+              }
+              return r.ok ? r.json() : null;
+            })
             .then(data => {
               if (mounted.current && data) {
+                setIncidentsAvailable(true);
                 setIncidents(data.incidents ?? []);
               }
               if (mounted.current) setLoadingIncidents(false);
@@ -220,6 +255,9 @@ export function useIntelligence(options: IntelligenceOptions = {}) {
     loadingAlerts, 
     loadingIncidents,
     loading: loadingKpis || loadingAlerts || loadingIncidents,
+    kpisAvailable,
+    alertsAvailable,
+    incidentsAvailable,
     prevRisk,
     refresh: load,
     setAlerts // Useful for risk-center to immediately optimistic-update alert status

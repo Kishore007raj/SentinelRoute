@@ -50,10 +50,16 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const getDbStartTime = Date.now();
     const db = await getDb();
+    const getDbTimeMs = Date.now() - getDbStartTime;
+    console.log("[GET /api/shipments] getDb() took", getDbTimeMs, "ms");
 
     // Resolve companyId for tenant isolation (falls back to userId-only for legacy records)
+    const userRecordStart = Date.now();
     const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
+    const userRecordTimeMs = Date.now() - userRecordStart;
+    console.log("[GET /api/shipments] User lookup took", userRecordTimeMs, "ms");
     const companyId  = userRecord?.companyId;
     const isSuperAdmin = userRecord?.role === "super_admin";
 
@@ -77,8 +83,21 @@ export async function GET(req: NextRequest) {
       }).catch(() => {});
     }
 
+    const limit = parseInt(req.nextUrl.searchParams.get("limit") || "100", 10);
+    const page = parseInt(req.nextUrl.searchParams.get("page") || "1", 10);
+    const skip = (page - 1) * limit;
+
     // Build query: if user has a company, scope by companyId; else fallback to userId
     const query: Record<string, unknown> = queryCompanyId ? { companyId: queryCompanyId } : { userId };
+
+    console.log("[GET /api/shipments] Query params:", {
+      userHasCompanyId: !!companyId,
+      isSuperAdmin,
+      queryCompanyId,
+      targetCompanyId,
+      fallbackQuery: !queryCompanyId ? { userId } : undefined,
+      finalQuery: query,
+    });
 
     // Branch hierarchy scoping
     const branchFilter = req.nextUrl.searchParams.get("branchId");
@@ -88,11 +107,72 @@ export async function GET(req: NextRequest) {
       query.branchId = userRecord.branchId;
     }
 
-    const docs = await db
-      .collection("shipments")
-      .find(query)           // ← always scoped to company or user
+    // Fetch docs first (should be fast with limit)
+    console.log("[GET /api/shipments] Starting docs query...");
+    const docsStartTime = Date.now();
+    
+    // Time each step
+    const findStartTime = Date.now();
+    // Exclude heavy geometry array from list queries (geometry is only needed on detail map view)
+    const cursor = db.collection("shipments")
+      .find(query, { projection: { geometry: 0 } })
       .sort({ createdAt: -1 })
-      .toArray();
+      .skip(skip)
+      .limit(limit);
+    const findTimeMs = Date.now() - findStartTime;
+    console.log("[GET /api/shipments] Cursor created in", findTimeMs, "ms");
+    
+    const toArrayStartTime = Date.now();
+    const docs = await cursor.toArray();
+    const toArrayTimeMs = Date.now() - toArrayStartTime;
+    
+    const docsTimeMs = Date.now() - docsStartTime;
+    console.log("[GET /api/shipments] Docs query:", {
+      docsTimeMs,
+      findTimeMs,
+      toArrayTimeMs,
+      docCount: docs.length,
+    });
+
+    // Compute stats from docs for small result sets, or defer for large queries
+    const stats = {
+      total: docs.length,
+      active: docs.filter(d => ["active", "at-risk"].includes(d.status)).length,
+      atRisk: docs.filter(d => d.status === "at-risk").length,
+      completed: docs.filter(d => d.status === "completed").length,
+      avgRisk: 0,
+      highRiskAvoided: 0
+    };
+
+    if (docs.length > 0) {
+      stats.avgRisk = Math.round(docs.reduce((sum, d) => sum + (d.riskScore || 0), 0) / docs.length);
+      stats.highRiskAvoided = docs.filter(d => 
+        d.selectedRoute !== "fastest" && (d.riskScore || 0) > 50
+      ).length;
+    }
+
+    // If limit is small (e.g. first page), also get total count for pagination
+    let statsResult: { total?: number } = {};
+    if (limit < 50) {
+      const statsStartTime = Date.now();
+      statsResult = await db.collection("shipments").aggregate([
+        { $match: query },
+        { 
+          $group: { 
+            _id: null, 
+            total: { $sum: 1 }, 
+          } 
+        }
+      ]).toArray().then(r => r[0] || {});
+      const statsTimeMs = Date.now() - statsStartTime;
+      console.log("[GET /api/shipments] Stats query (count only):", {
+        statsTimeMs,
+        total: statsResult.total,
+      });
+      if (statsResult.total) {
+        stats.total = statsResult.total;
+      }
+    }
 
     // #region agent log
     agentLog({ hypothesisId: "C", location: "shipments/route.ts:GET:result", message: "GET shipments query result", data: { queryCompanyId: queryCompanyId ?? null, isSuperAdmin, docCount: docs.length, sampleIds: docs.slice(0, 5).map((d) => d.id), sampleCompanyIds: docs.slice(0, 5).map((d) => d.companyId) } });
@@ -106,7 +186,7 @@ export async function GET(req: NextRequest) {
       return decrypted as Shipment;
     });
 
-    return NextResponse.json({ shipments, total: shipments.length });
+    return NextResponse.json({ shipments, total: stats.total, stats });
   } catch (err) {
     console.error("[GET /api/shipments] DB error:", err);
     return NextResponse.json(
@@ -349,11 +429,28 @@ export async function POST(req: NextRequest) {
     // #region agent log
     agentLog({ hypothesisId: "B", location: "shipments/route.ts:POST:beforeInsert", message: "about to insertOne shipment", data: { shipmentId: shipment.id, companyId, hasCompanyIdOnShipmentObject: !!shipment.companyId } });
     // #endregion
-    const insertResult = await db.collection("shipments").insertOne({
+    const insertPayload = {
       ...encryptedDocument,
       userId,
       companyId,          // always set - enforced above
       createdByUserId: userId, // ownership field
+    };
+    
+    const _logPayload = insertPayload as Record<string, unknown>;
+    console.log("[POST /api/shipments] Inserting shipment:", {
+      shipmentId: _logPayload.id,
+      companyId: _logPayload.companyId,
+      userId: _logPayload.userId,
+      createdByUserId: _logPayload.createdByUserId,
+      origin: _logPayload.origin,
+      destination: _logPayload.destination,
+    });
+    
+    const insertResult = await db.collection("shipments").insertOne(insertPayload);
+    
+    console.log("[POST /api/shipments] Insert result:", {
+      insertedId: insertResult.insertedId,
+      acknowledged: insertResult.acknowledged,
     });
     // #region agent log
     agentLog({ hypothesisId: "B", location: "shipments/route.ts:POST:afterInsert", message: "insertOne completed", data: { shipmentId: shipment.id, insertedId: String(insertResult.insertedId), acknowledged: insertResult.acknowledged } });

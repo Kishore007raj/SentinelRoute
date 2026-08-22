@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use, useCallback } from "react";
-import { ArrowLeft, Building2, ShieldAlert, CheckCircle2, Clock, Ban, Users, Package, Truck, Key, Activity, Download } from "lucide-react";
+import { ArrowLeft, Building2, ShieldAlert, CheckCircle2, Clock, Ban, Users, Package, Truck, Key, Activity, FileText, Check, X } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +64,6 @@ export default function CompanyInspectionPage({ params }: { params: Promise<{ id
     if (!user) return; // Wait for Firebase auth to resolve before fetching
     try {
       setLoading(true);
-      // Get token directly from the resolved Firebase user — no race with auth.currentUser
       const token = await user.getIdToken();
       const res = await fetch(`/api/admin/companies/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -84,7 +83,6 @@ export default function CompanyInspectionPage({ params }: { params: Promise<{ id
     }
   }, [id, user]);
 
-  // Only fetch once Firebase auth has fully resolved
   useEffect(() => {
     if (!authLoading && user) {
       fetchCompanyData();
@@ -134,8 +132,13 @@ export default function CompanyInspectionPage({ params }: { params: Promise<{ id
 
   if (!data || !data.company) {
     return (
-      <div className="p-6 text-center text-destructive">
-        Company not found
+      <div className="panel p-8 text-center max-w-lg mx-auto">
+        <ShieldAlert className="w-8 h-8 text-rose-500 mx-auto mb-3" />
+        <p className="text-sm font-medium text-rose-400">Company Not Found</p>
+        <p className="text-xs text-muted-foreground mt-1 mb-4">No tenant organization matches identifier: <span className="font-mono">{id}</span></p>
+        <Link href="/admin/companies" className={buttonVariants({ variant: "outline", size: "sm" })}>
+          Return to Tenant List
+        </Link>
       </div>
     );
   }
@@ -145,171 +148,207 @@ export default function CompanyInspectionPage({ params }: { params: Promise<{ id
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved":
-        return <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20"><CheckCircle2 className="w-3 h-3 mr-1" /> Active</Badge>;
+        return <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs"><CheckCircle2 className="w-3 h-3 mr-1" /> Active</Badge>;
       case "pending":
-        return <Badge variant="secondary" className="bg-amber-500/10 text-amber-500 border-amber-500/20"><Clock className="w-3 h-3 mr-1" /> Pending Review</Badge>;
+        return <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-xs"><Clock className="w-3 h-3 mr-1" /> Pending Review</Badge>;
       case "suspended":
-        return <Badge variant="secondary" className="bg-rose-500/10 text-rose-500 border-rose-500/20"><Ban className="w-3 h-3 mr-1" /> Suspended</Badge>;
+        return <Badge variant="secondary" className="bg-rose-500/10 text-rose-400 border-rose-500/20 text-xs"><Ban className="w-3 h-3 mr-1" /> Suspended</Badge>;
       case "rejected":
-        return <Badge variant="secondary" className="bg-muted text-muted-foreground border-border"><ShieldAlert className="w-3 h-3 mr-1" /> Rejected</Badge>;
+        return <Badge variant="secondary" className="bg-muted text-muted-foreground border-border text-xs"><ShieldAlert className="w-3 h-3 mr-1" /> Rejected</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline" className="text-xs">{status}</Badge>;
     }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 max-w-5xl mx-auto">
-      <div className="flex items-center gap-4">
-        <Link href="/admin/companies" className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "hover:bg-accent -ml-2")}>
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">{company.companyName}</h1>
-            {getStatusBadge(company.status)}
+    <div className="space-y-6 animate-in fade-in duration-300 max-w-6xl mx-auto">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-5">
+        <div className="flex items-center gap-3">
+          <Link href="/admin/companies" className={cn(buttonVariants({ variant: "outline", size: "icon-sm" }), "border-border")}>
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">{company.companyName}</h1>
+              {getStatusBadge(company.status)}
+            </div>
+            <p className="text-xs text-muted-foreground font-mono mt-0.5">Tenant ID: {company.companyId}</p>
           </div>
-          <p className="text-sm text-muted-foreground font-mono mt-1">ID: {company.companyId}</p>
         </div>
         
-        <div className="ml-auto flex items-center gap-2">
+        {/* Action Controls */}
+        <div className="flex items-center gap-2">
           {company.status === "pending" && (
             <>
-              <Button variant="destructive" onClick={() => setActionModal({ isOpen: true, action: "reject" })}>Reject</Button>
-              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setActionModal({ isOpen: true, action: "approve" })}>Approve Tenant</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
+                onClick={() => setActionModal({ isOpen: true, action: "reject" })}
+              >
+                Reject Application
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                onClick={() => setActionModal({ isOpen: true, action: "approve" })}
+              >
+                <Check className="w-3.5 h-3.5" />
+                Approve Tenant
+              </Button>
             </>
           )}
           {company.status === "approved" && (
-            <Button variant="destructive" onClick={() => setActionModal({ isOpen: true, action: "suspend" })}>Suspend Tenant</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs border-rose-500/30 text-rose-400 hover:bg-rose-500/10 gap-1.5"
+              onClick={() => setActionModal({ isOpen: true, action: "suspend" })}
+            >
+              <Ban className="w-3.5 h-3.5" />
+              Suspend Tenant
+            </Button>
           )}
           {company.status === "suspended" && (
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setActionModal({ isOpen: true, action: "restore" })}>Restore Access</Button>
+            <Button
+              size="sm"
+              className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+              onClick={() => setActionModal({ isOpen: true, action: "restore" })}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Restore Access
+            </Button>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Profile Card */}
+        {/* Left 2 Cols: Profile & Stats */}
         <div className="md:col-span-2 space-y-6">
-          <div className="bg-card border border-border rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-amber-500" />
-              Company Profile
+          {/* Profile Panel */}
+          <div className="panel p-6">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300 mb-4 flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-amber-500" />
+              Organizational Profile
             </h2>
-            <div className="grid grid-cols-2 gap-6 text-sm">
-              <div>
-                <p className="text-muted-foreground mb-1 text-xs uppercase tracking-wider font-semibold">Primary Contact</p>
-                <p className="font-medium">{company.contactName}</p>
-                <p className="text-muted-foreground">{company.email}</p>
-                <p className="text-muted-foreground">{company.phone}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
+              <div className="space-y-1">
+                <span className="label-meta">Primary Contact</span>
+                <p className="font-medium text-foreground text-sm">{company.contactName || "—"}</p>
+                <p className="text-muted-foreground font-mono">{company.email || "—"}</p>
+                <p className="text-muted-foreground font-mono">{company.phone || "—"}</p>
               </div>
-              <div>
-                <p className="text-muted-foreground mb-1 text-xs uppercase tracking-wider font-semibold">Address</p>
-                <p className="font-medium">{company.address?.street}</p>
-                <p className="text-muted-foreground">{company.address?.city}, {company.address?.state} {company.address?.zipCode}</p>
-                <p className="text-muted-foreground">{company.address?.country}</p>
+              <div className="space-y-1">
+                <span className="label-meta">Registered Address</span>
+                <p className="font-medium text-foreground">{company.address?.street || "—"}</p>
+                <p className="text-muted-foreground">{[company.address?.city, company.address?.state, company.address?.zipCode].filter(Boolean).join(", ") || "—"}</p>
+                <p className="text-muted-foreground">{company.address?.country || "—"}</p>
               </div>
-              <div>
-                <p className="text-muted-foreground mb-1 text-xs uppercase tracking-wider font-semibold">Tax ID / EIN</p>
-                <p className="font-medium font-mono">{company.taxId || "Not provided"}</p>
+              <div className="space-y-1 pt-2 border-t border-border/50">
+                <span className="label-meta">Tax ID / Registration</span>
+                <p className="font-medium font-mono text-foreground">{company.taxId || "Not provided"}</p>
               </div>
-              <div>
-                <p className="text-muted-foreground mb-1 text-xs uppercase tracking-wider font-semibold">Registration Date</p>
-                <p className="font-medium">{company.createdAt ? format(new Date(company.createdAt), "PPP p") : "Unknown"}</p>
+              <div className="space-y-1 pt-2 border-t border-border/50">
+                <span className="label-meta">Registration Timestamp</span>
+                <p className="font-medium font-mono text-foreground">
+                  {company.createdAt ? format(new Date(company.createdAt), "PPP p") : "Unknown"}
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-card border border-border rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-indigo-500" />
-              Platform Usage Stats
+          {/* Platform Usage Stats */}
+          <div className="panel p-6">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300 mb-4 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-sky-400" />
+              Tenant Resource Footprint
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="p-4 rounded-lg bg-muted/40 border border-border/50 text-center">
-                <Users className="w-5 h-5 mx-auto mb-2 text-indigo-500" />
-                <div className="text-2xl font-bold">{stats.users}</div>
-                <div className="text-xs text-muted-foreground mt-1">Users</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3.5 rounded-lg bg-muted/20 border border-border text-center">
+                <Users className="w-4 h-4 mx-auto mb-1.5 text-sky-400" />
+                <div className="text-xl font-bold font-mono text-foreground">{stats.users}</div>
+                <div className="label-meta mt-0.5">Operators</div>
               </div>
-              <div className="p-4 rounded-lg bg-muted/40 border border-border/50 text-center">
-                <Truck className="w-5 h-5 mx-auto mb-2 text-amber-500" />
-                <div className="text-2xl font-bold">{stats.drivers}</div>
-                <div className="text-xs text-muted-foreground mt-1">Drivers</div>
+              <div className="p-3.5 rounded-lg bg-muted/20 border border-border text-center">
+                <Truck className="w-4 h-4 mx-auto mb-1.5 text-amber-500" />
+                <div className="text-xl font-bold font-mono text-foreground">{stats.drivers}</div>
+                <div className="label-meta mt-0.5">Drivers</div>
               </div>
-              <div className="p-4 rounded-lg bg-muted/40 border border-border/50 text-center">
-                <Package className="w-5 h-5 mx-auto mb-2 text-emerald-500" />
-                <div className="text-2xl font-bold">{stats.shipments}</div>
-                <div className="text-xs text-muted-foreground mt-1">Shipments</div>
+              <div className="p-3.5 rounded-lg bg-muted/20 border border-border text-center">
+                <Package className="w-4 h-4 mx-auto mb-1.5 text-emerald-400" />
+                <div className="text-xl font-bold font-mono text-foreground">{stats.shipments}</div>
+                <div className="label-meta mt-0.5">Shipments</div>
               </div>
-              <div className="p-4 rounded-lg bg-muted/40 border border-border/50 text-center">
-                <Key className="w-5 h-5 mx-auto mb-2 text-blue-500" />
-                <div className="text-2xl font-bold">{stats.vehicles}</div>
-                <div className="text-xs text-muted-foreground mt-1">Vehicles</div>
+              <div className="p-3.5 rounded-lg bg-muted/20 border border-border text-center">
+                <Key className="w-4 h-4 mx-auto mb-1.5 text-indigo-400" />
+                <div className="text-xl font-bold font-mono text-foreground">{stats.vehicles}</div>
+                <div className="label-meta mt-0.5">Fleet Vehicles</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Documents Side */}
+        {/* Right 1 Col: Documents Verification */}
         <div className="space-y-6">
-          <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col h-full">
-            <div className="p-5 border-b border-border bg-muted/20">
-              <h2 className="font-semibold">Verification Documents</h2>
-            </div>
-            <div className="p-5 flex-1">
-              {documents && documents.length > 0 ? (
-                <div className="space-y-3">
-                  {documents.map((doc) => (
-                    <div key={doc.documentId} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">{doc.type}</span>
-                        <span className="text-xs text-muted-foreground">{format(new Date(doc.uploadedAt), "MMM d, yyyy")}</span>
-                      </div>
-                      <a href={doc.fileUrl} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "ghost", size: "icon-sm" })}>
-                        <Download className="w-4 h-4 text-muted-foreground" />
-                      </a>
+          <div className="panel p-6">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300 mb-4 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-slate-400" />
+              Compliance Documents
+            </h2>
+            {documents.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No verification documents uploaded yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {documents.map((doc) => (
+                  <div key={doc.documentId} className="p-3 rounded border border-border bg-muted/10 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium uppercase font-mono text-foreground">{doc.type.replace(/_/g, " ")}</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm py-12 text-center">
-                  <ShieldAlert className="w-8 h-8 mb-3 opacity-20" />
-                  <p>No verification documents uploaded</p>
-                </div>
-              )}
-            </div>
+                    <p className="text-[10px] font-mono text-muted-foreground">
+                      Uploaded {format(new Date(doc.uploadedAt), "MMM d, yyyy")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <Dialog open={actionModal.isOpen} onOpenChange={(open) => !open && setActionModal({ isOpen: false, action: null })}>
-        <DialogContent>
+      {/* Confirmation Dialog */}
+      <Dialog open={actionModal.isOpen} onOpenChange={(open) => setActionModal({ isOpen: open, action: null })}>
+        <DialogContent className="sm:max-w-md bg-popover border-border">
           <DialogHeader>
-            <DialogTitle className="capitalize">{actionModal.action} Tenant</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to {actionModal.action} this tenant? This action will be audited.
+            <DialogTitle className="text-base font-bold capitalize">
+              {actionModal.action} Tenant Organization
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Are you sure you want to execute <span className="font-semibold text-foreground">{actionModal.action}</span> on <span className="font-medium text-foreground">{company.companyName}</span>?
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-4">
-            <label className="text-sm font-medium mb-2 block">Audit Note (Required)</label>
-            <Textarea 
-              placeholder={`Reason for ${actionModal.action}ing...`}
+          <div className="space-y-2 py-2">
+            <label className="label-meta">Audit Action Note (Optional)</label>
+            <Textarea
+              placeholder="Provide reason or context for audit trail..."
               value={actionNote}
               onChange={(e) => setActionNote(e.target.value)}
-              className="resize-none"
-              rows={3}
+              className="h-20 text-xs bg-background border-border"
             />
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActionModal({ isOpen: false, action: null })} disabled={submitting}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" size="sm" onClick={() => setActionModal({ isOpen: false, action: null })}>
               Cancel
             </Button>
-            <Button 
-              variant={actionModal.action === "approve" || actionModal.action === "restore" ? "default" : "destructive"} 
+            <Button
+              variant={actionModal.action === "reject" || actionModal.action === "suspend" ? "destructive" : "default"}
+              size="sm"
+              disabled={submitting}
               onClick={handleAction}
-              disabled={submitting || !actionNote.trim()}
-              className={actionModal.action === "approve" || actionModal.action === "restore" ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+              className={actionModal.action === "approve" || actionModal.action === "restore" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}
             >
               {submitting ? "Processing..." : `Confirm ${actionModal.action}`}
             </Button>

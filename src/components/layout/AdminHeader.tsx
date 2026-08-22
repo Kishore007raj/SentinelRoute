@@ -1,6 +1,7 @@
 "use client";
+
 import { useState } from "react";
-import { Bell, ChevronRight, Menu, Shield, LogOut } from "lucide-react";
+import { ChevronRight, Menu, Shield, ArrowUpRight } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -21,7 +22,7 @@ import { useUser } from "@/lib/auth-context";
 import { AdminMobileNav } from "@/components/layout/AdminSidebar";
 
 const routeLabels: Record<string, string> = {
-  "/admin":             "Platform Dashboard",
+  "/admin":             "Platform Command Center",
   "/admin/companies":   "Tenant Management",
   "/admin/operational": "Global Operational Monitor",
   "/admin/audit":       "Platform Audit Center",
@@ -82,32 +83,26 @@ export function AdminHeader() {
           <span className="text-xs font-semibold text-amber-500 uppercase tracking-widest">Super Admin</span>
         </div>
 
-        <Link
-          href="/dashboard"
-          className="hidden md:flex items-center gap-2 h-9 px-4 ml-2 rounded-lg border border-border bg-muted/30 text-muted-foreground text-sm hover:bg-muted/50 hover:text-foreground transition-colors"
-        >
-          <span>Exit to App</span>
-        </Link>
-
         <DropdownMenu>
           <DropdownMenuTrigger
             className="inline-flex h-9 cursor-pointer items-center gap-2.5 rounded-lg px-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none shrink-0"
             aria-label="User menu"
           >
-            <Avatar className="h-7 w-7">
-              <AvatarFallback className="bg-amber-500/20 text-amber-600 text-[10px] font-bold">{initials}</AvatarFallback>
+            <Avatar className="h-7 w-7 ring-1 ring-border">
+              <AvatarFallback className="bg-amber-500/20 text-amber-500 text-[10px] font-bold">{initials}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-52 bg-popover border-border">
             <DropdownMenuGroup>
-              <DropdownMenuLabel className="font-normal">
-                <p className="text-sm font-semibold truncate">{displayName}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email ?? ""}</p>
+              <DropdownMenuLabel className="font-normal p-3">
+                <p className="text-sm font-semibold truncate text-foreground">{displayName}</p>
+                <p className="text-xs text-muted-foreground truncate font-mono mt-0.5">{user?.email ?? ""}</p>
+                <span className="inline-block mt-2 text-[10px] font-semibold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">Super Admin</span>
               </DropdownMenuLabel>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="border-border" />
             <DropdownMenuItem
-              className="text-destructive focus:text-destructive cursor-pointer"
+              className="text-destructive focus:text-destructive cursor-pointer px-3 py-2 text-xs"
               onClick={handleSignOut}
             >
               Sign out

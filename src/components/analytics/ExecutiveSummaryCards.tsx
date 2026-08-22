@@ -10,14 +10,11 @@ interface KPIProps {
   subtext?: string;
   icon: React.ReactNode;
   trend?: { direction: "up" | "down" | "flat"; percent: number; isGood: boolean };
-  glowColor?: "primary" | "violet" | "emerald" | "amber" | "danger";
 }
 
-function SummaryCard({ label, value, subtext, icon, trend, glowColor = "primary" }: KPIProps) {
-  const glowClass = `card-glow${glowColor === "violet" ? "-violet" : ""}`;
-  
+function SummaryCard({ label, value, subtext, icon, trend }: KPIProps) {
   return (
-    <Card className={`bg-card border-border overflow-hidden relative ${glowClass}`}>
+    <Card className="bg-card border-border overflow-hidden relative">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1">
@@ -87,55 +84,47 @@ export function ExecutiveSummaryCards({ kpis, isLoading }: { kpis: KPIs | null; 
       label: "Active Shipments",
       value: kpis.shipments?.active ?? 0,
       subtext: `Out of ${kpis.shipments?.total ?? 0} total`,
-      icon: <Package className="w-5 h-5" />,
-      glowColor: "primary"
+      icon: <Package className="w-5 h-5" />
     },
     {
       label: "Shipment Success Rate",
       value: `${kpis.shipments?.successRate ?? 0}%`,
-      icon: <CheckCircle2 className="w-5 h-5 text-[var(--sr-emerald)]" />,
-      glowColor: "emerald"
+      icon: <CheckCircle2 className="w-5 h-5 text-[var(--sr-emerald)]" />
     },
     {
       label: "At-Risk Shipments",
       value: kpis.shipments?.atRisk ?? 0,
-      icon: <AlertTriangle className="w-5 h-5 text-[var(--sr-danger)]" />,
-      glowColor: "danger"
+      icon: <AlertTriangle className="w-5 h-5 text-[var(--sr-danger)]" />
     },
     {
       label: "Fleet Utilization",
       value: `${kpis.fleet?.utilizationRate ?? 0}%`,
       subtext: `${kpis.fleet?.assigned ?? 0} / ${kpis.fleet?.total ?? 0} active`,
-      icon: <Truck className="w-5 h-5" />,
-      glowColor: "violet"
+      icon: <Truck className="w-5 h-5" />
     },
     {
       label: "Fleet Availability",
       value: `${kpis.fleet?.availabilityRate ?? 0}%`,
       subtext: `${kpis.fleet?.maintenance ?? 0} in maintenance`,
-      icon: <Activity className="w-5 h-5 text-[var(--sr-emerald)]" />,
-      glowColor: "primary"
+      icon: <Activity className="w-5 h-5 text-[var(--sr-emerald)]" />
     },
     {
       label: "Driver Utilization",
       value: `${kpis.drivers?.utilizationRate ?? 0}%`,
       subtext: `${kpis.drivers?.assigned ?? 0} / ${kpis.drivers?.total ?? 0} assigned`,
-      icon: <Users className="w-5 h-5" />,
-      glowColor: "violet"
+      icon: <Users className="w-5 h-5" />
     },
     {
       label: "Total Incidents",
       value: kpis.incidents?.total ?? 0,
       subtext: `${kpis.incidents?.critical ?? 0} critical, ${kpis.incidents?.high ?? 0} high`,
-      icon: <Map className="w-5 h-5 text-[var(--sr-amber)]" />,
-      glowColor: "amber"
+      icon: <Map className="w-5 h-5 text-[var(--sr-amber)]" />
     },
     {
       label: "Delivery Performance",
       value: `${kpis.shipments?.deliveryPerformance ?? 0}%`,
       subtext: `${kpis.shipments?.completed ?? 0} completed shipments`,
-      icon: <Clock className="w-5 h-5" />,
-      glowColor: "primary"
+      icon: <Clock className="w-5 h-5" />
     }
   ];
 

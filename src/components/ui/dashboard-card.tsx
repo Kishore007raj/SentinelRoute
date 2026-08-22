@@ -9,7 +9,6 @@ interface DashboardCardProps extends Omit<HTMLMotionProps<"div">, "title" | "chi
   action?: React.ReactNode
   children?: React.ReactNode
   noPadding?: boolean
-  glowOnHover?: boolean
   delay?: number
 }
 
@@ -20,7 +19,6 @@ export function DashboardCard({
   icon: Icon,
   action,
   noPadding = false,
-  glowOnHover = false,
   delay = 0,
   children,
   ...props
@@ -31,14 +29,13 @@ export function DashboardCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay }}
       className={cn(
-        "flex flex-col bg-card border border-border rounded-xl shadow-sm",
-        glowOnHover && "card-glow",
+        "flex flex-col bg-card border border-border rounded-lg shadow-sm",
         className
       )}
       {...props}
     >
       {(title || subtitle || Icon || action) && (
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-muted/5 rounded-t-xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-muted/5 rounded-t-lg">
           <div className="flex items-center gap-3">
             {Icon && (
               <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">

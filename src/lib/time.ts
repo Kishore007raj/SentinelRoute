@@ -23,7 +23,7 @@ export function getCurrentDate(): Date {
 
 /** Returns the current UTC time as an ISO 8601 string. Always use this for storage. */
 export function utcNow(): string {
-  return getCurrentDate().toISOString();
+  return new Date().toISOString();
 }
 
 // ─── Client display helpers ───────────────────────────────────────────────────
@@ -70,7 +70,8 @@ export function formatLocalDateTime(utcIso: string): string {
  */
 export function formatRelativeTime(utcIso: string): string {
   try {
-    const diffMs  = getCurrentDate().getTime() - new Date(utcIso).getTime();
+    const diffMs  = new Date().getTime() - new Date(utcIso).getTime();
+    if (diffMs < 0) return "just now";
     const diffSec = Math.floor(diffMs / 1000);
 
     if (diffSec < 10)   return "just now";

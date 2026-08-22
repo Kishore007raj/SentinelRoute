@@ -85,22 +85,25 @@ export async function POST(
       return NextResponse.json({ error: "Cannot send messages for completed shipments" }, { status: 400 });
     }
 
-    // Ensure channel exists - extract channelId for use below
-    const existingChannel = await db.collection("shipment_channels").findOne({ shipmentId: id, companyId });
-    let channelId: string;
-    if (!existingChannel) {
-      const newChannelId = `ch-${id}`;
-      await db.collection("shipment_channels").insertOne({
-        channelId:  newChannelId,
-        shipmentId: id,
-        companyId,
-        active:     true,
-        createdAt:  new Date().toISOString(),
-        updatedAt:  new Date().toISOString(),
-      });
-      channelId = newChannelId;
-    } else {
-      channelId = existingChannel.channelId as string;
+    // Ensure channel exists - atomic upsert to prevent duplicate key errors
+    // Note: The unique index is on shipmentId only (not compound with companyId)
+    const channel = await db.collection("shipment_channels").findOneAndUpdate(
+      { shipmentId: id },
+      {
+        $setOnInsert: {
+          channelId: `ch-${id}`,
+          shipmentId: id,
+          companyId,
+          active: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+      },
+      { upsert: true, returnDocument: "after" }
+    );
+    const channelId = channel?.channelId as string;
+    if (!channelId) {
+      return NextResponse.json({ error: "Failed to create message channel" }, { status: 500 });
     }
 
     let senderRole: "Dispatcher" | "Driver" | "Operations Manager" | "System" = "Dispatcher";

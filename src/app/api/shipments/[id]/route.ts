@@ -42,9 +42,16 @@ export async function GET(
   }
 
   try {
+    const startTime = Date.now();
     const db = await getDb();
+    const getDbTime = Date.now() - startTime;
+    console.log(`[GET /api/shipments/[id]] getDb() took ${getDbTime}ms`);
 
+    const userLookupStart = Date.now();
     const userRecord = await db.collection<UserRecord>("users").findOne({ userId });
+    const userLookupTime = Date.now() - userLookupStart;
+    console.log(`[GET /api/shipments/[id]] User lookup took ${userLookupTime}ms`);
+
     const companyId  = userRecord?.companyId;
     const isSuperAdmin = userRecord?.role === "super_admin";
 
@@ -57,7 +64,34 @@ export async function GET(
       ? { id, companyId: queryCompanyId }
       : { id, userId };
 
-    const doc = await db.collection("shipments").findOne(query);
+    const shipmentLookupStart = Date.now();
+    
+    // Stage A: Cursor creation
+    const cursorStart = Date.now();
+    const cursor = db.collection("shipments").find(query);
+    const cursorTime = Date.now() - cursorStart;
+    console.log(`[GET /api/shipments/[id]] Cursor creation: ${cursorTime}ms`);
+    
+    // Stage B: MongoDB execution (fetch first doc)
+    const execStart = Date.now();
+    const doc = await cursor.next();
+    const execTime = Date.now() - execStart;
+    console.log(`[GET /api/shipments/[id]] MongoDB execution (next): ${execTime}ms`);
+
+    // If doc exists, measure serialization
+    let serializeTime = 0;
+    if (doc) {
+      const serializeStart = Date.now();
+      const geomSize = doc.geometry ? JSON.stringify(doc.geometry).length : 0;
+      const docStringified = JSON.stringify(doc);
+      const docSize = docStringified.length;
+      serializeTime = Date.now() - serializeStart;
+      console.log(`[GET /api/shipments/[id]] Document sizes - Total: ${docSize} bytes, Geometry: ${geomSize} bytes`);
+      console.log(`[GET /api/shipments/[id]] JSON.stringify time: ${serializeTime}ms`);
+    }
+
+    const shipmentLookupTime = Date.now() - shipmentLookupStart;
+    console.log(`[GET /api/shipments/[id]] Total shipment lookup: ${shipmentLookupTime}ms (cursor: ${cursorTime}ms, exec: ${execTime}ms, serialize: ${serializeTime}ms)`);
 
     if (!doc) {
       return NextResponse.json({ error: "Shipment not found" }, { status: 404 });
@@ -76,6 +110,13 @@ export async function GET(
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { _id, userId: _uid, ...shipment } = doc;
+    
+    // Measure response serialization
+    const responseSerializeStart = Date.now();
+    const responseJson = JSON.stringify({ shipment });
+    const responseSerializeTime = Date.now() - responseSerializeStart;
+    console.log(`[GET /api/shipments/[id]] Response JSON.stringify: ${responseSerializeTime}ms, size: ${responseJson.length} bytes`);
+    
     return NextResponse.json({ shipment });
   } catch (err) {
     console.error("[GET /api/shipments/[id]] DB error:", err);

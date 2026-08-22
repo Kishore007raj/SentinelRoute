@@ -53,133 +53,69 @@
   --color-panel: var(--sr-panel);
   --color-surface: var(--sr-surface);
   --color-steel: var(--sr-steel);
-  /* Second accent - violet */
-  --color-accent-2: var(--accent-2);
-  --color-accent-2-foreground: var(--accent-2-foreground);
-  /* Glow tokens */
-  --shadow-glow-primary: var(--glow-primary);
-  --shadow-glow-soft: var(--glow-soft);
-  --shadow-glow-violet: var(--glow-violet);
 }
 
 /* ===================== */
-/* PREMIUM DARK - deep graphite · cyan-blue primary · violet accent */
-/* 70% neutral · 20% semantic · 10% accent                          */
+/* INDUSTRIAL INTELLIGENCE - Logistics Control Room */
 /* ===================== */
-:root {
+:root, .dark {
   /* ── Base (improved depth) ────────────────────────────────────────────── */
-  --background: oklch(0.075 0.01 240);
-  --foreground: oklch(0.96 0.01 240);
-  --card: oklch(0.11 0.012 240);               /* slightly lighter than bg */
-  --card-foreground: oklch(0.96 0.01 240);
-  --popover: oklch(0.13 0.014 240);
-  --popover-foreground: oklch(0.96 0.01 240);
+  --background: #080B0F;
+  --foreground: #F1F3F5;
+  --card: #0D1218;               /* SURFACE */
+  --card-foreground: #F1F3F5;
+  --popover: #121820;            /* ELEVATED */
+  --popover-foreground: #F1F3F5;
 
-  /* ── Primary - cyan-blue hybrid (restrained) ──────────────────────────── */
-  --primary: oklch(0.68 0.17 210);             /* cyan-blue, less saturated */
-  --primary-foreground: oklch(0.02 0 0);
-  --ring: oklch(0.68 0.17 210);
+  /* ── Primary - Brand Copper ───────────────────────────────────────────── */
+  --primary: #C47A3A;
+  --primary-foreground: #080B0F;
+  --ring: #C47A3A;
 
   /* ── Secondary / Surfaces ─────────────────────────────────────────────── */
-  --secondary: oklch(0.16 0.015 240);
-  --secondary-foreground: oklch(0.85 0.01 240);
-  --muted: oklch(0.14 0.012 240);
-  --muted-foreground: oklch(0.55 0.02 240);
-  --accent: oklch(0.18 0.02 240);
-  --accent-foreground: oklch(0.96 0.01 240);
+  --secondary: #121820;          /* ELEVATED */
+  --secondary-foreground: #8B98A5; /* SECONDARY TEXT */
+  --muted: #121820;
+  --muted-foreground: #8B98A5;
+  --accent: #121820;
+  --accent-foreground: #F1F3F5;
 
   /* ── Borders / Inputs ─────────────────────────────────────────────────── */
-  --border: oklch(0.24 0.02 240);
-  --input: oklch(0.22 0.02 240);
+  --border: #202A33;
+  --input: #202A33;
 
   /* ── Semantic ─────────────────────────────────────────────────────────── */
-  --destructive: oklch(0.70 0.22 25);
+  --destructive: #D45C5C;
+  --destructive-foreground: #080B0F;
 
   /* ── Charts - multi-accent palette ───────────────────────────────────── */
-  --chart-1: oklch(0.68 0.17 210);             /* primary cyan-blue */
-  --chart-2: oklch(0.70 0.18 300);             /* violet accent */
-  --chart-3: oklch(0.75 0.18 160);             /* emerald */
-  --chart-4: oklch(0.80 0.20 70);              /* amber */
-  --chart-5: oklch(0.70 0.22 25);              /* danger red */
+  --chart-1: #C47A3A;             /* COPPER */
+  --chart-2: #6F8799;             /* STEEL */
+  --chart-3: #3FAF7A;             /* GREEN */
+  --chart-4: #D6A84F;             /* AMBER */
+  --chart-5: #D45C5C;             /* RED */
 
   --radius: 0.5rem;
 
   /* ── Sidebar ──────────────────────────────────────────────────────────── */
-  --sidebar: oklch(0.065 0.01 240);
-  --sidebar-foreground: oklch(0.96 0.01 240);
-  --sidebar-primary: oklch(0.68 0.17 210);
-  --sidebar-primary-foreground: oklch(0.02 0 0);
-  --sidebar-accent: oklch(0.15 0.015 240);
-  --sidebar-accent-foreground: oklch(0.96 0.01 240);
-  --sidebar-border: oklch(0.20 0.018 240);
-  --sidebar-ring: oklch(0.68 0.17 210);
+  --sidebar: #0D1218;
+  --sidebar-foreground: #F1F3F5;
+  --sidebar-primary: #C47A3A;
+  --sidebar-primary-foreground: #080B0F;
+  --sidebar-accent: #121820;
+  --sidebar-accent-foreground: #F1F3F5;
+  --sidebar-border: #202A33;
+  --sidebar-ring: #C47A3A;
 
   /* ── SentinelRoute custom ─────────────────────────────────────────────── */
-  --sr-amber: oklch(0.80 0.20 70);
-  --sr-amber-foreground: oklch(0.12 0.02 70);
-  --sr-emerald: oklch(0.75 0.18 160);
-  --sr-emerald-foreground: oklch(0.12 0.02 160);
-  --sr-danger: oklch(0.70 0.22 25);
-  --sr-panel: oklch(0.115 0.013 240);
-  --sr-surface: oklch(0.11 0.012 240);
-  --sr-steel: oklch(0.55 0.02 240);
-
-  /* ── Second accent - violet (NEW) ────────────────────────────────────── */
-  --accent-2: oklch(0.70 0.18 300);
-  --accent-2-foreground: oklch(0.02 0 0);
-
-  /* ── Glow system (dual-accent) ────────────────────────────────────────── */
-  --glow-primary: 0 0 20px oklch(0.68 0.17 210 / 0.28);
-  --glow-soft: 0 0 40px oklch(0.68 0.17 210 / 0.12);
-  --glow-violet: 0 0 20px oklch(0.70 0.18 300 / 0.22);
-}
-
-.dark {
-  --background: oklch(0.075 0.01 240);
-  --foreground: oklch(0.96 0.01 240);
-  --card: oklch(0.11 0.012 240);
-  --card-foreground: oklch(0.96 0.01 240);
-  --popover: oklch(0.13 0.014 240);
-  --popover-foreground: oklch(0.96 0.01 240);
-  --primary: oklch(0.68 0.17 210);
-  --primary-foreground: oklch(0.02 0 0);
-  --secondary: oklch(0.16 0.015 240);
-  --secondary-foreground: oklch(0.85 0.01 240);
-  --muted: oklch(0.14 0.012 240);
-  --muted-foreground: oklch(0.55 0.02 240);
-  --accent: oklch(0.18 0.02 240);
-  --accent-foreground: oklch(0.96 0.01 240);
-  --destructive: oklch(0.70 0.22 25);
-  --border: oklch(0.24 0.02 240);
-  --input: oklch(0.22 0.02 240);
-  --ring: oklch(0.68 0.17 210);
-  --chart-1: oklch(0.68 0.17 210);
-  --chart-2: oklch(0.70 0.18 300);
-  --chart-3: oklch(0.75 0.18 160);
-  --chart-4: oklch(0.80 0.20 70);
-  --chart-5: oklch(0.70 0.22 25);
-  --radius: 0.5rem;
-  --sidebar: oklch(0.065 0.01 240);
-  --sidebar-foreground: oklch(0.96 0.01 240);
-  --sidebar-primary: oklch(0.68 0.17 210);
-  --sidebar-primary-foreground: oklch(0.02 0 0);
-  --sidebar-accent: oklch(0.15 0.015 240);
-  --sidebar-accent-foreground: oklch(0.96 0.01 240);
-  --sidebar-border: oklch(0.20 0.018 240);
-  --sidebar-ring: oklch(0.68 0.17 210);
-  --sr-amber: oklch(0.80 0.20 70);
-  --sr-amber-foreground: oklch(0.12 0.02 70);
-  --sr-emerald: oklch(0.75 0.18 160);
-  --sr-emerald-foreground: oklch(0.12 0.02 160);
-  --sr-danger: oklch(0.70 0.22 25);
-  --sr-panel: oklch(0.115 0.013 240);
-  --sr-surface: oklch(0.11 0.012 240);
-  --sr-steel: oklch(0.55 0.02 240);
-  --accent-2: oklch(0.70 0.18 300);
-  --accent-2-foreground: oklch(0.02 0 0);
-  --glow-primary: 0 0 20px oklch(0.68 0.17 210 / 0.28);
-  --glow-soft: 0 0 40px oklch(0.68 0.17 210 / 0.12);
-  --glow-violet: 0 0 20px oklch(0.70 0.18 300 / 0.22);
+  --sr-amber: #D6A84F;
+  --sr-amber-foreground: #080B0F;
+  --sr-emerald: #3FAF7A;
+  --sr-emerald-foreground: #080B0F;
+  --sr-danger: #D45C5C;
+  --sr-panel: #0D1218;
+  --sr-surface: #0D1218;
+  --sr-steel: #6F8799;
 }
 
 @layer base {
@@ -196,7 +132,7 @@
 
 @layer components {
   .panel {
-    @apply bg-card border border-border rounded-xl;
+    @apply bg-card border border-border rounded-lg;
   }
 
   .label-meta {
@@ -216,42 +152,6 @@
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed;
   }
-
-  /* ── Glow utilities ─────────────────────────────────────────────────── */
-  .glow-primary {
-    box-shadow: var(--glow-primary);
-  }
-  .glow-soft {
-    box-shadow: var(--glow-soft);
-  }
-  .glow-violet {
-    box-shadow: var(--glow-violet);
-  }
-
-  /* ── Button glow on hover (non-destructive - only adds shadow) ──────── */
-  [data-slot="button"]:not([data-variant="ghost"]):not([data-variant="link"]):not([data-variant="outline"]):not([data-variant="destructive"]):hover {
-    box-shadow: var(--glow-primary);
-  }
-
-  /* ── Focus ring glow ────────────────────────────────────────────────── */
-  [data-slot="button"]:focus-visible {
-    box-shadow: var(--glow-primary);
-  }
-
-  /* ── Card hover lift with glow ──────────────────────────────────────── */
-  .card-glow {
-    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
-  }
-  .card-glow:hover {
-    box-shadow: var(--glow-soft), 0 0 0 1px oklch(0.68 0.17 210 / 0.18);
-    transform: translateY(-2px);
-    border-color: oklch(0.68 0.17 210 / 0.25);
-  }
-  .card-glow-violet:hover {
-    box-shadow: var(--glow-violet), 0 0 0 1px oklch(0.70 0.18 300 / 0.18);
-    transform: translateY(-2px);
-    border-color: oklch(0.70 0.18 300 / 0.25);
-  }
 }
 
 @utility scrollbar-hidden {
@@ -269,4 +169,28 @@
 
 @utility animate-shimmer {
   animation: shimmer 4s linear infinite;
+}
+
+/* ── Leaflet map container fix ───────────────────────────────────────────── */
+.leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.leaflet-pane,
+.leaflet-tile-pane,
+.leaflet-overlay-pane,
+.leaflet-shadow-pane,
+.leaflet-marker-pane,
+.leaflet-tooltip-pane,
+.leaflet-popup-pane {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.leaflet-tile-container {
+  position: absolute;
+  left: 0;
+  top: 0;
 }

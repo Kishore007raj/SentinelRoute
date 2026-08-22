@@ -68,13 +68,19 @@ export async function POST(req: NextRequest) {
   let oLat = originLat, oLng = originLng;
   let dLat = destinationLat, dLng = destinationLng;
 
-  if (!oLat || !oLng) {
-    const oSugg = await geoapifyAutosuggest(origin);
-    if (oSugg[0]?.lat && oSugg[0]?.lng) { oLat = oSugg[0].lat; oLng = oSugg[0].lng; }
-  }
-  if (!dLat || !dLng) {
-    const dSugg = await geoapifyAutosuggest(destination);
-    if (dSugg[0]?.lat && dSugg[0]?.lng) { dLat = dSugg[0].lat; dLng = dSugg[0].lng; }
+  if ((!oLat || !oLng) || (!dLat || !dLng)) {
+    // Parallelize both autosuggest calls instead of sequential
+    const [oSugg, dSugg] = await Promise.all([
+      (!oLat || !oLng) ? geoapifyAutosuggest(origin) : Promise.resolve([]),
+      (!dLat || !dLng) ? geoapifyAutosuggest(destination) : Promise.resolve([]),
+    ]);
+    
+    if (!oLat || !oLng) {
+      if (oSugg[0]?.lat && oSugg[0]?.lng) { oLat = oSugg[0].lat; oLng = oSugg[0].lng; }
+    }
+    if (!dLat || !dLng) {
+      if (dSugg[0]?.lat && dSugg[0]?.lng) { dLat = dSugg[0].lat; dLng = dSugg[0].lng; }
+    }
   }
 
   // ── Step 1: OSRM Real Routing ─────────────────────────────────────────────────
@@ -106,10 +112,25 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Step 2: Weather + TomTom Traffic + Intel (parallel) ───────────────────
-  const fastestRoute  = osrmRoutes[0];
+  // All external calls have 10s individual timeouts, but we add an additional
+  // safety wrapper for optional intelligence services (festival, news) that
+  // access MongoDB, which can hang if DB is slow/unreachable.
+  if (!oLat || !oLng || !dLat || !dLng) {
+    return NextResponse.json({ error: "Unable to geocode origin or destination. Please provide coordinates." }, { status: 400 });
+  }
+  const geoapifyRoutes = await geoapifyRoute(oLng, oLat, dLng, dLat);
+  const fastestRoute  = geoapifyRoutes[0];
   const fastestCoords = fastestRoute.geometry;
 
   const tomtom = new TomTomTrafficProvider();
+
+  // Helper: wrap promise with timeout fallback
+  const withTimeout = <T>(promise: Promise<T>, fallback: T, timeoutMs = 5000): Promise<T> => {
+    const timeoutPromise = new Promise<T>((resolve) =>
+      setTimeout(() => resolve(fallback), timeoutMs)
+    );
+    return Promise.race([promise, timeoutPromise]);
+  };
 
   const [corridorWeather, pointWeather, tomtomTraffic, festivalRisk, newsRisk] = await Promise.all([
     getRouteWeather(origin, destination),
@@ -119,8 +140,24 @@ export async function POST(req: NextRequest) {
     oLat && oLng && dLat && dLng
       ? tomtom.getTrafficData([oLng, oLat], [dLng, dLat])
       : Promise.resolve({ trafficScore: -1, incidents: [], hasRoadClosure: false, isLive: false }),
-    getFestivalRiskContribution("system", undefined, undefined),
-    getNewsRiskContribution("system"),
+    // Festival intelligence - optional, 2s timeout with safe fallback
+    withTimeout(
+      getFestivalRiskContribution("system", undefined, undefined),
+      { festivalBonus: 0, congestionScore: 0, activeFestivals: [], riskLevel: "low" as const },
+      2000
+    ),
+    // News intelligence - optional, 2s timeout with safe fallback
+    withTimeout(
+      getNewsRiskContribution("system"),
+      { 
+        disruptionBonus: 0, 
+        delayBonus: 0,
+        affectedCategories: [],
+        articleCount: 0,
+        normalizedIncidents: [] 
+      },
+      2000
+    ),
   ]);
 
   // Blend corridor score (70%) with point-sampled score (30%)
@@ -279,33 +316,41 @@ export async function POST(req: NextRequest) {
     }
   );
 
-  // Phase 5: Persist route_analysis record
-  try {
-    const db = await getDb();
-    await db.collection("route_analyses").insertOne({
-      origin,
-      destination,
-      originLat: oLat,
-      originLng: oLng,
-      destinationLat: dLat,
-      destinationLng: dLng,
-      cargoType,
-      urgency,
-      weatherScore,
-      trafficScore: tomtomTraffic.trafficScore,
-      festivalRisk: festivalRisk.congestionScore,
-      newsRisk: newsRisk.disruptionBonus,
-      computedAt: new Date().toISOString(),
-      routes: routes.map(r => ({
-        label: r.label,
-        distanceKm: r.distanceKm,
-        etaMinutes: r.etaMinutes,
-        riskScore: r.riskScore
-      }))
-    });
-  } catch (err) {
-    console.error("[analyze-routes] Failed to save route_analysis:", err);
-  }
+  // Phase 5: Persist route_analysis record (non-blocking, best-effort)
+  // Wrapped with timeout to prevent hanging if MongoDB is slow.
+  // Failure to persist analytics does NOT block the response.
+  withTimeout(
+    (async () => {
+      try {
+        const db = await getDb(3000); // 3s timeout for analytics persistence
+        await db.collection("route_analyses").insertOne({
+          origin,
+          destination,
+          originLat: oLat,
+          originLng: oLng,
+          destinationLat: dLat,
+          destinationLng: dLng,
+          cargoType,
+          urgency,
+          weatherScore,
+          trafficScore: tomtomTraffic.trafficScore,
+          festivalRisk: festivalRisk.congestionScore,
+          newsRisk: newsRisk.disruptionBonus,
+          computedAt: new Date().toISOString(),
+          routes: routes.map(r => ({
+            label: r.label,
+            distanceKm: r.distanceKm,
+            etaMinutes: r.etaMinutes,
+            riskScore: r.riskScore
+          }))
+        });
+      } catch (err) {
+        console.error("[analyze-routes] Failed to save route_analysis:", err);
+      }
+    })(),
+    undefined, // Fallback: do nothing on timeout
+    3000 // 3s timeout
+  ).catch(() => {}); // Fire-and-forget, don't block response
 
   const response: AnalyzeRoutesResponse = {
     routes,

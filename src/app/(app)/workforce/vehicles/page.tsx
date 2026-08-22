@@ -1,8 +1,9 @@
 "use client";
+
 import { fetchApi } from "@/lib/api-client";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, AlertTriangle, RefreshCw } from "lucide-react";
+import { Plus, AlertTriangle, RefreshCw, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,35 +22,25 @@ import { VehicleForm } from "@/components/workforce/VehicleForm";
 import { AssignDriverModal } from "@/components/workforce/AssignDriverModal";
 import type { Vehicle } from "@/lib/types";
 
-// ─── Loading skeleton ─────────────────────────────────────────────────────────
-
 function VehicleListSkeleton() {
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-8">
+    <div className="max-w-7xl mx-auto w-full space-y-7">
       <div className="pb-6 border-b border-border space-y-2">
         <Skeleton className="h-3 w-32" />
         <Skeleton className="h-8 w-48" />
       </div>
       <div className="flex flex-col sm:flex-row gap-3">
-        <Skeleton className="h-9 flex-1 sm:max-w-xs" />
-        <Skeleton className="h-9 w-36" />
-        <Skeleton className="h-9 w-32 sm:ml-auto" />
+        <Skeleton className="h-10 flex-1 max-w-xs" />
+        <Skeleton className="h-10 w-40" />
       </div>
-      <div className="rounded-md border border-border overflow-hidden">
-        <div className="bg-muted/5 border-b border-border px-4 py-3 grid grid-cols-7 gap-4">
-          {Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-3 w-full" />)}
-        </div>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="px-4 py-4 grid grid-cols-7 gap-4 border-b border-border/30 last:border-0">
-            {Array.from({ length: 7 }).map((_, j) => <Skeleton key={j} className="h-4 w-full" />)}
-          </div>
+      <div className="panel p-5 bg-card space-y-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
         ))}
       </div>
     </div>
   );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function VehicleManagementPage() {
   const router = useRouter();
@@ -110,27 +101,33 @@ export default function VehicleManagementPage() {
       if (!user) return;
       try {
         const token = await user.getIdToken();
-        const res = await fetchApi(`/api/workforce/vehicles/${vehicleId}`, {
+        await fetchApi(`/api/workforce/vehicles/${vehicleId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ status: newStatus }),
         });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error ?? `Status update failed (${res.status})`);
-        }
-        await fetchVehicles();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Status update failed.");
+      } catch {
+        /* non-fatal */
+      } finally {
+        fetchVehicles();
       }
     },
     [user, fetchVehicles]
   );
 
-  const filtered = vehicles.filter((v) => {
+  const handleEdit = (vehicle: Vehicle) => setEditingVehicle(vehicle);
+  const handleAssign = (vehicle: Vehicle) => setAssignModalVehicle(vehicle);
+  const handleMaintenance = (vehicle: Vehicle) => patchVehicleStatus(vehicle.vehicleId, "maintenance");
+  const handleMarkAvailable = (vehicle: Vehicle) => patchVehicleStatus(vehicle.vehicleId, "available");
+  const handleRowClick = (vehicleId: string) => router.push(`/workforce/vehicles/${vehicleId}`);
+
+  const filteredVehicles = vehicles.filter((v) => {
     const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
-      q === "" || v.vehicleNumber.toLowerCase().includes(q) || v.vehicleType.toLowerCase().includes(q);
+      q === "" ||
+      v.vehicleNumber.toLowerCase().includes(q) ||
+      v.vehicleType.toLowerCase().includes(q) ||
+      v.fuelType.toLowerCase().includes(q);
     return matchesSearch && (statusFilter === "all" || v.status === statusFilter);
   });
 
@@ -139,14 +136,14 @@ export default function VehicleManagementPage() {
   if (error) {
     return (
       <div className="max-w-7xl mx-auto w-full">
-        <div className="flex flex-col items-center justify-center py-24 gap-5 text-center bg-card border border-border rounded-2xl">
-          <AlertTriangle className="w-8 h-8 text-amber-400" />
+        <div className="panel p-12 text-center space-y-4 border border-dashed border-border/70">
+          <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
           <div className="space-y-1">
-            <p className="text-base font-semibold text-foreground">{t("workforce.failedToLoadVehicles")}</p>
-            <p className="text-sm text-muted-foreground max-w-sm">{error}</p>
+            <p className="text-sm font-bold text-foreground">{t("workforce.failedToLoadVehicles")}</p>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error}</p>
           </div>
-          <Button variant="outline" className="gap-2 h-10 px-5 text-sm" onClick={fetchVehicles}>
-            <RefreshCw className="w-4 h-4" />
+          <Button variant="outline" className="gap-2 h-9 px-4 text-xs font-bold uppercase tracking-wider" onClick={fetchVehicles}>
+            <RefreshCw className="w-3.5 h-3.5" />
             {t("workforce.retry")}
           </Button>
         </div>
@@ -155,16 +152,23 @@ export default function VehicleManagementPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-8">
-
+    <div className="max-w-7xl mx-auto w-full space-y-7 pb-12">
       {/* Header */}
-      <div className="pb-6 border-b border-border">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2 font-bold">
-          {t("workforce.workforce")}
-        </p>
-        <h1 className="text-3xl font-bold text-foreground tracking-tight">
-          {t("workforce.vehicles")}
-        </h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
+        <div>
+          <p className="label-meta flex items-center gap-2 mb-2">
+            <Truck className="w-3.5 h-3.5 text-primary" />
+            {t("workforce.workforce")}
+          </p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">{t("workforce.vehicles")}</h1>
+        </div>
+
+        {canWrite && (
+          <Button onClick={() => setAddModalOpen(true)} className="h-10 px-4 text-xs font-bold uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
+            <Plus className="w-3.5 h-3.5" />
+            {t("workforce.addVehicle")}
+          </Button>
+        )}
       </div>
 
       {complianceIssues.length > 0 && (
@@ -184,60 +188,65 @@ export default function VehicleManagementPage() {
       )}
 
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-        <Input
-          placeholder={t("workforce.searchVehicles")}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="h-9 sm:max-w-xs"
-        />
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
-          <SelectTrigger className="h-9 w-full sm:w-44">
-            <SelectValue placeholder={t("workforce.allStatuses")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("workforce.allStatuses")}</SelectItem>
-            <SelectItem value="available">{t("workforce.available")}</SelectItem>
-            <SelectItem value="assigned">{t("workforce.assigned")}</SelectItem>
-            <SelectItem value="maintenance">{t("workforce.maintenance")}</SelectItem>
-            <SelectItem value="inactive">{t("workforce.inactive")}</SelectItem>
-          </SelectContent>
-        </Select>
-        {canWrite && (
-          <Button className="sm:ml-auto gap-2 h-9" onClick={() => setAddModalOpen(true)}>
-            <Plus className="w-4 h-4" />
-            {t("workforce.addVehicle")}
-          </Button>
-        )}
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto flex-1 max-w-md">
+          <Input
+            placeholder={t("workforce.searchVehicles")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-10 bg-muted/20 border-border text-xs font-medium rounded-lg"
+          />
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
+            <SelectTrigger className="w-full sm:w-44 h-10 bg-muted/20 border-border text-xs font-medium">
+              <SelectValue placeholder={t("workforce.allStatuses")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("workforce.allStatuses")}</SelectItem>
+              <SelectItem value="available">{t("workforce.available")}</SelectItem>
+              <SelectItem value="assigned">{t("workforce.assigned")}</SelectItem>
+              <SelectItem value="maintenance">{t("workforce.maintenance")}</SelectItem>
+              <SelectItem value="inactive">{t("workforce.inactive")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <p className="text-xs text-muted-foreground self-center font-mono font-medium">
+          {filteredVehicles.length}{" "}
+          {filteredVehicles.length === 1 ? t("workforce.vehicle") : t("workforce.vehicles").toLowerCase()}
+        </p>
       </div>
 
       {/* Vehicle table */}
-      <VehicleTable
-        vehicles={filtered}
-        currentUserRole={role ?? "dispatcher"}
-        onEdit={(vehicle) => setEditingVehicle(vehicle)}
-        onAssignDriver={(vehicle) => setAssignModalVehicle(vehicle)}
-        onMarkMaintenance={(vehicle) => patchVehicleStatus(vehicle.vehicleId, "maintenance")}
-        onMarkAvailable={(vehicle) => patchVehicleStatus(vehicle.vehicleId, "available")}
-        onRowClick={(vehicleId) => router.push(`/workforce/vehicles/${vehicleId}`)}
-      />
+      <div className="panel p-0 overflow-hidden bg-card">
+        <VehicleTable
+          vehicles={filteredVehicles}
+          currentUserRole={role ?? "dispatcher"}
+          onEdit={handleEdit}
+          onAssignDriver={handleAssign}
+          onMarkMaintenance={handleMaintenance}
+          onMarkAvailable={handleMarkAvailable}
+          onRowClick={handleRowClick}
+        />
+      </div>
 
-      {/* Add vehicle modal */}
+      {/* Add form modal */}
       <VehicleForm
         mode="add"
         open={addModalOpen}
         onOpenChange={setAddModalOpen}
-        onSuccess={() => { setAddModalOpen(false); fetchVehicles(); }}
+        onSuccess={fetchVehicles}
       />
 
-      {/* Edit vehicle modal */}
+      {/* Edit form modal */}
       {editingVehicle && (
         <VehicleForm
           mode="edit"
           vehicle={editingVehicle}
-          open={!!editingVehicle}
-          onOpenChange={(open) => { if (!open) setEditingVehicle(null); }}
-          onSuccess={() => { setEditingVehicle(null); fetchVehicles(); }}
+          open={Boolean(editingVehicle)}
+          onOpenChange={(open) => {
+            if (!open) setEditingVehicle(null);
+          }}
+          onSuccess={fetchVehicles}
         />
       )}
 
@@ -245,9 +254,11 @@ export default function VehicleManagementPage() {
       {assignModalVehicle && (
         <AssignDriverModal
           vehicleId={assignModalVehicle.vehicleId}
-          open={!!assignModalVehicle}
-          onOpenChange={(open) => { if (!open) setAssignModalVehicle(null); }}
-          onSuccess={() => { setAssignModalVehicle(null); fetchVehicles(); }}
+          open={Boolean(assignModalVehicle)}
+          onOpenChange={(open) => {
+            if (!open) setAssignModalVehicle(null);
+          }}
+          onSuccess={fetchVehicles}
         />
       )}
     </div>

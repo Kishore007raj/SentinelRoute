@@ -100,7 +100,7 @@ async function fetchIncidents(
 ): Promise<{ incidents: string[]; hasRoadClosure: boolean; unauthorized?: boolean }> {
   // Use v4 directly - v5 requires additional API key scopes not available on free tier
   const url =
-    `https://api.tomtom.com/traffic/services/4/incidentDetails/s3/${bbox}/10/-1` +
+    `https://api.tomtom.com/traffic/services/4/incidentDetails/s3/${bbox}/10/-1/json` +
     `?key=${apiKey}` +
     `&projection=EPSG4326` +
     `&expandCluster=true`;

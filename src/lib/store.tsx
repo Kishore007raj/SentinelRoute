@@ -9,7 +9,6 @@ import React, {
   useRef,
 } from "react";
 import { signOut } from "firebase/auth";
-import { usePathname } from "next/navigation";
 import type { Shipment, ShipmentStatus, RiskLevel, Route, PendingShipment, OperationalRecommendation } from "./types";
 import { getRiskLabel } from "./utils";
 import { useUser } from "./auth-context";
@@ -104,7 +103,7 @@ export interface StoredKPIData {
 
 // ─── API resilience helpers ───────────────────────────────────────────────────
 
-const API_TIMEOUT_MS = 9_000;
+const API_TIMEOUT_MS = 15_000;
 
 /**
  * fetch with:
@@ -114,13 +113,22 @@ const API_TIMEOUT_MS = 9_000;
  *
  * Each attempt gets its OWN AbortController so the timeout from
  * attempt 1 never fires during attempt 2.
+ *
+ * An optional `cancelSignal` can be passed to abort both the in-flight
+ * request and the timeout immediately (e.g. on effect cleanup).
  */
 async function fetchWithResilience(
   url: string,
-  options: RequestInit
+  options: RequestInit,
+  cancelSignal?: AbortSignal
 ): Promise<Response> {
   const attempt = async (): Promise<Response> => {
     const controller = new AbortController();
+
+    // Forward cancellation from the caller into this attempt's controller
+    const onCancel = () => controller.abort();
+    cancelSignal?.addEventListener("abort", onCancel);
+
     const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
     try {
       // Strip any existing signal from options - we own the abort controller
@@ -128,9 +136,11 @@ async function fetchWithResilience(
       const { signal: _ignored, ...rest } = options as RequestInit & { signal?: unknown };
       const res = await fetch(url, { ...rest, signal: controller.signal });
       clearTimeout(timer);
+      cancelSignal?.removeEventListener("abort", onCancel);
       return res;
     } catch (err) {
       clearTimeout(timer);
+      cancelSignal?.removeEventListener("abort", onCancel);
       throw err;
     }
   };
@@ -138,7 +148,9 @@ async function fetchWithResilience(
   let res: Response;
   try {
     res = await attempt();
-  } catch {
+  } catch (err) {
+    // Don't retry if the caller explicitly cancelled
+    if (cancelSignal?.aborted) throw err;
     // First attempt failed (network/timeout) - wait then retry once
     await new Promise((r) => setTimeout(r, 800));
     return attempt();
@@ -146,6 +158,7 @@ async function fetchWithResilience(
 
   // Retry once on 5xx
   if (res.status >= 500) {
+    if (cancelSignal?.aborted) return res;
     await new Promise((r) => setTimeout(r, 800));
     try {
       return await attempt();
@@ -167,7 +180,8 @@ async function fetchWithAuth(
   options: RequestInit,
   getToken: () => Promise<string>,
   forceRefreshToken: () => Promise<string | null>,
-  onAuthFailure: () => void
+  onAuthFailure: () => void,
+  cancelSignal?: AbortSignal
 ): Promise<Response> {
   const token = await getToken();
   const headers = {
@@ -175,7 +189,7 @@ async function fetchWithAuth(
     Authorization: `Bearer ${token}`,
   };
 
-  const res = await fetchWithResilience(url, { ...options, headers });
+  const res = await fetchWithResilience(url, { ...options, headers }, cancelSignal);
 
   if (res.status === 401) {
     // Token may have expired - force refresh once and retry
@@ -185,7 +199,7 @@ async function fetchWithAuth(
       return res;
     }
     const retryHeaders = { ...(options.headers as Record<string, string> ?? {}), Authorization: `Bearer ${freshToken}` };
-    const retryRes = await fetchWithResilience(url, { ...options, headers: retryHeaders });
+    const retryRes = await fetchWithResilience(url, { ...options, headers: retryHeaders }, cancelSignal);
     if (retryRes.status === 401) {
       // Still unauthorized after refresh - session is broken
       onAuthFailure();
@@ -199,21 +213,34 @@ async function fetchWithAuth(
 // ─── State ────────────────────────────────────────────────────────────────────
 
 interface StoreState {
-  shipments:         Shipment[];
-  pendingShipment:   PendingShipment | null;
-  loading:           boolean;
-  operationalFeed:   OperationalFeedData | null;
-  operationalHealth: OperationalHealthData | null;
-  presence:          Record<string, PresenceUser>;
-  kpis:              StoredKPIData | null;
-  lastSync:          number;
+  shipments:                  Shipment[];
+  pendingShipment:            PendingShipment | null;
+  /** True once the localStorage restore attempt has completed (success or no-op).
+   *  Consumers MUST NOT distinguish "no pending shipment" from "not yet restored"
+   *  until this flag is true. */
+  pendingShipmentHydrated:    boolean;
+  loading:                    boolean;
+  operationalFeed:            OperationalFeedData | null;
+  operationalHealth:          OperationalHealthData | null;
+  presence:                   Record<string, PresenceUser>;
+  kpis:                       StoredKPIData | null;
+  lastSync:                   number;
+  shipmentStats: {
+    total: number;
+    active: number;
+    atRisk: number;
+    completed: number;
+    avgRisk: number;
+    highRiskAvoided: number;
+  } | null;
 }
 
 type Action =
-  | { type: "SET_SHIPMENTS";  payload: Shipment[] }
+  | { type: "SET_SHIPMENTS";  payload: { shipments: Shipment[], stats?: StoreState["shipmentStats"] } }
   | { type: "SET_LOADING";    payload: boolean }
   | { type: "SET_PENDING";    payload: PendingShipment }
   | { type: "CLEAR_PENDING" }
+  | { type: "SET_PENDING_HYDRATED" }
   | { type: "ADD_SHIPMENT";   payload: Shipment }
   | { type: "UPDATE_STATUS";  payload: { id: string; status: ShipmentStatus; lastUpdate: string } }
   | { type: "SET_OPERATIONAL_DATA"; payload: { feed: OperationalFeedData | null; health: OperationalHealthData | null } }
@@ -222,14 +249,16 @@ type Action =
   | { type: "KPI_UPDATE"; payload: StoredKPIData };
 
 const initialState: StoreState = {
-  shipments:       [],
-  pendingShipment: null,
-  loading:         true,
-  operationalFeed: null,
-  operationalHealth: null,
-  presence: {},
-  kpis: null,
-  lastSync: Date.now(),
+  shipments:                [],
+  pendingShipment:          null,
+  pendingShipmentHydrated:  false,
+  loading:                  true,
+  operationalFeed:          null,
+  operationalHealth:        null,
+  presence:                 {},
+  kpis:                     null,
+  lastSync:                 Date.now(),
+  shipmentStats:            null,
 };
 
 function reducer(state: StoreState, action: Action): StoreState {
@@ -237,12 +266,12 @@ function reducer(state: StoreState, action: Action): StoreState {
     case "SET_SHIPMENTS": {
       // Deduplicate by id - guards against duplicate records from DB or concurrent fetches
       const seen = new Set<string>();
-      const unique = (action.payload ?? []).filter((s) => {
+      const unique = (action.payload.shipments ?? []).filter((s) => {
         if (seen.has(s.id)) return false;
         seen.add(s.id);
         return true;
       });
-      return { ...state, shipments: unique, loading: false };
+      return { ...state, shipments: unique, shipmentStats: action.payload.stats ?? null, loading: false };
     }
     case "SET_LOADING":
       return { ...state, loading: action.payload };
@@ -250,6 +279,8 @@ function reducer(state: StoreState, action: Action): StoreState {
       return { ...state, pendingShipment: action.payload };
     case "CLEAR_PENDING":
       return { ...state, pendingShipment: null };
+    case "SET_PENDING_HYDRATED":
+      return { ...state, pendingShipmentHydrated: true };
     case "ADD_SHIPMENT":
       // Deduplicate - if the shipment already exists (e.g. from a concurrent fetch),
       // replace it rather than prepend a second copy.
@@ -295,19 +326,21 @@ function reducer(state: StoreState, action: Action): StoreState {
 // ─── Context ──────────────────────────────────────────────────────────────────
 
 interface StoreContextValue {
-  state:               StoreState;
-  setPendingShipment:  (data: PendingShipment) => void;
-  clearPendingShipment: () => void;
-  dispatchShipment:    (opts: { pending: PendingShipment; route: Route; confidencePercent: number }) => Promise<Shipment>;
-  completeShipment:    (id: string) => void;
-  refreshShipments:    () => Promise<void>;
-  activeShipments:     Shipment[];
-  completedShipments:  Shipment[];
-  atRiskShipments:     Shipment[];
-  operationalFeed:     OperationalFeedData | null;
-  operationalHealth:   OperationalHealthData | null;
-  presence:            Record<string, PresenceUser>;
-  kpis:                StoredKPIData | null;
+  state:                    StoreState;
+  pendingShipmentHydrated:  boolean;
+  setPendingShipment:       (data: PendingShipment) => void;
+  clearPendingShipment:     () => void;
+  dispatchShipment:         (opts: { pending: PendingShipment; route: Route; confidencePercent: number }) => Promise<Shipment>;
+  completeShipment:         (id: string) => void;
+  refreshShipments:         () => Promise<void>;
+  activeShipments:          Shipment[];
+  completedShipments:       Shipment[];
+  atRiskShipments:          Shipment[];
+  operationalFeed:          OperationalFeedData | null;
+  operationalHealth:        OperationalHealthData | null;
+  presence:                 Record<string, PresenceUser>;
+  kpis:                     StoredKPIData | null;
+  shipmentStats:            StoreState["shipmentStats"];
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -318,19 +351,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { user, refreshToken } = useUser();
   const { company, userRecord } = useCompany();
-  const pathname = usePathname();
 
-  // Clear pendingShipment when navigating away from /routes
-  useEffect(() => {
-    if (!pathname.startsWith("/routes")) {
-      dispatch({ type: "CLEAR_PENDING" });
-    }
-  }, [pathname]);
+  // NOTE: Do NOT clear pendingShipment based on pathname changes.
+  // The pending shipment is cleared explicitly by:
+  //   1. dispatchShipment() on success (sets both state and localStorage)
+  //   2. clearPendingShipment() manual call
+  // Clearing on pathname changes caused race conditions where navigating from
+  // /create-shipment → /routes would clear the shipment before routes/page.tsx could use it.
 
   // ── Auth failure handler - signs out and clears state ─────────────────────
   const handleAuthFailure = useCallback(() => {
     console.warn("[store] Auth failure after token refresh - signing out");
-    dispatch({ type: "SET_SHIPMENTS", payload: [] });
+    dispatch({ type: "SET_SHIPMENTS", payload: { shipments: [] } });
     document.cookie = "sr_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     signOut(auth).catch(() => {});
   }, []);
@@ -342,8 +374,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
-  const fetchShipments = useCallback(async () => {
-    if (!user) { dispatch({ type: "SET_SHIPMENTS", payload: [] }); return; }
+  const fetchShipments = useCallback(async (cancelSignal?: AbortSignal) => {
+    if (!user) { dispatch({ type: "SET_SHIPMENTS", payload: { shipments: [] } }); return; }
     dispatch({ type: "SET_LOADING", payload: true });
     try {
       const res = await fetchWithAuth(
@@ -351,29 +383,41 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         { method: "GET" },
         getToken,
         refreshToken,
-        handleAuthFailure
+        handleAuthFailure,
+        cancelSignal
       );
       if (!res.ok) throw new Error(`API ${res.status}`);
       const data = await res.json();
-      dispatch({ type: "SET_SHIPMENTS", payload: data.shipments ?? [] });
+      dispatch({ type: "SET_SHIPMENTS", payload: { shipments: data.shipments ?? [], stats: data.stats } });
     } catch (err) {
+      // AbortError has two sources:
+      //   1. cancelSignal?.aborted === true  → intentional effect cleanup → stay silent
+      //   2. cancelSignal?.aborted === false → internal 9 s timeout fired → unblock loading
+      if (err instanceof Error && err.name === "AbortError") {
+        if (cancelSignal?.aborted) return; // intentional cleanup — stay silent
+        // Timeout fired before server responded — unblock loading state without wiping existing shipments
+        dispatch({ type: "SET_LOADING", payload: false });
+        return;
+      }
       // 503 = Firebase Admin not configured (expected in dev without service account).
       // Still resolve to empty list - never leave the app in a loading state.
       const msg = err instanceof Error ? err.message : String(err);
       if (!msg.includes("503")) {
         console.error("[store] fetchShipments:", err);
       }
-      dispatch({ type: "SET_SHIPMENTS", payload: [] });
+      dispatch({ type: "SET_LOADING", payload: false });
     }
   }, [user, getToken, refreshToken, handleAuthFailure]);
 
-  const fetchOperationalData = useCallback(async () => {
+  const fetchOperationalData = useCallback(async (cancelSignal?: AbortSignal) => {
     if (!user) return;
     try {
       const [feedRes, healthRes] = await Promise.all([
-        fetchWithAuth("/api/operational/feed", { method: "GET" }, getToken, refreshToken, handleAuthFailure),
-        fetchWithAuth("/api/operational/health", { method: "GET" }, getToken, refreshToken, handleAuthFailure)
+        fetchWithAuth("/api/operational/feed",   { method: "GET" }, getToken, refreshToken, handleAuthFailure, cancelSignal),
+        fetchWithAuth("/api/operational/health", { method: "GET" }, getToken, refreshToken, handleAuthFailure, cancelSignal)
       ]);
+      // Ignore if cancelled between the two awaits
+      if (cancelSignal?.aborted) return;
       const feedJson   = feedRes.ok   ? (await feedRes.json()   as { data?: OperationalFeedData })   : null;
       const healthJson = healthRes.ok ? (await healthRes.json() as { data?: OperationalHealthData }) : null;
       dispatch({ 
@@ -381,17 +425,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         payload: { feed: feedJson?.data ?? null, health: healthJson?.data ?? null } 
       });
     } catch (err) {
+      // Silently ignore intentional cancellations (effect cleanup)
+      if (err instanceof Error && err.name === "AbortError") return;
       console.error("[store] fetchOperationalData:", err);
     }
   }, [user, getToken, refreshToken, handleAuthFailure]);
 
-  useEffect(() => { 
-    fetchShipments(); 
-    fetchOperationalData();
-    if (process.env.NEXT_PUBLIC_ENABLE_WEBSOCKET !== "true") {
-      const interval = setInterval(fetchOperationalData, 30000);
-      return () => clearInterval(interval);
-    }
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchShipments(controller.signal);
+    fetchOperationalData(controller.signal);
+    return () => controller.abort();
   }, [fetchShipments, fetchOperationalData]);
 
   const refreshShipments = useCallback(async () => { await fetchShipments(); }, [fetchShipments]);
@@ -401,9 +445,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_ENABLE_WEBSOCKET === "true") return;
     if (!user) return;
-    const interval = setInterval(() => { fetchShipments(); }, 30_000);
+    const interval = setInterval(() => {
+      const controller = new AbortController();
+      fetchShipments(controller.signal);
+      fetchOperationalData(controller.signal);
+    }, 30_000);
     return () => clearInterval(interval);
-  }, [user, fetchShipments]);
+  }, [user, fetchShipments, fetchOperationalData]);
 
   // Ref to latest operational data - avoids stale closure in socketHandlers
   const latestOperational = useRef({ feed: state.operationalFeed, health: state.operationalHealth });
@@ -496,10 +544,71 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [company?.companyId, user?.uid, userRecord?.role, emit]);
 
+  // ── Persistence helpers ───────────────────────────────────────────────────
+  // Saves/removes the pending shipment in localStorage so it survives refresh.
+  // All reads/writes are wrapped in try/catch to guard against quota errors or
+  // environments where localStorage is unavailable (SSR, private browsing).
+
+  const persistPendingShipment = useCallback((data: PendingShipment | null) => {
+    if (typeof window === "undefined") return;
+    try {
+      if (data === null) {
+        window.localStorage.removeItem("sr_pending_shipment");
+      } else {
+        window.localStorage.setItem("sr_pending_shipment", JSON.stringify(data));
+      }
+    } catch {
+      // Silently handle localStorage quota/permission errors
+    }
+  }, []);
+
+  // ── Initialize pending shipment from localStorage on mount ─────────────────
+  // Runs once after the first render. If a valid pending shipment was saved
+  // (e.g. before a page refresh), restore it into the store so Route Selection
+  // can resume without the user needing to reconfigure the corridor.
+  // SET_PENDING_HYDRATED fires unconditionally (data found OR no data) so that
+  // consumers can distinguish "not yet checked" from "checked and empty".
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      dispatch({ type: "SET_PENDING_HYDRATED" });
+      return;
+    }
+    try {
+      const stored = window.localStorage.getItem("sr_pending_shipment");
+      if (stored) {
+        const parsed = JSON.parse(stored) as PendingShipment;
+        // Validate the minimum required fields before restoring
+        if (parsed && typeof parsed.origin === "string" && parsed.origin.trim() &&
+            typeof parsed.destination === "string" && parsed.destination.trim() &&
+            typeof parsed.cargoType === "string" && parsed.cargoType.trim() &&
+            typeof parsed.vehicleType === "string" && parsed.vehicleType.trim() &&
+            typeof parsed.urgency === "string" && parsed.urgency.trim()) {
+          dispatch({ type: "SET_PENDING", payload: parsed });
+        } else {
+          // Malformed data — clear it rather than silently using it
+          window.localStorage.removeItem("sr_pending_shipment");
+        }
+      }
+    } catch {
+      // Silently handle parse errors — treat as no stored shipment
+      try { window.localStorage.removeItem("sr_pending_shipment"); } catch { /* ignore */ }
+    } finally {
+      // Always mark hydration complete regardless of outcome
+      dispatch({ type: "SET_PENDING_HYDRATED" });
+    }
+  }, []); // intentionally empty — runs once on mount to restore persisted state
+
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  const setPendingShipment  = useCallback((data: PendingShipment) => dispatch({ type: "SET_PENDING",  payload: data }), []);
-  const clearPendingShipment = useCallback(() => dispatch({ type: "CLEAR_PENDING" }), []);
+  const setPendingShipment = useCallback((data: PendingShipment) => {
+    dispatch({ type: "SET_PENDING", payload: data });
+    persistPendingShipment(data);
+  }, [persistPendingShipment]);
+
+  const clearPendingShipment = useCallback(() => {
+    dispatch({ type: "CLEAR_PENDING" });
+    persistPendingShipment(null);
+  }, [persistPendingShipment]);
 
   const dispatchShipment = useCallback(
     async (opts: { pending: PendingShipment; route: Route; confidencePercent: number }): Promise<Shipment> => {
@@ -582,10 +691,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       fetch('http://127.0.0.1:7489/ingest/effe3673-5596-4950-a2c3-f992f902843b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e4c26e'},body:JSON.stringify({sessionId:'e4c26e',runId:'pre-fix',hypothesisId:'C',location:'store.tsx:dispatchShipment:ok',message:'POST /api/shipments succeeded',data:{status:res.status,shipmentId:persisted?.id??null,companyIdOnResponse:(persisted as {companyId?:string})?.companyId??null,shipmentStatus:persisted?.status??null},timestamp:Date.now()})}).catch(()=>{});
       // #endregion
       dispatch({ type: "ADD_SHIPMENT",  payload: persisted });
+      // Clear both in-memory state AND localStorage — the shipment is now in the DB.
+      // persistPendingShipment(null) must run here (not just dispatch CLEAR_PENDING)
+      // so that a subsequent page refresh does not restore the already-dispatched shipment.
       dispatch({ type: "CLEAR_PENDING" });
+      persistPendingShipment(null);
       return persisted;
     },
-    [user, getToken, refreshToken, handleAuthFailure]
+    [user, getToken, refreshToken, handleAuthFailure, persistPendingShipment]
   );
 
   const completeShipment = useCallback((id: string) => {
@@ -620,13 +733,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider value={{
-      state, setPendingShipment, clearPendingShipment,
+      state, pendingShipmentHydrated: state.pendingShipmentHydrated,
+      setPendingShipment, clearPendingShipment,
       dispatchShipment, completeShipment, refreshShipments,
       activeShipments, completedShipments, atRiskShipments,
       operationalFeed: state.operationalFeed,
       operationalHealth: state.operationalHealth,
       presence: state.presence,
       kpis: state.kpis,
+      shipmentStats: state.shipmentStats,
     }}>
       {children}
     </StoreContext.Provider>

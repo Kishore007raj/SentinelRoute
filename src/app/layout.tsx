@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,6 +28,9 @@ export const metadata: Metadata = {
   description:
     "Compare shipment routes, assess operational risk, and make routing decisions you can defend.",
   manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
   themeColor: "#10b981",
 };
 
